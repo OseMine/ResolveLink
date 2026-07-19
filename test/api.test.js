@@ -3,7 +3,7 @@ import http from 'http';
 
 const BASE = 'http://127.0.0.1:3030';
 
-function get(path: string): Promise<any> {
+function get(path) {
   return new Promise((resolve, reject) => {
     http.get(`${BASE}${path}`, (res) => {
       let data = '';
@@ -16,7 +16,7 @@ function get(path: string): Promise<any> {
   });
 }
 
-function post(path: string, body: any): Promise<any> {
+function post(path, body) {
   return new Promise((resolve, reject) => {
     const payload = JSON.stringify(body);
     const req = http.request(`${BASE}${path}`, {
@@ -35,7 +35,7 @@ function post(path: string, body: any): Promise<any> {
   });
 }
 
-function del(path: string): Promise<any> {
+function del(path) {
   return new Promise((resolve, reject) => {
     const req = http.request(`${BASE}${path}`, { method: 'DELETE' }, (res) => {
       let data = '';
@@ -76,7 +76,7 @@ describe('Setup', () => {
 });
 
 describe('Links lifecycle', () => {
-  let linkId: string;
+  let linkId;
 
   it('POST /api/link-clip creates a link', async () => {
     const res = await post('/api/link-clip', {
@@ -99,7 +99,7 @@ describe('Links lifecycle', () => {
   it('GET /api/links includes the new link', async () => {
     const res = await get('/api/links');
     expect(Array.isArray(res)).toBe(true);
-    expect(res.find((l: any) => l.id === linkId)).toBeDefined();
+    expect(res.find((l) => l.id === linkId)).toBeDefined();
   });
 
   it('GET /api/links/:id returns the link', async () => {
@@ -113,7 +113,7 @@ describe('Links lifecycle', () => {
     expect(res.deleted).toBe(true);
 
     const links = await get('/api/links');
-    expect(links.find((l: any) => l.id === linkId)).toBeUndefined();
+    expect(links.find((l) => l.id === linkId)).toBeUndefined();
   });
 });
 
