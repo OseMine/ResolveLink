@@ -242,7 +242,7 @@ local function show_dialog()
     local win = disp:AddWindow({
         ID = "ResolveLink_Launcher",
         WindowTitle = "ResolveLink",
-        Geometry = { 100, 100, 340, 460 },
+        Geometry = { 100, 100, 340, 480 },
 
         ui:VGroup{
             ID = "RootLayout",
@@ -256,7 +256,7 @@ local function show_dialog()
                 ID = "Status",
                 Text = "<span style='color:" .. statusColor .. ";'>● " .. statusText .. "</span>",
             },
-            ui:HSeparator{ ID = "Sep1" },
+            ui:Label{ Text = "<hr/>" },
 
             -- Quick Actions
             ui:Label{
@@ -273,7 +273,7 @@ local function show_dialog()
                 Text = "Open Web UI",
                 MinimumSize = { 300, 28 },
             },
-            ui:HSeparator{ ID = "Sep2" },
+            ui:Label{ Text = "<hr/>" },
 
             -- Server Control
             ui:Label{
@@ -286,7 +286,7 @@ local function show_dialog()
                 ui:PushButton{ ID = "StopBtn", Text = "Stop", MinimumSize = { 95, 28 } },
                 ui:PushButton{ ID = "RestartBtn", Text = "Restart", MinimumSize = { 95, 28 } },
             },
-            ui:HSeparator{ ID = "Sep3" },
+            ui:Label{ Text = "<hr/>" },
 
             -- System
             ui:Label{
@@ -303,7 +303,7 @@ local function show_dialog()
                 Text = "Update ResolveLink",
                 MinimumSize = { 300, 28 },
             },
-            ui:HSeparator{ ID = "Sep4" },
+            ui:Label{ Text = "<hr/>" },
 
             ui:Label{
                 ID = "Footer",
