@@ -296,7 +296,7 @@ local function show_dialog()
     -- Send to AE button
     local sendBtn = ui:PushButton(winId)
     sendBtn.Text = "Send Clips to After Effects"
-    sendBtn MinimumSize = ui:Size(300, 32)
+    sendBtn.MinimumSize = ui:Size(300, 32)
     sendBtn.Clicked = function()
         action_send_to_ae()
     end
@@ -305,7 +305,7 @@ local function show_dialog()
     -- Open Web UI button
     local webBtn = ui:PushButton(winId)
     webBtn.Text = "Open Web UI"
-    webBtn MinimumSize = ui:Size(300, 28)
+    webBtn.MinimumSize = ui:Size(300, 28)
     webBtn.Clicked = function()
         action_open_web()
     end
@@ -329,7 +329,7 @@ local function show_dialog()
 
     local startBtn = ui:PushButton(winId)
     startBtn.Text = "Start"
-    startBtn MinimumSize = ui:Size(95, 28)
+    startBtn.MinimumSize = ui:Size(95, 28)
     startBtn.Clicked = function()
         action_start_server()
         -- Refresh status after a moment
@@ -346,7 +346,7 @@ local function show_dialog()
 
     local stopBtn = ui:PushButton(winId)
     stopBtn.Text = "Stop"
-    stopBtn MinimumSize = ui:Size(95, 28)
+    stopBtn.MinimumSize = ui:Size(95, 28)
     stopBtn.Clicked = function()
         action_stop_server()
         statusLabel.Text = "<span style='color:#F44336;'>● Server stopped</span>"
@@ -355,7 +355,7 @@ local function show_dialog()
 
     local restartBtn = ui:PushButton(winId)
     restartBtn.Text = "Restart"
-    restartBtn MinimumSize = ui:Size(95, 28)
+    restartBtn.MinimumSize = ui:Size(95, 28)
     restartBtn.Clicked = function()
         action_restart_server()
         if package.config:sub(1,1) == "\\" then
@@ -386,7 +386,7 @@ local function show_dialog()
 
     local statusBtn = ui:PushButton(winId)
     statusBtn.Text = "Check Status"
-    statusBtn MinimumSize = ui:Size(300, 28)
+    statusBtn.MinimumSize = ui:Size(300, 28)
     statusBtn.Clicked = function()
         action_status()
     end
@@ -394,7 +394,7 @@ local function show_dialog()
 
     local updateBtn = ui:PushButton(winId)
     updateBtn.Text = "Update ResolveLink"
-    updateBtn MinimumSize = ui:Size(300, 28)
+    updateBtn.MinimumSize = ui:Size(300, 28)
     updateBtn.Clicked = function()
         action_update()
     end
