@@ -306,69 +306,140 @@ local function doPoll()
     lastStatus = "idle"
 end
 
--- ── Main defer loop: ticks every frame, but only actually polls
---    the server once every POLL_INTERVAL seconds. This is the fix
---    for the "runs 30x/sec instead of once per 2s" bug. ──────────
-local function tick()
+-- ── ReaImGui setup ────────────────────────────────────────
+local hasImGui = (reaper.ImGui_CreateContext ~= nil)
+local ctx
+
+-- Colors (0xRRGGBBAA)
+local COL_BG          = 0x1E1E24FF
+local COL_HEADER_BG   = 0x2A2A33FF
+local COL_ACCENT      = 0x6C9BFAFF
+local COL_ACCENT_HOV  = 0x8BB0FFFF
+local COL_TEXT        = 0xE8E8ECFF
+local COL_TEXT_DIM    = 0x9A9AA5FF
+local COL_LOG_BG      = 0x17171CFF
+local COL_STOP        = 0xE0605AFF
+local COL_STOP_HOV    = 0xF07A74FF
+
+local function pushStyle()
+    reaper.ImGui_PushStyleVar(ctx, reaper.ImGui_StyleVar_WindowRounding(), 8)
+    reaper.ImGui_PushStyleVar(ctx, reaper.ImGui_StyleVar_FrameRounding(), 5)
+    reaper.ImGui_PushStyleVar(ctx, reaper.ImGui_StyleVar_WindowPadding(), 14, 14)
+    reaper.ImGui_PushStyleVar(ctx, reaper.ImGui_StyleVar_ItemSpacing(), 8, 8)
+    reaper.ImGui_PushStyleVar(ctx, reaper.ImGui_StyleVar_FramePadding(), 8, 6)
+
+    reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_WindowBg(), COL_BG)
+    reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_TitleBgActive(), COL_HEADER_BG)
+    reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_TitleBg(), COL_HEADER_BG)
+    reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), COL_TEXT)
+    reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_ChildBg(), COL_LOG_BG)
+    reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Separator(), COL_HEADER_BG)
+
+    return 5, 6 -- style var count, style color count (must match pushes above)
+end
+
+local function popStyle(varCount, colorCount)
+    reaper.ImGui_PopStyleColor(ctx, colorCount)
+    reaper.ImGui_PopStyleVar(ctx, varCount)
+end
+
+local function statusDot(ok)
+    reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), ok and 0x6EE07AFF or COL_TEXT_DIM)
+    reaper.ImGui_Text(ctx, ok and "\226\151\143 running" or "\226\151\143 stopped")
+    reaper.ImGui_PopStyleColor(ctx, 1)
+end
+
+-- ── Main loop: single defer chain doing both polling + UI.
+--    Polling is throttled to POLL_INTERVAL; the UI redraws every
+--    frame (cheap) regardless. This is the fix for the earlier bug
+--    where polling ran ~30x/sec instead of once per POLL_INTERVAL,
+--    and the crash bug where ImGui_End wasn't always called to
+--    match ImGui_Begin (it must ALWAYS be called, visible or not). ──
+local function mainLoop()
     if not running then return end
 
+    -- 1. throttled poll
     local now = reaper.time_precise()
     if now - lastPollTime >= POLL_INTERVAL then
         lastPollTime = now
         doPoll()
     end
 
-    reaper.defer(tick)
-end
+    -- 2. UI (only if ReaImGui is available)
+    if hasImGui then
+        local varCount, colorCount = pushStyle()
 
--- ── ReaImGui status window ───────────────────────────────
-local hasImGui = (reaper.ImGui_CreateContext ~= nil)
-local ctx
+        reaper.ImGui_SetNextWindowSize(ctx, 440, 360, reaper.ImGui_Cond_FirstUseEver())
+        local visible, open = reaper.ImGui_Begin(ctx, "ResolveLink###resolvelink_main", true)
 
-local function guiLoop()
-    if not hasImGui or not running then return end
+        if visible then
+            local httpMethod = "io.popen (slow, opens console windows)"
+            if use_jsapi then httpMethod = "js_ReaScriptAPI"
+            elseif use_sws then httpMethod = "SWS" end
 
-    reaper.ImGui_SetNextWindowSize(ctx, 420, 320, reaper.ImGui_Cond_FirstUseEver())
-    local visible, open = reaper.ImGui_Begin(ctx, "ResolveLink", true)
-    if visible then
-        local httpMethod = "io.popen (slow, opens console windows)"
-        if use_jsapi then httpMethod = "js_ReaScriptAPI"
-        elseif use_sws then httpMethod = "SWS" end
+            statusDot(running)
+            reaper.ImGui_SameLine(ctx)
+            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), COL_TEXT_DIM)
+            reaper.ImGui_Text(ctx, "  |  " .. SERVER_URL)
+            reaper.ImGui_PopStyleColor(ctx, 1)
 
-        reaper.ImGui_Text(ctx, "Status: " .. lastStatus)
-        reaper.ImGui_Text(ctx, "Jobs completed: " .. jobCount)
-        reaper.ImGui_Text(ctx, "HTTP transport: " .. httpMethod)
-        reaper.ImGui_Text(ctx, "Server: " .. SERVER_URL)
-        reaper.ImGui_Separator(ctx)
+            reaper.ImGui_Dummy(ctx, 0, 2)
+            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), COL_TEXT_DIM)
+            reaper.ImGui_Text(ctx, "Jobs completed")
+            reaper.ImGui_PopStyleColor(ctx, 1)
+            reaper.ImGui_Text(ctx, tostring(jobCount))
 
-        if reaper.ImGui_Button(ctx, running and "Stop" or "Start") then
-            running = not running
-            _G.resolveLinkRunning = running
-            if running then
-                lastPollTime = 0
-                reaper.defer(tick)
-                reaper.defer(guiLoop)
+            reaper.ImGui_Dummy(ctx, 0, 2)
+            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), COL_TEXT_DIM)
+            reaper.ImGui_Text(ctx, "Transport")
+            reaper.ImGui_PopStyleColor(ctx, 1)
+            reaper.ImGui_Text(ctx, httpMethod)
+
+            reaper.ImGui_Dummy(ctx, 0, 6)
+            reaper.ImGui_Separator(ctx)
+            reaper.ImGui_Dummy(ctx, 0, 6)
+
+            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Button(), running and COL_STOP or COL_ACCENT)
+            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_ButtonHovered(), running and COL_STOP_HOV or COL_ACCENT_HOV)
+            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_ButtonActive(), running and COL_STOP_HOV or COL_ACCENT_HOV)
+            if reaper.ImGui_Button(ctx, running and "  Stop  " or "  Start  ") then
+                running = not running
+                _G.resolveLinkRunning = running
+                if running then lastPollTime = 0 end
             end
+            reaper.ImGui_PopStyleColor(ctx, 3)
+
+            reaper.ImGui_Dummy(ctx, 0, 8)
+            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), COL_TEXT_DIM)
+            reaper.ImGui_Text(ctx, "Log")
+            reaper.ImGui_PopStyleColor(ctx, 1)
+
+            local childVisible = reaper.ImGui_BeginChild(ctx, "log", 0, -1, reaper.ImGui_ChildFlags_Border())
+            if childVisible then
+                for _, line in ipairs(logLines) do
+                    reaper.ImGui_TextWrapped(ctx, line)
+                end
+                if reaper.ImGui_GetScrollY(ctx) >= reaper.ImGui_GetScrollMaxY(ctx) - 1 then
+                    reaper.ImGui_SetScrollHereY(ctx, 1.0)
+                end
+            end
+            -- BeginChild's matching EndChild must ALWAYS be called
+            -- once BeginChild has been called, regardless of its return value.
+            reaper.ImGui_EndChild(ctx)
         end
 
-        reaper.ImGui_Separator(ctx)
-        reaper.ImGui_Text(ctx, "Log:")
-        reaper.ImGui_BeginChild(ctx, "log", 0, 0)
-        for _, line in ipairs(logLines) do
-            reaper.ImGui_TextWrapped(ctx, line)
-        end
-        reaper.ImGui_EndChild(ctx)
-
+        -- Always call End(), matching Begin() above, regardless of `visible`.
         reaper.ImGui_End(ctx)
-    end
+        popStyle(varCount, colorCount)
 
-    if not open then
-        running = false
-        _G.resolveLinkRunning = false
+        if not open then
+            running = false
+            _G.resolveLinkRunning = false
+        end
     end
 
     if running then
-        reaper.defer(guiLoop)
+        reaper.defer(mainLoop)
     end
 end
 
@@ -387,10 +458,9 @@ lastPollTime = 0
 if hasImGui then
     ctx = reaper.ImGui_CreateContext("ResolveLink")
     log("Callback started (polling every " .. POLL_INTERVAL .. "s).")
-    reaper.defer(tick)
-    reaper.defer(guiLoop)
 else
     reaper.ShowConsoleMsg("ResolveLink: ReaImGui not found — install it via ReaPack for a status window.\n")
     reaper.ShowConsoleMsg("ResolveLink: Callback started. Polling " .. SERVER_URL .. " every " .. POLL_INTERVAL .. "s.\n")
-    reaper.defer(tick)
 end
+
+reaper.defer(mainLoop)
