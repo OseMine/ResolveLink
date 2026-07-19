@@ -342,7 +342,6 @@ app.get('/api/render-progress/:id', (req, res) => {
   }
 
   const compName = `Resolve_Link_${id.slice(0, 8)}`;
-  const partialPath = path.join(TEMP_DIR, `${compName}_*.mov`);
 
   res.json({ status: link.status || 'pending', percent: link.status === 'rendering' ? 50 : 0 });
 });
@@ -447,7 +446,7 @@ app.post('/api/batch-export', async (req, res) => {
 
 // --- Update Check ---
 
-const { https: httpsModule } = require('https');
+const httpsModule = require('https');
 
 app.get('/api/update-check', (_req, res) => {
   const options = {
@@ -1519,7 +1518,7 @@ reaper.Main_OnCommand(40015, 0) -- File: Render to file
 
 -- Set render dialog fields
 reaper.GetSetProjectInfo(0, "RENDER_PATTERN", export_path, true)
-reaper.GetSetProjectInfo(0, "RENDER_SRATE", 48000, true)
+reaper.GetSetProjectInfo(0, "RENDER_SRATE", "48000", true)
 
 reaper.ShowMessageBox("ResolveLink: Render configured.\\nCheck the Render dialog and click Render.\\nOutput: " .. export_path .. ".wav", "ResolveLink", 0)
 `;
@@ -1529,7 +1528,11 @@ reaper.ShowMessageBox("ResolveLink: Render configured.\\nCheck the Render dialog
 
 function getAERenderPath() {
   const platform = process.platform;
-  const aePath = config.paths.aeInstallPath[platform];
+  let aePath = config.paths.aeInstallPath[platform];
+
+  if (!aePath || !fs.existsSync(aePath)) {
+    aePath = detectAEPath();
+  }
 
   if (!aePath || !fs.existsSync(aePath)) return null;
 
@@ -1541,7 +1544,11 @@ function getAERenderPath() {
 
 function getAEExePath() {
   const platform = process.platform;
-  const aePath = config.paths.aeInstallPath[platform];
+  let aePath = config.paths.aeInstallPath[platform];
+
+  if (!aePath || !fs.existsSync(aePath)) {
+    aePath = detectAEPath();
+  }
 
   if (!aePath || !fs.existsSync(aePath)) return null;
 

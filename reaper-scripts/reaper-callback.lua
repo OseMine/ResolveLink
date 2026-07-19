@@ -27,6 +27,9 @@ local running = true
 local jobCount = 0
 local lastPollTime = 0
 local lastStatus = "idle"
+local serverReachable = nil  -- nil=unknown, true=up, false=down
+local lastPingTime = 0
+local PING_INTERVAL = 3
 local logLines = {}
 local MAX_LOG_LINES = 200
 
@@ -35,11 +38,10 @@ local MAX_LOG_LINES = 200
 -- exports/ as siblings under the project root. If your checkout is
 -- laid out differently, just hardcode EXPORTS_JOBS_DIR / _RESULTS_DIR
 -- below instead.
-local _, SCRIPT_PATH = reaper.get_action_context()
-local SCRIPT_DIR = (SCRIPT_PATH or ""):match("(.*[/\\])") or "./"
-local PROJECT_ROOT = SCRIPT_DIR .. "../"
-local EXPORTS_JOBS_DIR = PROJECT_ROOT .. "exports/reaper-jobs"
-local EXPORTS_RESULTS_DIR = PROJECT_ROOT .. "exports/reaper-results"
+-- Hardcoded to ResolveLink project root (the relative derivation from
+-- REAPER's Scripts/ folder doesn't work after deployment).
+local EXPORTS_JOBS_DIR   = "X:/coding/AE-Link/exports/reaper-jobs"
+local EXPORTS_RESULTS_DIR = "X:/coding/AE-Link/exports/reaper-results"
 
 -- ── Logging (goes to the UI log panel instead of the console) ──
 local function log(msg)
@@ -338,6 +340,27 @@ local function handleJob(job, jobId, reportViaHttp)
     end
 end
 
+-- ── Server reachability check ────────────────────────────────
+local function pingServer()
+    local resp = http_get(SERVER_URL .. "/api/resolve/status")
+    if resp and resp ~= "" then
+        local data = json_decode(resp)
+        -- Got any valid JSON back = server is up (even if Resolve is disconnected)
+        if data and data.connected ~= nil then
+            if serverReachable ~= true then
+                log("Server reachable (" .. SERVER_URL .. ")")
+            end
+            serverReachable = true
+            return true
+        end
+    end
+    if serverReachable ~= false and serverReachable ~= nil then
+        log("Server NOT reachable (" .. SERVER_URL .. ")")
+    end
+    serverReachable = false
+    return false
+end
+
 -- ── Actual poll work (only called once per POLL_INTERVAL) ──
 -- Primary: check exports/reaper-jobs/ for a job file (no HTTP at all).
 -- Backup: if no local job file exists, ask the server over HTTP.
@@ -455,6 +478,12 @@ local function mainLoop()
         doPoll()
     end
 
+    -- 2. server reachability check (less frequent than job polling)
+    if now - lastPingTime >= PING_INTERVAL then
+        lastPingTime = now
+        pingServer()
+    end
+
     -- 2. UI (only if ReaImGui is available)
     if hasImGui then
         local varCount, colorCount = pushStyle()
@@ -472,7 +501,15 @@ local function mainLoop()
             reaper.ImGui_Text(ctx, "RESOLVELINK")
             reaper.ImGui_PopStyleColor(ctx, 1)
             reaper.ImGui_SameLine(ctx)
-            statusDot(running)
+            if serverReachable == true then
+                statusDot(true)
+            elseif serverReachable == false then
+                statusDot(false)
+            else
+                reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), col(COL_ORANGE))
+                reaper.ImGui_Text(ctx, "\226\151\143 checking...")
+                reaper.ImGui_PopStyleColor(ctx, 1)
+            end
 
             dimText(SERVER_URL)
 
@@ -482,6 +519,18 @@ local function mainLoop()
 
             dimText("Jobs completed")
             reaper.ImGui_Text(ctx, tostring(jobCount))
+
+            reaper.ImGui_Dummy(ctx, 0, 2)
+            dimText("Server")
+            if serverReachable == true then
+                reaper.ImGui_Text(ctx, SERVER_URL .. " (up)")
+            elseif serverReachable == false then
+                reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), col(COL_RED))
+                reaper.ImGui_Text(ctx, SERVER_URL .. " (unreachable)")
+                reaper.ImGui_PopStyleColor(ctx, 1)
+            else
+                reaper.ImGui_Text(ctx, SERVER_URL)
+            end
 
             reaper.ImGui_Dummy(ctx, 0, 2)
             dimText("Job source")

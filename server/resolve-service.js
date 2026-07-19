@@ -140,7 +140,7 @@ function startPolling(onStatusChange, intervalMs) {
     if (stopped) return;
 
     try {
-      const status = await checkConnection(true);
+      const status = await checkConnection();
       onStatusChange(status);
     } catch {
       onStatusChange({ connected: false, error: 'Poll failed' });
