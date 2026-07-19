@@ -45,6 +45,13 @@ const TEMP_DIR = path.resolve(process.env.TEMP_DIR || config.paths.tempDir);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
+// File-based IPC directories for REAPER (no HTTP needed from Lua)
+const REAPER_JOBS_DIR = path.join(EXPORT_DIR, 'reaper-jobs');
+const REAPER_RESULTS_DIR = path.join(EXPORT_DIR, 'reaper-results');
+[REAPER_JOBS_DIR, REAPER_RESULTS_DIR].forEach((dir) => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
+
 // In-memory link registry
 const activeLinks = new Map();
 
@@ -1039,7 +1046,7 @@ app.post('/api/links/:id/reaper-auto', async (req, res) => {
     }
   }
 
-  // Queue job for status tracking (polling script picks it up if present)
+  // Queue job for status tracking
   const jobId = uuidv4();
   const job = {
     type: 'execute-reaper',
@@ -1050,6 +1057,15 @@ app.post('/api/links/:id/reaper-auto', async (req, res) => {
     createdAt: new Date().toISOString(),
   };
   jobQueue.set(jobId, job);
+
+  // Write job file for file-based IPC (Lua reads this without HTTP)
+  try {
+    const jobFile = path.join(REAPER_JOBS_DIR, `${jobId}.json`);
+    fs.writeFileSync(jobFile, JSON.stringify(job, null, 2));
+    logReaper.info(`Job file written: ${jobFile}`);
+  } catch (e) {
+    logReaper.warn(`Failed to write job file: ${e.message}`);
+  }
 
   link.status = 'sent';
   broadcast('link:updated', link);
@@ -1619,6 +1635,52 @@ function startWatcher() {
   return watcher;
 }
 
+// --- REAPER Results Watcher (file-based IPC) ---
+// Watches for result files written by the Lua GUI script.
+// When Lua finishes a job, it writes a .json result file here.
+
+function startReaperResultsWatcher() {
+  const watcher = chokidar.watch(REAPER_RESULTS_DIR, {
+    persistent: true,
+    ignoreInitial: true,
+    depth: 0,
+  });
+
+  watcher.on('add', (filePath) => {
+    if (!filePath.endsWith('.json')) return;
+
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+      const result = JSON.parse(content);
+      const jobId = path.basename(filePath, '.json');
+
+      if (result.status === 'completed') {
+        const job = jobQueue.get(jobId);
+        if (job) {
+          job.status = 'completed';
+          logReaper.info(`REAPER job completed via file IPC: ${jobId}`);
+
+          const link = activeLinks.get(job.linkId);
+          if (link) {
+            link.status = 'completed';
+            broadcast('link:updated', link);
+          }
+        }
+      } else if (result.status === 'error') {
+        logReaper.error(`REAPER job failed: ${jobId} - ${result.error}`);
+      }
+
+      // Clean up result file
+      fs.unlinkSync(filePath);
+    } catch (e) {
+      logReaper.warn(`Failed to process REAPER result: ${e.message}`);
+    }
+  });
+
+  logReaper.info(`Watching for REAPER results in: ${REAPER_RESULTS_DIR}`);
+  return watcher;
+}
+
 // --- Catch-all: serve React app for any non-API route ---
 app.get('*', (_req, res) => {
   const indexPath = path.join(DIST_DIR, 'index.html');
@@ -1655,6 +1717,7 @@ process.on('uncaughtException', (err) => {
 server.listen(PORT, HOST, () => {
   log.info(`Server running on http://${HOST}:${PORT}`);
   startWatcher();
+  startReaperResultsWatcher();
 
   // Start polling DaVinci Resolve connection status
   const stopPolling = resolveBridge.startPolling((status) => {
