@@ -25,11 +25,11 @@
 ## Screenshots
 
 <p align="center">
-  <img src="assets/Resolve Plugin.png" width="800" alt="ResolveLink in DaVinci Resolve" />
+  <img src="assets/Resolve Plugin.png" width="400" alt="ResolveLink in DaVinci Resolve" />
 </p>
 
 <p align="center">
-  <img src="assets/AE Plugin.png" width="800" alt="ResolveLink CEP Extension in After Effects" />
+  <img src="assets/AE Plugin.png" width="400" alt="ResolveLink CEP Extension in After Effects" />
 </p>
 
 ---
