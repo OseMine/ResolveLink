@@ -22,6 +22,18 @@
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="assets/Resolve Plugin.png" width="800" alt="ResolveLink in DaVinci Resolve" />
+</p>
+
+<p align="center">
+  <img src="assets/AE Plugin.png" width="800" alt="ResolveLink CEP Extension in After Effects" />
+</p>
+
+---
+
 ## The Problem
 
 DaVinci Resolve lacks Adobe's Dynamic Link. When VFX work needs to happen in After Effects, editors must manually export clips, open AE, create compositions, import footage, match timecodes, render, and re-import back. This breaks creative flow and wastes hours.
@@ -281,7 +293,9 @@ resolve-link/
 │   └── WORKFLOW.md
 │
 ├── assets/
-│   └── icon.svg                 # App logo
+│   ├── icon.svg                 # App logo
+│   ├── Resolve Plugin.png      # DaVinci Resolve panel screenshot
+│   └── AE Plugin.png           # After Effects CEP extension screenshot
 │
 ├── .github/workflows/
 │   └── ci.yml                   # CI: build, test, type-check
