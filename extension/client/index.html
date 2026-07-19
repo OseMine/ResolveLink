@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <script src="CSInterface.js"></script>
+</head>
+<body>
+  <div class="panel">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo-dot"></div>
+        <span class="logo-text">ResolveLink</span>
+      </div>
+      <div class="header-right">
+        <span class="status-badge" id="serverBadge">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">Connecting...</span>
+        </span>
+      </div>
+    </header>
+
+    <div class="scroll-area">
+
+      <!-- Dashboard -->
+      <section class="section">
+        <div class="flex-between">
+          <div class="flex-center gap-2">
+            <div class="icon-box accent">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </div>
+            <span class="section-title">Active Links</span>
+            <span class="count-badge" id="linkCount">0</span>
+          </div>
+          <div class="version-badge" id="resolveBadge" style="display:none">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg>
+            <span id="resolveVersion">Resolve</span>
+          </div>
+        </div>
+        <div class="project-strip" id="projectStrip" style="display:none">
+          <div class="icon-box-sm accent">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+          </div>
+          <span class="project-name" id="projectName">-</span>
+          <span class="project-meta" id="projectFps">-</span>
+          <span class="project-sep">|</span>
+          <span class="project-meta" id="projectRes">-</span>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- Resolve -> AE -->
+      <section class="section">
+        <div class="flex-between mb-1">
+          <div class="flex-center gap-2">
+            <div class="flex-center gap-1.5">
+              <span class="dot-sm" id="resolveDot"></span>
+              <span class="text-xs text-r300">Resolve</span>
+            </div>
+            <span class="text-r600 text-xs">/</span>
+            <span class="text-xs text-r400" id="timelineName">-</span>
+          </div>
+          <button class="btn-ghost" id="btnRefresh" title="Refresh selection">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="spin-icon" id="refreshIcon"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+        </div>
+
+        <!-- Selection card -->
+        <div class="card" id="selectionCard" style="display:none">
+          <div class="card-header">
+            <div class="flex-center gap-2">
+              <span class="card-count" id="clipCount">0</span>
+              <span class="card-label">clip<span id="clipPlural">s</span> selected</span>
+            </div>
+            <span class="card-meta" id="selectionMeta">-</span>
+          </div>
+          <div class="clip-list" id="clipList"></div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="empty-hint" id="emptySelection">
+          <span>Select clips in your Resolve timeline, then click Send.</span>
+        </div>
+
+        <!-- Error -->
+        <div class="error-bar" id="errorBar" style="display:none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span id="errorText"></span>
+        </div>
+
+        <!-- Send button -->
+        <button class="btn-primary" id="btnSend" disabled>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <span id="sendLabel">Select clips in Resolve</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+
+        <!-- Bridge status -->
+        <div class="bridge-status">
+          <span class="dot-xs" id="bridgeDot"></span>
+          <span id="bridgeText">Bridge disconnected</span>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- AE -> Resolve -->
+      <section class="section">
+        <span class="section-label">AE to Resolve</span>
+
+        <!-- Comp info -->
+        <div class="project-strip" id="compStrip" style="display:none">
+          <div class="icon-box-sm accent">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+          </div>
+          <span class="project-name" id="compName">-</span>
+        </div>
+
+        <!-- Render status -->
+        <div class="render-status" id="renderStatus" style="display:none">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <span class="text-xs text-r400" id="renderText"></span>
+        </div>
+
+        <button class="btn-secondary" id="btnRender">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+          <span>Render Comp</span>
+        </button>
+
+        <button class="btn-accent" id="btnImportBack" disabled>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          <span id="importLabel">Send Back to Resolve</span>
+        </button>
+      </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span>ResolveLink v1.0.0</span>
+    </footer>
+
+  </div>
+
+  <!-- Import Confirmation Popup -->
+  <div class="modal-overlay" id="importModal" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0078d4" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span class="modal-title">Import Comp to After Effects?</span>
+      </div>
+      <div class="modal-body">
+        <div class="modal-info" id="modalCompInfo">-</div>
+        <div class="modal-clips" id="modalClipList"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="modalCancel">Cancel</button>
+        <button class="btn-primary modal-accept" id="modalAccept">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Import</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="client.js"></script>
+</body>
+</html>

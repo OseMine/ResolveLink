@@ -1,0 +1,28 @@
+{
+  "server": {
+    "port": 3030,
+    "host": "127.0.0.1"
+  },
+  "paths": {
+    "vfxExportDir": "./exports",
+    "tempDir": "./temp",
+    "aeInstallPath": {
+      "win32": "C:\\Program Files\\Adobe\\Adobe After Effects 2026\\Support Files",
+      "darwin": "/Applications/Adobe After Effects 2024/"
+    }
+  },
+  "watcher": {
+    "enabled": true,
+    "extensions": [".mov", ".mp4", ".exr", ".png", ".tif", ".jpg"],
+    "debounceMs": 1000
+  },
+  "ae": {
+    "renderCommand": "aerender",
+    "projectExtension": ".aep"
+  },
+  "resolve": {
+    "pythonPath": "python",
+    "pollIntervalMs": 2000,
+    "bridgeScript": "./resolve-bridge.py"
+  }
+}

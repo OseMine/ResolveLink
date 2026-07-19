@@ -1,0 +1,12 @@
+{
+  "Name": "ResAE Link",
+  "Id": "com.resae.link.workflow",
+  "Version": "1.0.0",
+  "Description": "Dynamic Link equivalent for DaVinci Resolve to After Effects",
+  "Type": "WorkflowIntegration",
+  "Icon": "icon.png",
+  "Script": {
+    "Type": "Electron",
+    "Path": "electron.js"
+  }
+}
