@@ -1,3 +1,9 @@
+-- @reapack ResolveLink Callback script
+-- @version 1.0.0
+-- @author Oskar
+-- @repository https://github.com/OseMine/ResolveLink
+-- @provides [lua] reaper-scripts/reaper-callback.lua
+--
 -- ResolveLink REAPER Callback Script
 -- ===================================
 -- Run from: Actions > Show action list > Load

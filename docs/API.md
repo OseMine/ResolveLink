@@ -874,9 +874,176 @@ The import-back process:
 
 ---
 
-## Job Queue API
+## REAPER Integration
 
-These endpoints are used by the CEP extension running inside After Effects to poll for and report on jobs.
+### REAPER Status
+
+```
+GET /api/reaper/status
+```
+
+Returns REAPER installation and running status.
+
+**Response (installed and running):**
+```json
+{
+  "installed": true,
+  "installPath": "C:\\Program Files\\REAPER",
+  "running": true,
+  "version": "7.12"
+}
+```
+
+**Response (installed, not running):**
+```json
+{
+  "installed": true,
+  "installPath": "C:\\Program Files\\REAPER",
+  "running": false,
+  "version": "7.12"
+}
+```
+
+**Response (not installed):**
+```json
+{
+  "installed": false,
+  "installPath": null,
+  "running": false,
+  "version": null
+}
+```
+
+---
+
+### REAPER Link Clip
+
+```
+POST /api/reaper/link-clip
+```
+
+Sends audio clip data from Resolve to REAPER. Generates a Lua import script, a seconds-based JSON payload, and queues a `reaper-create` job.
+
+**Request Body:**
+```json
+{
+  "clipData": [
+    {
+      "name": "Dialogue_A",
+      "start": 0,
+      "duration": 240,
+      "sourcePath": "X:\\audio\\dialogue_a.wav",
+      "sourceIn": 0,
+      "sourceOut": 240,
+      "trackIndex": 1
+    },
+    {
+      "name": "SFX_Explosion",
+      "start": 120,
+      "duration": 96,
+      "sourcePath": "X:\\audio\\sfx_explosion.wav",
+      "sourceIn": 0,
+      "sourceOut": 96,
+      "trackIndex": 2
+    }
+  ],
+  "settings": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 24,
+    "duration": 10
+  }
+}
+```
+
+**Response (200):**
+```json
+{
+  "linkId": "32b0ff89-8d3b-4724-a3f4-e273c2547b54",
+  "status": "created",
+  "payloadPath": "X:\\coding\\AE-Link\\temp\\32b0ff89-...json",
+  "importScriptPath": "X:\\coding\\AE-Link\\temp\\32b0ff89-...lua"
+}
+```
+
+The server converts frame-based clip data to seconds-based for REAPER (`seconds = frames / fps`) and groups clips by track.
+
+**Response (400):**
+```json
+{
+  "error": "clipData array is required"
+}
+```
+
+---
+
+### REAPER Auto-Workflow
+
+```
+POST /api/links/:id/reaper-auto
+```
+
+Triggers the REAPER auto-workflow: if REAPER is running, queues a `reaper-create` job for the Lua callback script; if not, launches REAPER with the generated import script.
+
+**URL Parameters:**
+
+| Parameter | Description |
+|-----------|-------------|
+| `id` | Link UUID |
+
+**Response (200) - REAPER running, job queued:**
+```json
+{
+  "status": "queued",
+  "jobId": "a1b2c3d4-...",
+  "message": "Job queued. reaper-callback.lua will pick it up automatically."
+}
+```
+
+**Response (200) - REAPER not running, launching:**
+```json
+{
+  "status": "sending",
+  "message": "REAPER launched with import script."
+}
+```
+
+**Response (404):**
+```json
+{
+  "error": "Link not found"
+}
+```
+
+---
+
+### REAPER Render Script
+
+```
+GET /api/links/:id/reaper-render-script
+```
+
+Generates a standalone Lua script that opens REAPER's render dialog for the specified link.
+
+**URL Parameters:**
+
+| Parameter | Description |
+|-----------|-------------|
+| `id` | Link UUID |
+
+**Response (200):**
+```json
+{
+  "scriptPath": "X:\\coding\\AE-Link\\temp\\render_reaper_32b0ff89-....lua",
+  "message": "Run this script in REAPER: Actions > Show action list > Browse > Run"
+}
+```
+
+---
+
+### Job Queue API
+
+These endpoints are used by the CEP extension and REAPER callback script to poll for and report on jobs.
 
 ### Get Next Pending Job
 
@@ -1192,15 +1359,39 @@ interface ResolveClipData {
 
 ```typescript
 interface Job {
-  type: 'execute-jsx';
+  type: 'execute-jsx' | 'reaper-create';
   linkId: string;
-  jsxPath: string;
-  compName: string;
+  jsxPath?: string;              // For AE jobs
+  compName?: string;             // For AE jobs
+  payloadPath?: string;          // For REAPER jobs (seconds-based JSON)
+  importScriptPath?: string;     // For REAPER jobs (Lua import script)
   status: 'pending' | 'dispatched' | 'executing' | 'completed' | 'error';
   createdAt: string;
   dispatchedAt?: string;
-  result?: { compName: string };
+  result?: { compName: string } | { projectName: string };
   error?: string;
+}
+```
+
+### ReaperStatus
+
+```typescript
+interface ReaperStatus {
+  installed: boolean;
+  installPath: string | null;
+  running: boolean;
+  version: string | null;
+}
+```
+
+### ReaperLink
+
+```typescript
+interface ReaperLink {
+  linkId: string;
+  status: string;
+  payloadPath: string;
+  importScriptPath: string;
 }
 ```
 
@@ -1226,7 +1417,7 @@ See `server/config.json`:
   },
   "watcher": {
     "enabled": true,
-    "extensions": [".mov", ".mp4", ".exr", ".png", ".tif", ".jpg"],
+    "extensions": [".mov", ".mp4", ".exr", ".png", ".tif", ".jpg", ".wav", ".flac", ".aiff", ".ogg", ".mp3"],
     "debounceMs": 1000
   },
   "ae": {
@@ -1257,3 +1448,6 @@ See `server/config.json`:
 | `resolve.pythonPath` | string | Python executable path |
 | `resolve.pollIntervalMs` | number | Resolve connection polling interval |
 | `resolve.bridgeScript` | string | Path to Python bridge script |
+| `reaper.installPath` | object | REAPER install paths `{ win32, darwin }` |
+| `reaper.pollIntervalMs` | number | REAPER callback polling interval |
+| `reaper.renderFormat` | string | Default REAPER render format (e.g. "wav") |

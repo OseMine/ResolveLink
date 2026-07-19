@@ -76,22 +76,123 @@ function getReaperVersion() {
   }
 }
 
-function launchReaper(reaperPath) {
+function getExePath(reaperPath) {
   const platform = process.platform;
   const exe = platform === 'win32' ? 'reaper.exe' : 'reaper';
-  const fullPath = path.join(reaperPath || detectReaperPath() || '', exe);
+  const base = reaperPath || detectReaperPath() || '';
+  return path.join(base, exe);
+}
+
+function launchReaper(reaperPath, opts = {}) {
+  const fullPath = getExePath(reaperPath);
 
   if (!fs.existsSync(fullPath)) {
     log.error(`REAPER not found at: ${fullPath}`);
     return false;
   }
 
+  const args = [];
+  if (opts.nosplash) args.push('-nosplash');
+  if (opts.noactivate) args.push('-noactivate');
+
+  const cmd = args.length
+    ? `"${fullPath}" ${args.join(' ')}`
+    : `"${fullPath}"`;
+
+  log.info(`Launching REAPER: ${cmd}`);
+
   try {
-    execSync(`start "" "${fullPath}"`, { timeout: 5000, stdio: 'ignore' });
+    execSync(`start "" ${cmd}`, { timeout: 5000, stdio: 'ignore' });
     log.info(`Launched REAPER: ${fullPath}`);
     return true;
   } catch (e) {
     log.error(`Failed to launch REAPER: ${e.message}`);
+    return false;
+  }
+}
+
+function launchWithScript(scriptPath, opts = {}) {
+  const reaperPath = opts.reaperPath || detectReaperPath();
+  const fullPath = getExePath(reaperPath);
+
+  if (!fs.existsSync(fullPath)) {
+    log.error(`REAPER not found at: ${fullPath}`);
+    return false;
+  }
+
+  const args = [];
+  if (opts.newProject) args.push('-new');
+  if (opts.nosplash) args.push('-nosplash');
+  if (opts.noactivate) args.push('-noactivate');
+
+  // If REAPER is already running, use -nonewinst to run in existing instance
+  if (isReaperRunning()) {
+    args.push('-nonewinst');
+  }
+
+  args.push('-script', `"${scriptPath}"`);
+
+  const cmd = `"${fullPath}" ${args.join(' ')}`;
+  log.info(`Launching REAPER with script: ${cmd}`);
+
+  try {
+    execSync(`start "" ${cmd}`, { timeout: 5000, stdio: 'ignore' });
+    return true;
+  } catch (e) {
+    log.error(`Failed to launch REAPER with script: ${e.message}`);
+    return false;
+  }
+}
+
+function runScriptInExisting(scriptPath, opts = {}) {
+  const reaperPath = opts.reaperPath || detectReaperPath();
+  const fullPath = getExePath(reaperPath);
+
+  if (!fs.existsSync(fullPath)) {
+    log.error(`REAPER not found at: ${fullPath}`);
+    return false;
+  }
+
+  const args = ['-nonewinst'];
+  if (opts.noactivate) args.push('-noactivate');
+  args.push('-script', `"${scriptPath}"`);
+
+  const cmd = `"${fullPath}" ${args.join(' ')}`;
+  log.info(`Running script in existing REAPER: ${cmd}`);
+
+  try {
+    execSync(`start "" ${cmd}`, { timeout: 5000, stdio: 'ignore' });
+    return true;
+  } catch (e) {
+    log.error(`Failed to run script in REAPER: ${e.message}`);
+    return false;
+  }
+}
+
+function renderProject(rppPath, opts = {}) {
+  const reaperPath = opts.reaperPath || detectReaperPath();
+  const fullPath = getExePath(reaperPath);
+
+  if (!fs.existsSync(fullPath)) {
+    log.error(`REAPER not found at: ${fullPath}`);
+    return false;
+  }
+
+  if (!fs.existsSync(rppPath)) {
+    log.error(`REAPER project not found: ${rppPath}`);
+    return false;
+  }
+
+  const args = ['-nosplash', '-renderproject', `"${rppPath}"`];
+  const cmd = `"${fullPath}" ${args.join(' ')}`;
+  log.info(`Rendering REAPER project: ${cmd}`);
+
+  try {
+    execSync(cmd, { timeout: opts.timeout || 300000, stdio: 'pipe' });
+    log.info(`Render complete: ${rppPath}`);
+    return true;
+  } catch (e) {
+    log.error(`REAPER render failed: ${e.message}`);
     return false;
   }
 }
@@ -128,6 +229,9 @@ module.exports = {
   isReaperRunning,
   getReaperVersion,
   launchReaper,
+  launchWithScript,
+  runScriptInExisting,
+  renderProject,
   getStatus,
   getScriptsDir,
 };

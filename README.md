@@ -5,11 +5,11 @@
 <h1 align="center">ResolveLink</h1>
 
 <p align="center">
-  <strong>Dynamic Link equivalent for DaVinci Resolve to After Effects</strong>
+  <strong>Dynamic Link equivalent for DaVinci Resolve to After Effects & REAPER</strong>
 </p>
 
 <p align="center">
-  A native DaVinci Resolve Workflow Integration Plugin that bridges DaVinci Resolve and Adobe After Effects, providing a Dynamic Link-like workflow for VFX and motion graphics.
+  A native DaVinci Resolve Workflow Integration Plugin that bridges DaVinci Resolve with Adobe After Effects and REAPER, providing a Dynamic Link-like workflow for VFX, motion graphics, and audio post-production.
 </p>
 
 <p align="center">
@@ -41,11 +41,11 @@
 
 ## The Problem
 
-DaVinci Resolve lacks Adobe's Dynamic Link. When VFX work needs to happen in After Effects, editors must manually export clips, open AE, create compositions, import footage, match timecodes, render, and re-import back. This breaks creative flow and wastes hours.
+DaVinci Resolve lacks Adobe's Dynamic Link. When VFX work needs to happen in After Effects or audio needs to be mixed in REAPER, editors must manually export clips, open the target application, import footage, match timecodes, render, and re-import back. This breaks creative flow and wastes hours.
 
 ## The Solution
 
-ResolveLink automates the entire round-trip. Select clips in Resolve, click one button, and a synchronized After Effects composition is created instantly. When AE work is rendered, the result automatically syncs back to the Resolve timeline as a compound clip.
+ResolveLink automates the entire round-trip. Select clips in Resolve, click one button, and a synchronized After Effects composition is created instantly. When AE work is rendered, the result automatically syncs back to the Resolve timeline as a compound clip. For audio, send clips directly to REAPER for mixing — the same round-trip workflow applies.
 
 ```
  ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
@@ -54,7 +54,17 @@ ResolveLink automates the entire round-trip. Select clips in Resolve, click one 
  │  Select Clips     │      │  - REST API       │      │  CEP Extension   │
  │  Click "Send"     │      │  - File Watcher   │      │  Auto Comp       │
  │  Auto Re-import   │ <─── │  - WebSocket      │ <─── │  Render & Export │
- └──────────────────┘      └──────────────────┘      └──────────────────┘
+ └──────────────────┘      └────────┬─────────┘      └──────────────────┘
+                                    │
+                                    │
+                           ┌────────▼─────────┐
+                           │                   │
+                           │    REAPER DAW     │
+                           │                   │
+                           │  Lua Script Poll  │
+                           │  Auto Import      │
+                           │  Render & Export  │
+                           └──────────────────┘
 ```
 
 ## Features
@@ -77,6 +87,10 @@ ResolveLink automates the entire round-trip. Select clips in Resolve, click one 
 - **CEP Extension** — Panel inside After Effects that polls for jobs, executes scripts, and handles rendering
 - **Resolve Launcher** — Lua UI in DaVinci (Workspace > Scripts > ResolveLink) for server control, status, updates
 - **Multi-Folder Watch** — Monitor multiple directories for rendered files
+- **REAPER Integration** — Send audio clips from Resolve directly to REAPER for mixing and mastering
+- **REAPER Auto-Workflow** — If REAPER is running, jobs are queued for the Lua callback script; if not, REAPER is launched automatically
+- **REAPER Lua Scripts** — Auto-generated Lua import scripts and render dialogs for REAPER
+- **REAPER File Watcher** — Detects rendered audio files (.wav, .flac, .aiff, .ogg, .mp3) and imports them back to Resolve
 
 ---
 
@@ -199,6 +213,8 @@ All configuration is driven by `.env`:
 | `PYTHON_PATH` | `python` | Python executable |
 | `AE_PATH_WIN` | *(auto-detected)* | After Effects install path |
 | `AE_PATH_MAC` | *(auto-detected)* | After Effects install path |
+| `REAPER_PATH_WIN` | *(auto-detected)* | REAPER install path (Windows) |
+| `REAPER_PATH_MAC` | *(auto-detected)* | REAPER install path (macOS) |
 | `RESOLVE_SCRIPTING_PATH` | *(auto-detected)* | Resolve scripting modules |
 | `WATCHER_ENABLED` | `true` | Enable file watcher |
 | `WATCH_FOLDERS` | *(none)* | Extra folders to watch (comma-separated) |
@@ -217,6 +233,7 @@ See `.env.example` for all options.
 | **Backend Server** | Node.js, Express, Chokidar, WebSocket (ws), dotenv |
 | **Resolve Bridge** | Python (DaVinciResolveScript API), Node.js child_process wrapper |
 | **Adobe Automation** | CEP Extension (HTML/JS panel), ExtendScript (.jsx) |
+| **REAPER Automation** | Lua polling script, Lua import/render scripts |
 | **Testing** | Vitest (unit + integration) |
 
 ## Project Structure
@@ -242,7 +259,8 @@ resolve-link/
 │   ├── config.json              # Default config
 │   ├── logger.js                # Structured logging
 │   ├── resolve-service.js       # Node.js wrapper for Python bridge
-│   └── resolve-bridge.py        # Python DaVinci Resolve scripting bridge
+│   ├── resolve-bridge.py        # Python DaVinci Resolve scripting bridge
+│   └── reaper-service.js        # REAPER path detection, process management, Lua generation
 │
 ├── src/                         # Frontend (React + Vite + TypeScript)
 │   ├── components/
@@ -281,7 +299,11 @@ resolve-link/
 │
 ├── resolve-scripts/             # DaVinci Resolve scripts
 │   ├── ResolveLink.lua           # Main launcher (Workspace > Scripts)
-│   └── send-to-ae.py            # Clip send dialog (tkinter)
+│   ├── send-to-ae.py            # Clip send dialog (tkinter)
+│   └── send-to-reaper.py        # Audio clip send dialog (tkinter)
+│
+├── reaper-scripts/              # REAPER scripts
+│   └── reaper-callback.lua      # Persistent polling script for job queue
 │
 ├── adobe/                       # ExtendScript library
 │   └── import_pipeline.jsx      # Standalone AE composition importer
@@ -339,6 +361,7 @@ resolve-link/
 - Python 3.10+ (for Resolve scripting bridge)
 - DaVinci Resolve Studio 21+ (for scripting API)
 - Adobe After Effects 2022+ (for CEP)
+- REAPER 7+ *(optional, for audio post-production workflow)*
 
 ### Commands
 
@@ -356,6 +379,8 @@ resolve-link/
 
 ## How It Works
 
+### After Effects Workflow
+
 1. **Selection** — Editor selects clips in the Resolve timeline
 2. **Send** — Clicks "Send Selection to After Effects"
 3. **Translate** — Plugin reads clip metadata via the Python scripting bridge
@@ -366,6 +391,18 @@ resolve-link/
 8. **Detect** — File watcher detects the new render in exports/
 9. **Import** — Render is automatically imported back into Resolve as a compound clip
 10. **Sync** — UI shows updated link status via WebSocket
+
+### REAPER Workflow
+
+1. **Selection** — Editor clicks "Send Audio to REAPER" in the Resolve launcher
+2. **Dialog** — Tkinter dialog shows available audio clips for selection
+3. **Generate** — Server generates Lua import script + JSON payload
+4. **Auto** — If REAPER running, job queued for `reaper-callback.lua`; if not, REAPER is launched
+5. **Execute** — `reaper-callback.lua` polls `/api/jobs/pending`, reads payload, creates REAPER project with items
+6. **Mix** — Audio engineer mixes in REAPER
+7. **Render** — Engineer renders to `exports/`
+8. **Detect** — File watcher detects the audio file (.wav, .flac, etc.)
+9. **Import** — Render is automatically imported back into Resolve as a compound clip
 
 ---
 

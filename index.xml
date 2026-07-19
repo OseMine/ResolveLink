@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<index version="1" name="ResolveLink" commit="a7722606048f8f918ff44b3be9d53f5ffec20a78">
+  <category name="ResolveLink">
+    <reapack name="ResolveLink Callback.lua" type="script" desc="Polls ResolveLink server for pending REAPER import jobs">
+      <metadata>
+        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Callback\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 A polling script that monitors the ResolveLink server for pending REAPER import jobs. When a job arrives, it automatically creates a REAPER project with audio clips from DaVinci Resolve.\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Run from Actions > Show action list > Load, or assign to a toolbar button. Press the button again to stop polling.\\par}
+}]]></description>
+      </metadata>
+      <version name="1.0.0" author="Oskar" time="2026-07-19T22:00:00Z">
+        <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/reaper-callback.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <metadata>
+    <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b \\fs36 ResolveLink\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Bridge between DaVinci Resolve, After Effects, and REAPER.\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 This repository contains REAPER scripts for the ResolveLink workflow.\\par}
+}]]></description>
+  </metadata>
+</index>

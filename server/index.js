@@ -986,7 +986,7 @@ app.post('/api/reaper/link-clip', (req, res) => {
   res.json({ linkId, status: 'created', scriptPath, payloadPath, renderPath });
 });
 
-// REAPER auto-workflow: launch REAPER or queue job for polling script
+// REAPER auto-workflow: run import script directly via -script CLI flag
 app.post('/api/links/:id/reaper-auto', async (req, res) => {
   const { id } = req.params;
   const link = activeLinks.get(id);
@@ -1002,66 +1002,66 @@ app.post('/api/links/:id/reaper-auto', async (req, res) => {
     return res.status(500).json({ error: 'REAPER import script not found' });
   }
 
-  // Check if REAPER is running (polling script can pick up jobs)
-  if (reaperService.isReaperRunning()) {
-    // Queue job for the REAPER polling script
-    const jobId = uuidv4();
-    const job = {
-      type: 'execute-reaper',
-      linkId: id,
-      reaperScriptPath: link.reaperScriptPath,
-      payloadPath: link.payloadPath,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
+  const installPath = reaperService.detectReaperPath();
+  if (!installPath) {
+    link.status = 'error';
+    broadcast('link:updated', link);
+    return res.status(500).json({ error: 'REAPER not found on this system' });
+  }
 
-    jobQueue.set(jobId, job);
-    logReaper.info(`REAPER running, job queued: ${jobId} for link: ${id}`);
+  // If REAPER is already running, run script in existing instance (-nonewinst -script)
+  // Otherwise, launch REAPER with the script (-new -script)
+  const running = reaperService.isReaperRunning();
 
-    res.json({
-      status: 'queued',
-      jobId: jobId,
-      message: 'Job queued. REAPER polling script (reaper-callback.lua) will pick it up automatically.',
+  if (running) {
+    logReaper.info(`REAPER running, sending script to existing instance: ${link.reaperScriptPath}`);
+    const ok = reaperService.runScriptInExisting(link.reaperScriptPath, {
+      reaperPath: installPath,
+      noactivate: true,
     });
-  } else {
-    // REAPER not running — launch it
-    const installPath = reaperService.detectReaperPath();
-    if (!installPath) {
+    if (!ok) {
       link.status = 'error';
       broadcast('link:updated', link);
-      return res.status(500).json({ error: 'REAPER not found on this system' });
+      return res.status(500).json({ error: 'Failed to send script to REAPER' });
     }
-
-    logReaper.info(`REAPER not running, launching from: ${installPath}`);
-
-    const launched = reaperService.launchReaper(installPath);
-    if (!launched) {
+  } else {
+    logReaper.info(`REAPER not running, launching with script: ${link.reaperScriptPath}`);
+    const ok = reaperService.launchWithScript(link.reaperScriptPath, {
+      reaperPath: installPath,
+      newProject: true,
+      nosplash: true,
+      noactivate: true,
+    });
+    if (!ok) {
       link.status = 'error';
       broadcast('link:updated', link);
       return res.status(500).json({ error: 'Failed to launch REAPER' });
     }
-
-    // Queue the job — the polling script will pick it up once REAPER is ready
-    const jobId = uuidv4();
-    const job = {
-      type: 'execute-reaper',
-      linkId: id,
-      reaperScriptPath: link.reaperScriptPath,
-      payloadPath: link.payloadPath,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
-    jobQueue.set(jobId, job);
-
-    link.status = 'sending';
-    broadcast('link:updated', link);
-
-    res.json({
-      status: 'sending',
-      jobId: jobId,
-      message: 'REAPER launched. Polling script will pick up the job automatically.',
-    });
   }
+
+  // Queue job for status tracking (polling script picks it up if present)
+  const jobId = uuidv4();
+  const job = {
+    type: 'execute-reaper',
+    linkId: id,
+    reaperScriptPath: link.reaperScriptPath,
+    payloadPath: link.payloadPath,
+    status: 'sent',
+    createdAt: new Date().toISOString(),
+  };
+  jobQueue.set(jobId, job);
+
+  link.status = 'sent';
+  broadcast('link:updated', link);
+
+  res.json({
+    status: 'sent',
+    jobId,
+    method: running ? 'nonewinst-script' : 'new-script',
+    message: running
+      ? 'Script sent to running REAPER via -nonewinst -script.'
+      : 'REAPER launched with import script via -new -script.',
+  });
 });
 
 // Generate REAPER render script for a link

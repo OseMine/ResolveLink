@@ -62,7 +62,14 @@ ResolveLink is composed of four distinct layers that communicate through well-de
 │  │  │  - Track status      │  │    clip data              │  │    │
 │  │  │  - Dispatch to CEP   │  │  - Generates .json        │  │    │
 │  │  └──────────────────────┘  │  - Writes to temp/        │  │    │
-│  │                             └───────────────────────────┘  │    │
+│  │                             │                           │  │    │
+│  │  ┌──────────────────────┐  │  REAPER Generator         │  │    │
+│  │  │  REAPER Service       │  │  - Lua import scripts     │  │    │
+│  │  │  - Path detection     │  │  - JSON payloads (sec)   │  │    │
+│  │  │  - Process detection  │  │  - Render Lua scripts     │  │    │
+│  │  │  - Version detection  │  │                           │  │    │
+│  │  │  - Launch / getDir    │  └───────────────────────────┘  │    │
+│  │  └──────────────────────┘                                  │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                              │                                      │
 │          HTTP REST (job polling) + File System Watch                │
@@ -87,6 +94,23 @@ ResolveLink is composed of four distinct layers that communicate through well-de
 │  │                         │ - Executes in AE               │  │    │
 │  │                         │ - Reports completion           │  │    │
 │  │                         └────────────────────────────────┘  │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                              │                                      │
+├──────────────────────────────┼──────────────────────────────────────┤
+│                  LAYER 3b: REAPER SCRIPTING                         │
+│                  (Inside REAPER DAW)                                │
+│                              │                                      │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  reaper-callback.lua                                        │    │
+│  │                                                             │    │
+│  │  ┌──────────────────┐  ┌────────────────────────────────┐  │    │
+│  │  │ Job Polling      │  │ Project Creation               │  │    │
+│  │  │ (reaper.defer)   │  │ - Read JSON payload            │  │    │
+│  │  │ - GET /jobs/     │  │ - Create media items           │  │    │
+│  │  │   pending        │  │ - Position on timeline          │  │    │
+│  │  │ - Execute Lua    │  │ - Render via dialog            │  │    │
+│  │  │ - Report status  │  │                                │  │    │
+│  │  └──────────────────┘  └────────────────────────────────┘  │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                              │                                      │
 │                    ExtendScript execution                            │
@@ -196,6 +220,65 @@ User clicks "Send to AE"
 └─────────────────────┘
 ```
 
+### Outbound: Resolve -> REAPER (Audio Workflow)
+
+```
+User clicks "Send Audio to REAPER"
+        │
+        ▼
+┌─────────────────────┐
+│ send-to-reaper.py   │
+│ Tkinter dialog      │
+│ selects audio clips │
+└─────────┬───────────┘
+          │ POST /api/reaper/link-clip
+          ▼
+┌─────────────────────┐
+│ server/index.js     │
+│                     │
+│ 1. Generate UUID    │
+│ 2. Store in Map     │
+│ 3. Write .json      │──> temp/{uuid}.json (seconds-based)
+│ 4. Generate .lua    │──> temp/{uuid}_import.lua
+│ 5. Broadcast event  │──> WebSocket clients
+└─────────┬───────────┘
+          │ POST /api/links/:id/reaper-auto
+          ▼
+┌─────────────────────┐
+│ REAPER Auto-Workflow│
+│                     │
+│ Is REAPER running?  │
+│   YES ──> Queue job │──> Job Queue (reaper-create)
+│   NO  ──> Launch REAPER │──> spawn(reaper.exe -r lua)
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│ reaper-callback.lua │
+│ (if REAPER running) │
+│                     │
+│ 1. Polls /jobs/     │
+│    pending (defer)  │
+│ 2. Reads .json      │
+│ 3. Creates items    │
+│ 4. Reports status   │
+└─────────┬───────────┘
+          │ PUT /api/jobs/:id/status
+          ▼
+┌─────────────────────┐
+│ REAPER Mix & Render │
+│                     │
+│ 1. Audio engineer   │
+│    mixes project    │
+│ 2. Renders to       │
+│    exports/         │
+│ 3. File watcher     │
+│    detects audio    │
+│ 4. Auto-import to   │
+│    Resolve          │
+└─────────────────────┘
+```
+
 ### Inbound: After Effects -> Resolve
 
 ```
@@ -273,6 +356,16 @@ exports/ directory receives new .mov/.mp4
   - Auto-discovers `DaVinciResolveScript` module from multiple install paths
   - Supports: status, project, timeline, selection, clip-properties, create-compound
   - `create-compound` command: imports render, disables originals, creates compound clip
+
+### REAPER Service (`server/reaper-service.js`)
+
+- **Path Detection** — Auto-finds REAPER install on Windows (`C:\Program Files\REAPER`) and macOS (`/Applications/REAPER.app`)
+- **Process Detection** — Checks if REAPER is running via `tasklist` (Windows) or `pgrep` (macOS)
+- **Version Detection** — Parses REAPER version from executable properties
+- **Launch** — Spawns REAPER with `-r` flag pointing to generated Lua scripts
+- **getScriptsDir()** — Returns REAPER scripts directory path for deploying `reaper-callback.lua`
+- **Lua Generation** — Generates import scripts that read JSON payloads and create REAPER media items on the timeline
+- **Render Scripts** — Generates standalone Lua scripts that open REAPER's render dialog
 
 ### CEP Extension (`extension/`)
 
@@ -368,6 +461,22 @@ CEP Extension ──GET /api/jobs/pending──>  Server
                         └── Server updates link status
 ```
 
+### REAPER Polling (Lua Callback)
+
+The `reaper-callback.lua` script polls for pending REAPER jobs using `reaper.defer()`:
+
+```
+reaper-callback.lua ──GET /api/jobs/pending──>  Server
+                        │
+                        ├── No job? Call reaper.defer() to poll again
+                        └── Has job? Mark as "dispatched", return job details
+                              │
+                              ├── Lua reads JSON payload from disk
+                              ├── Lua creates REAPER project + media items
+                              ├── Lua reports status back to server
+                              └── Server updates link status
+```
+
 ## State Management
 
 ### In-Memory Link Registry
@@ -396,9 +505,10 @@ The server maintains a `Map<string, Link>` in memory. Each link has:
 
 ### In-Memory Job Queue
 
-The server maintains a `Map<string, Job>` for CEP extension job polling:
+The server maintains a `Map<string, Job>` for CEP extension and REAPER callback job polling:
 
 ```typescript
+// AE job
 {
   type: 'execute-jsx';
   linkId: string;                // Associated link UUID
@@ -408,6 +518,19 @@ The server maintains a `Map<string, Job>` for CEP extension job polling:
   createdAt: string;
   dispatchedAt?: string;
   result?: { compName: string };
+  error?: string;
+}
+
+// REAPER job
+{
+  type: 'reaper-create';
+  linkId: string;                // Associated link UUID
+  payloadPath: string;           // Path to JSON payload (seconds-based)
+  importScriptPath: string;      // Path to Lua import script
+  status: 'pending' | 'dispatched' | 'executing' | 'completed' | 'error';
+  createdAt: string;
+  dispatchedAt?: string;
+  result?: { projectName: string };
   error?: string;
 }
 ```
@@ -465,6 +588,16 @@ Add extensions to `server/config.json`:
 ### Custom AE Compositions
 
 Modify `adobe/import_pipeline.jsx` or the `generateExtendScript()` function in `server/index.js` to customize how compositions are built (e.g., adding adjustment layers, markers, or expressions).
+
+### REAPER Script Generation
+
+The REAPER integration generates Lua scripts dynamically. You can customize:
+
+- **`generateReaperImportScript(link)`** in `server/reaper-service.js` — Controls how media items are placed on the REAPER timeline (track grouping, item positioning, fade settings)
+- **`generateReaperRenderScript(link)`** — Controls the render dialog configuration (format, bounds, output path)
+- **`generateReaperPayload(link)`** — Controls how frame-based clip data is converted to seconds-based data for REAPER
+
+To add new REAPER script templates, create `.lua` files in the `reaper-scripts/` directory and reference them from the generation functions.
 
 ### Adding Resolve Scripting Commands
 
