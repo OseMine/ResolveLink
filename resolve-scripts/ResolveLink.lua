@@ -226,7 +226,7 @@ local function show_dialog()
     end
 
     local ui = fu.UIManager
-    local disp = fu:DispUI()
+    local disp = bmd.UIDispatcher(fu)
     if not ui or not disp then
         print("[ResolveLink] Fusion UI Manager not available. Running status check instead.")
         action_status()
@@ -238,88 +238,87 @@ local function show_dialog()
     local statusColor = isRunning and "#4CAF50" or "#F44336"
     local statusText = isRunning and "Server running" or "Server stopped"
 
-    -- Build window
-    local win = disp:NewWindow({
-        Identifier = "ResolveLink_Launcher",
+    -- Build window with inline UI hierarchy
+    local win = disp:AddWindow({
+        ID = "ResolveLink_Launcher",
         WindowTitle = "ResolveLink",
-        Geometry = { X = 100, Y = 100, Width = 340, Height = 460 },
+        Geometry = { 100, 100, 340, 460 },
+
+        ui:VGroup{
+            ID = "RootLayout",
+
+            -- Header
+            ui:Label{
+                ID = "Header",
+                Text = "<h2>ResolveLink</h2>",
+            },
+            ui:Label{
+                ID = "Status",
+                Text = "<span style='color:" .. statusColor .. ";'>● " .. statusText .. "</span>",
+            },
+            ui:HSeparator{ ID = "Sep1" },
+
+            -- Quick Actions
+            ui:Label{
+                ID = "QuickTitle",
+                Text = "<b>Quick Actions</b>",
+            },
+            ui:PushButton{
+                ID = "SendBtn",
+                Text = "Send Clips to After Effects",
+                MinimumSize = { 300, 32 },
+            },
+            ui:PushButton{
+                ID = "WebBtn",
+                Text = "Open Web UI",
+                MinimumSize = { 300, 28 },
+            },
+            ui:HSeparator{ ID = "Sep2" },
+
+            -- Server Control
+            ui:Label{
+                ID = "ServerTitle",
+                Text = "<b>Server Control</b>",
+            },
+            ui:HGroup{
+                ID = "ServerBtns",
+                ui:PushButton{ ID = "StartBtn", Text = "Start", MinimumSize = { 95, 28 } },
+                ui:PushButton{ ID = "StopBtn", Text = "Stop", MinimumSize = { 95, 28 } },
+                ui:PushButton{ ID = "RestartBtn", Text = "Restart", MinimumSize = { 95, 28 } },
+            },
+            ui:HSeparator{ ID = "Sep3" },
+
+            -- System
+            ui:Label{
+                ID = "SysTitle",
+                Text = "<b>System</b>",
+            },
+            ui:PushButton{
+                ID = "StatusBtn",
+                Text = "Check Status",
+                MinimumSize = { 300, 28 },
+            },
+            ui:PushButton{
+                ID = "UpdateBtn",
+                Text = "Update ResolveLink",
+                MinimumSize = { 300, 28 },
+            },
+            ui:HSeparator{ ID = "Sep4" },
+
+            ui:Label{
+                ID = "Footer",
+                Text = "<span style='color:#666;'>v1.0.0 — github.com/OseMine/ResolveLink</span>",
+            },
+        },
     })
 
-    local layout = win:GetLayout()
-
-    -- Header
-    layout:Add(ui:Label{
-        ID = "Header",
-        Text = "<h2>ResolveLink</h2>",
-    })
-
-    layout:Add(ui:Label{
-        ID = "Status",
-        Text = "<span style='color:" .. statusColor .. ";'>● " .. statusText .. "</span>",
-    })
-
-    layout:Add(ui:HSeparator{ID = "Sep1"})
-
-    -- Quick Actions
-    layout:Add(ui:Label{
-        ID = "QuickTitle",
-        Text = "<b>Quick Actions</b>",
-    })
-
-    layout:Add(ui:PushButton{
-        ID = "SendBtn",
-        Text = "Send Clips to After Effects",
-        MinimumSize = { width = 300, height = 32 },
-    })
-
-    layout:Add(ui:PushButton{
-        ID = "WebBtn",
-        Text = "Open Web UI",
-        MinimumSize = { width = 300, height = 28 },
-    })
-
-    layout:Add(ui:HSeparator{ID = "Sep2"})
-
-    -- Server Control
-    layout:Add(ui:Label{
-        ID = "ServerTitle",
-        Text = "<b>Server Control</b>",
-    })
-
-    local serverBtns = ui:HGroup{ID = "ServerBtns"}
-    serverBtns:Add(ui:PushButton{ID = "StartBtn", Text = "Start", MinimumSize = { width = 95, height = 28 }})
-    serverBtns:Add(ui:PushButton{ID = "StopBtn", Text = "Stop", MinimumSize = { width = 95, height = 28 }})
-    serverBtns:Add(ui:PushButton{ID = "RestartBtn", Text = "Restart", MinimumSize = { width = 95, height = 28 }})
-    layout:Add(serverBtns)
-
-    layout:Add(ui:HSeparator{ID = "Sep3"})
-
-    -- System
-    layout:Add(ui:Label{
-        ID = "SysTitle",
-        Text = "<b>System</b>",
-    })
-
-    layout:Add(ui:PushButton{
-        ID = "StatusBtn",
-        Text = "Check Status",
-        MinimumSize = { width = 300, height = 28 },
-    })
-
-    layout:Add(ui:PushButton{
-        ID = "UpdateBtn",
-        Text = "Update ResolveLink",
-        MinimumSize = { width = 300, height = 28 },
-    })
-
-    layout:Add(ui:HSeparator{ID = "Sep4"})
-
-    layout:Add(ui:Label{
-        ID = "Footer",
-        Text = "<span style='color:#666;'>v1.0.0 — github.com/OseMine/ResolveLink</span>",
-    })
+    local items = win:GetItems()
 
     -- Event handlers
+    function win.On.ResolveLink_Launcher.Close(ev)
+        disp:ExitLoop()
+    end
+
     function win.On.SendBtn.Clicked(ev)
         action_send_to_ae()
     end
@@ -334,12 +333,12 @@ local function show_dialog()
         local now = server_running()
         local col = now and "#4CAF50" or "#F44336"
         local txt = now and "Server running" or "Server still stopped"
-        win:Find("Status").Text = "<span style='color:" .. col .. ";'>● " .. txt .. "</span>"
+        items.Status.Text = "<span style='color:" .. col .. ";'>● " .. txt .. "</span>"
     end
 
     function win.On.StopBtn.Clicked(ev)
         action_stop_server()
-        win:Find("Status").Text = "<span style='color:#F44336;'>● Server stopped</span>"
+        items.Status.Text = "<span style='color:#F44336;'>● Server stopped</span>"
     end
 
     function win.On.RestartBtn.Clicked(ev)
@@ -348,7 +347,7 @@ local function show_dialog()
         local now = server_running()
         local col = now and "#4CAF50" or "#F44336"
         local txt = now and "Server running" or "Server still stopped"
-        win:Find("Status").Text = "<span style='color:" .. col .. ";'>● " .. txt .. "</span>"
+        items.Status.Text = "<span style='color:" .. col .. ";'>● " .. txt .. "</span>"
     end
 
     function win.On.StatusBtn.Clicked(ev)
@@ -360,6 +359,7 @@ local function show_dialog()
     end
 
     win:Show()
+    disp:RunLoop()
 end
 
 -- ============================================================
