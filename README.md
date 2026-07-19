@@ -58,34 +58,65 @@ ResolveLink automates the entire round-trip. Select clips in Resolve, click one 
 - **Structured Logging** — Leveled, tagged, timestamped logs
 - **Dark UI** — Matches DaVinci Resolve's professional dark theme exactly
 - **CEP Extension** — Panel inside After Effects that polls for jobs, executes scripts, and handles rendering
+- **Resolve Launcher** — Lua UI in DaVinci (Workspace > Scripts > ResolveLink) for server control, status, updates
 - **Multi-Folder Watch** — Monitor multiple directories for rendered files
 
 ---
 
 ## Quick Start
 
+### Install via DaVinci Resolve Console
+
+1. Open DaVinci Resolve
+2. Go to **Workspace > Console**
+3. Switch to **Lua** tab
+4. Paste the contents of [`install.lua`](install.lua) and press Enter
+
+That's it. The script will:
+- Detect your OS and check for Git + Node.js
+- Install missing prerequisites automatically
+- Clone ResolveLink to the standard app directory
+- Build everything and deploy extensions
+- Start the server
+
+### Install Locations
+
+| OS      | Path                                        |
+|---------|---------------------------------------------|
+| Windows | `%LOCALAPPDATA%\ResolveLink`                |
+| macOS   | `~/Applications/ResolveLink`                |
+| Linux   | `~/.local/share/ResolveLink`                |
+
+### Alternative: Command Line Install
+
+<details>
+<summary>Windows (PowerShell)</summary>
+
 ```powershell
-# Clone the repository
-git clone https://github.com/OseMine/ResolveLink.git
-cd resolve-link
-
-# One-command setup (deps + build + CEP + Resolve script + .env)
-.\scripts\setup.ps1
-
-# Start the server
-.\scripts\start.ps1
-
-# Check status
-.\scripts\status.ps1
+iex (iwr -UseBasicParsing "https://raw.githubusercontent.com/OseMine/ResolveLink/main/scripts/install.ps1").Content
 ```
+</details>
 
-### Manual Setup
+<details>
+<summary>macOS / Linux (Terminal)</summary>
 
 ```bash
-npm install
-cd src && npm install && npm run build && cd ..
-node server/index.js
+curl -fsSL https://raw.githubusercontent.com/OseMine/ResolveLink/main/scripts/install.sh | bash
 ```
+</details>
+
+<details>
+<summary>Manual Setup</summary>
+
+```bash
+# Clone to standard app directory
+git clone https://github.com/OseMine/ResolveLink.git ~/.local/share/ResolveLink  # Linux
+git clone https://github.com/OseMine/ResolveLink.git ~/Applications/ResolveLink  # macOS
+git clone https://github.com/OseMine/ResolveLink.git "$env:LOCALAPPDATA\ResolveLink"  # Windows
+
+# Run setup (Windows: .\scripts\setup.ps1, macOS/Linux: bash scripts/setup.sh)
+```
+</details>
 
 ---
 
@@ -95,18 +126,27 @@ All management scripts live in `scripts/`:
 
 | Script | Description |
 |--------|-------------|
-| `setup.ps1` | **Unified installer** — detects install state, offers update/clear/reinstall |
-| `start.ps1` | Start the server as a background process, verify health, open browser |
-| `stop.ps1` | Stop the running server |
-| `restart.ps1` | Stop then start the server |
-| `status.ps1` | Check server, Resolve, CEP extension, and AE status |
+| **Setup** | |
+| `setup.ps1` | Windows unified installer — detects state, offers update/clear/reinstall |
+| `setup.sh` | macOS/Linux unified installer |
+| **Server** | |
+| `start.ps1` / `start.sh` | Start the server as a background process |
+| `stop.ps1` / `stop.sh` | Stop the running server |
+| `restart.ps1` | Stop then start the server (Windows) |
+| `status.ps1` / `status.sh` | Check server, Resolve, CEP extension, and AE status |
 | `clear.ps1` | Clear exports and/or temp directories |
+| **Deploy** | |
 | `deploy-extension.ps1` | Deploy the CEP extension to After Effects |
 | `deploy-resolve-script.ps1` | Deploy the Resolve utility script |
 
+See [`install.lua`](install.lua) in the root directory for the recommended one-step install.
+
 ```powershell
-# First install
+# First install (Windows)
 .\scripts\setup.ps1
+
+# First install (macOS/Linux)
+bash scripts/setup.sh
 
 # After an update (git pull)
 .\scripts\setup.ps1          # detects existing install, offers update
@@ -166,12 +206,16 @@ See `.env.example` for all options.
 
 ```
 resolve-link/
+├── install.lua                 # One-step installer (paste into Resolve Console)
 ├── scripts/                     # All management scripts
-│   ├── setup.ps1                # Unified installer/updater
-│   ├── start.ps1                # Start server (background)
-│   ├── stop.ps1                 # Stop server
-│   ├── restart.ps1              # Restart server
-│   ├── status.ps1               # Check component status
+│   ├── install.ps1              # One-liner installer (Windows, via iex)
+│   ├── install.sh               # One-liner installer (macOS/Linux, via curl)
+│   ├── setup.ps1                # Unified installer/updater (Windows)
+│   ├── setup.sh                 # Unified installer/updater (macOS/Linux)
+│   ├── start.ps1 / start.sh     # Start server (background)
+│   ├── stop.ps1 / stop.sh       # Stop server
+│   ├── restart.ps1              # Restart server (Windows)
+│   ├── status.ps1 / status.sh   # Check component status
 │   ├── clear.ps1                # Clear exports/temp
 │   ├── deploy-extension.ps1     # Deploy CEP extension
 │   └── deploy-resolve-script.ps1 # Deploy Resolve script
@@ -219,7 +263,8 @@ resolve-link/
 │   └── host/host.jsx            # ExtendScript host functions
 │
 ├── resolve-scripts/             # DaVinci Resolve scripts
-│   └── send-to-ae.py            # Workspace script (tkinter UI)
+│   ├── ResolveLink.lua           # Main launcher (Workspace > Scripts)
+│   └── send-to-ae.py            # Clip send dialog (tkinter)
 │
 ├── adobe/                       # ExtendScript library
 │   └── import_pipeline.jsx      # Standalone AE composition importer

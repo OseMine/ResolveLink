@@ -36,9 +36,9 @@ if ($installed -and -not $Force) {
     $choice = Read-Host "  Action"
     switch ($choice.ToUpper()) {
         "U" { & "$PSScriptRoot\setup.ps1" -Force; return }
-        "C" { & "$PSScriptRoot\scripts\clear.ps1"; return }
-        "R" { & "$PSScriptRoot\scripts\start.ps1"; return }
-        "S" { & "$PSScriptRoot\scripts\status.ps1"; return }
+        "C" { & "$PSScriptRoot\clear.ps1"; return }
+        "R" { & "$PSScriptRoot\start.ps1"; return }
+        "S" { & "$PSScriptRoot\status.ps1"; return }
         "F" { Write-Host "`n  Proceeding with full install..." -ForegroundColor Yellow }
         default { return }
     }
@@ -63,11 +63,11 @@ Pop-Location
 
 # --- Step 3: Deploy CEP extension ---
 Write-Host "`n[3/7] Deploying AE extension..." -ForegroundColor Yellow
-& "$PSScriptRoot\scripts\deploy-extension.ps1" -Quiet
+& "$PSScriptRoot\deploy-extension.ps1" -Quiet
 
 # --- Step 4: Deploy Resolve script ---
 Write-Host "`n[4/7] Deploying Resolve script..." -ForegroundColor Yellow
-& "$PSScriptRoot\scripts\deploy-resolve-script.ps1" -Quiet
+& "$PSScriptRoot\deploy-resolve-script.ps1" -Quiet
 
 # --- Step 5: Ensure directories ---
 New-Item -ItemType Directory -Force -Path "$root\exports" | Out-Null
@@ -95,16 +95,41 @@ if (-not $hasEnv -or $Force) {
         } catch {}
     }
 
-    # Detect AE
+    # Detect AE — find all versions with valid AfterFX.exe
     $aePath = ""
+    $aeChoices = @()
     if (Test-Path "C:\Program Files\Adobe") {
         $aeDirs = Get-ChildItem "C:\Program Files\Adobe" -Directory |
             Where-Object { $_.Name -like "Adobe After Effects*" } |
             Sort-Object Name
-        if ($aeDirs.Count -gt 0) {
-            $aePath = Join-Path $aeDirs[-1].FullName "Support Files"
-            Write-Host "  Found After Effects: $($aeDirs[-1].Name)" -ForegroundColor Green
+        foreach ($dir in $aeDirs) {
+            $supportFiles = Join-Path $dir.FullName "Support Files"
+            $exePath = Join-Path $supportFiles "AfterFX.exe"
+            if (Test-Path $exePath) {
+                $aeChoices += @{ Name = $dir.Name; Path = $supportFiles }
+            }
         }
+    }
+
+    if ($aeChoices.Count -eq 1) {
+        $aePath = $aeChoices[0].Path
+        Write-Host "  Found After Effects: $($aeChoices[0].Name)" -ForegroundColor Green
+    } elseif ($aeChoices.Count -gt 1) {
+        Write-Host "  Multiple After Effects versions found:" -ForegroundColor Yellow
+        for ($i = 0; $i -lt $aeChoices.Count; $i++) {
+            Write-Host "    [$($i + 1)] $($aeChoices[$i].Name)" -ForegroundColor DarkGray
+        }
+        Write-Host "    [0] Skip — I'll set it manually" -ForegroundColor DarkGray
+        Write-Host ""
+        $aeChoice = Read-Host "  Select version [1]"
+        if (-not $aeChoice) { $aeChoice = "1" }
+        $aeIdx = [int]$aeChoice - 1
+        if ($aeIdx -ge 0 -and $aeIdx -lt $aeChoices.Count) {
+            $aePath = $aeChoices[$aeIdx].Path
+            Write-Host "  Selected: $($aeChoices[$aeIdx].Name)" -ForegroundColor Green
+        }
+    } else {
+        Write-Host "  No After Effects found in C:\Program Files\Adobe" -ForegroundColor DarkGray
     }
 
     Write-Host ""
@@ -137,7 +162,7 @@ if (-not $hasEnv -or $Force) {
 
 # --- Step 7: Start server ---
 Write-Host "`n[6/7] Starting server..." -ForegroundColor Yellow
-& "$PSScriptRoot\scripts\start.ps1" -NoBrowser
+& "$PSScriptRoot\start.ps1" -NoBrowser
 
 # --- Done ---
 Write-Host "`n[7/7] Setup complete!" -ForegroundColor Green
