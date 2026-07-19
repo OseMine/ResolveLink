@@ -197,7 +197,7 @@ local function http_put(url, data)
         if ok then return content end
     end
     if use_sws then
-        local fs = reaper.SNM_CreateFastHTTPRequest(url, 1)
+        local fs = reaper.SNM_CreateFastHTTPRequest(url, 2)
         if fs then
             reaper.SNM_AddFastString(fs, data)
             local result = reaper.SNM_GetFastString(fs)
@@ -205,11 +205,16 @@ local function http_put(url, data)
             if result and result ~= "" then return result end
         end
     end
-    local body = data:gsub("'", "\\'")
-    local handle = io.popen("curl -sf -X PUT \"" .. url .. "\" -H \"Content-Type: application/json\" -d '" .. body .. "' 2>&1")
-    if not handle then return nil end
+    local tmpFile = os.tmpname() .. ".json"
+    local f = io.open(tmpFile, "w")
+    if not f then return nil end
+    f:write(data)
+    f:close()
+    local handle = io.popen('curl -sf -X PUT "' .. url .. '" -H "Content-Type: application/json" -d @"' .. tmpFile .. '" 2>&1')
+    if not handle then os.remove(tmpFile); return nil end
     local result = handle:read("*a")
     handle:close()
+    os.remove(tmpFile)
     return result:gsub("%s+$", "")
 end
 
@@ -543,7 +548,7 @@ local function drawUI()
         reaper.ImGui_Dummy(ctx, 0, 8)
         dimText("Log")
 
-        local childVisible = reaper.ImGui_BeginChild(ctx, "log", 0, -1, reaper.ImGui_ChildFlags_Border())
+        local childVisible = reaper.ImGui_BeginChild(ctx, "log", 0, -1, true)
         if childVisible then
             for _, line in ipairs(logLines) do
                 reaper.ImGui_TextWrapped(ctx, line)
