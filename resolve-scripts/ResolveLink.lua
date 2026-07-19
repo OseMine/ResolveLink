@@ -202,6 +202,7 @@ local function action_status()
     if health and #health > 0 then print("  Health:    " .. health) end
     print("")
 end
+local fuction action_clear()
 
 local function action_update()
     local dir = get_install_dir()
@@ -213,6 +214,35 @@ local function action_update()
         shell_exec('bash "' .. dir .. '/scripts/setup.sh" --force')
     end
     print("[ResolveLink] Update complete!")
+end
+
+local function action_clear()
+    local dir = get_install_dir()
+    local sep = package.config:sub(1,1)
+    local count = 0
+    local targets = { "exports", "temp" }
+    for _, name in ipairs(targets) do
+        local target = dir .. sep .. name
+        if is_windows() then
+            local h = io.popen('dir /b /a "' .. target .. '" 2>nul')
+            if h then
+                local files = h:read("*a")
+                h:close()
+                if files ~= "" then
+                    shell_exec('powershell -Command "Remove-Item -Path \'' .. target .. '\\*\' -Recurse -Force"')
+                    count = count + 1
+                end
+            end
+        else
+            shell_exec('rm -rf "' .. target .. '"/*')
+            count = count + 1
+        end
+    end
+    if count > 0 then
+        print("[ResolveLink] Cache cleared (exports, temp).")
+    else
+        print("[ResolveLink] Cache already empty.")
+    end
 end
 
 local function action_open_web()
@@ -311,6 +341,11 @@ local function show_dialog()
             Text = "Check Status",
             MinimumSize = { 300, 28 },
         },
+            ui:Button{
+            ID = "ClearCacheBtn",
+            Text = "Clear Cache",
+            MinimumSize = { 300, 28 },
+        },
         ui:Button{
             ID = "UpdateBtn",
             Text = "Update ResolveLink",
@@ -364,6 +399,9 @@ local function show_dialog()
 
     function win.On.StatusBtn.Clicked(ev)
         action_status()
+    end
+    function win.On.ClearCacheBtn.Clicked(ev)
+        action_clear()
     end
 
     function win.On.UpdateBtn.Clicked(ev)
