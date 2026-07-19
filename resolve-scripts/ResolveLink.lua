@@ -234,7 +234,6 @@ local function action_status()
     if health and #health > 0 then print("  Health:    " .. health) end
     print("")
 end
-local fuction action_clear()
 
 local function action_update()
     local dir = get_install_dir()
