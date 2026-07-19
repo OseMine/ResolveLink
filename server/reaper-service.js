@@ -130,7 +130,8 @@ function launchWithScript(scriptPath, opts = {}) {
     args.push('-nonewinst');
   }
 
-  args.push('-script', `"${scriptPath}"`);
+  // Script path is a positional argument (not a flag)
+  args.push(`"${scriptPath}"`);
 
   const cmd = `"${fullPath}" ${args.join(' ')}`;
   log.info(`Launching REAPER with script: ${cmd}`);
@@ -155,7 +156,8 @@ function runScriptInExisting(scriptPath, opts = {}) {
 
   const args = ['-nonewinst'];
   if (opts.noactivate) args.push('-noactivate');
-  args.push('-script', `"${scriptPath}"`);
+  // Script path is a positional argument (not a flag)
+  args.push(`"${scriptPath}"`);
 
   const cmd = `"${fullPath}" ${args.join(' ')}`;
   log.info(`Running script in existing REAPER: ${cmd}`);
