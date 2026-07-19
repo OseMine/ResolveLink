@@ -152,6 +152,38 @@ local function action_send_to_ae()
     end
 end
 
+local function action_send_to_reaper()
+    local sep = package.config:sub(1,1)
+    local resolve_scripts_dir
+    if is_windows() then
+        local appdata = os.getenv("APPDATA") or ""
+        resolve_scripts_dir = appdata .. "\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility"
+    else
+        local home = os.getenv("HOME") or "~"
+        local handle = io.popen("uname -s 2>/dev/null")
+        local uname = ""
+        if handle then
+            uname = handle:read("*a"):gsub("%s+", "")
+            handle:close()
+        end
+        if uname == "Darwin" then
+            resolve_scripts_dir = home .. "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
+        else
+            resolve_scripts_dir = home .. "/.local/share/DaVinciResolve/Fusion/Scripts/Utility"
+        end
+    end
+    local script_path = resolve_scripts_dir .. sep .. "send-to-reaper.py"
+    if is_windows() then
+        script_path = script_path:gsub("/", "\\")
+    end
+    local fu = Fusion()
+    if fu then
+        fu:RunScript(script_path)
+    else
+        print("[ResolveLink] Could not access Fusion to run send-to-reaper.py")
+    end
+end
+
 local function action_start_server()
     local dir = get_install_dir()
     if is_windows() then
@@ -312,6 +344,11 @@ local function show_dialog()
             MinimumSize = { 300, 32 },
         },
         ui:Button{
+            ID = "SendReaperBtn",
+            Text = "Send Audio to REAPER",
+            MinimumSize = { 300, 32 },
+        },
+        ui:Button{
             ID = "WebBtn",
             Text = "Open Web UI",
             MinimumSize = { 300, 28 },
@@ -368,6 +405,10 @@ local function show_dialog()
 
     function win.On.SendBtn.Clicked(ev)
         action_send_to_ae()
+    end
+
+    function win.On.SendReaperBtn.Clicked(ev)
+        action_send_to_reaper()
     end
 
     function win.On.WebBtn.Clicked(ev)

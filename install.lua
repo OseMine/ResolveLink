@@ -277,8 +277,9 @@ end
 
 -- Copy scripts
 local scripts_to_deploy = {
-    { src = "send-to-ae.py",     dst = "send-to-ae.py" },
-    { src = "ResolveLink.lua",   dst = "ResolveLink.lua" },
+    { src = "send-to-ae.py",      dst = "send-to-ae.py" },
+    { src = "send-to-reaper.py",   dst = "send-to-reaper.py" },
+    { src = "ResolveLink.lua",    dst = "ResolveLink.lua" },
 }
 
 for _, item in ipairs(scripts_to_deploy) do

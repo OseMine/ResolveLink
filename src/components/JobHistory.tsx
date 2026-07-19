@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Check, X, Send, Download, Upload } from 'lucide-react';
+import { Clock, Check, X, Send, Download, Upload, Music } from 'lucide-react';
 import { api, type JobHistoryEntry } from '../lib/api';
 
 export function JobHistory() {
@@ -50,25 +50,27 @@ export function JobHistory() {
 }
 
 function HistoryRow({ entry }: { entry: JobHistoryEntry }) {
-  const icons = {
+  const icons: Record<string, React.ReactNode> = {
     create: <Send size={10} />,
     render: <Download size={10} />,
     import: <Upload size={10} />,
+    'reaper-create': <Music size={10} />,
   };
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     created: 'text-r-400',
     success: 'text-success',
     error: 'text-error',
   };
-  const statusIcons = {
+  const statusIcons: Record<string, React.ReactNode> = {
     created: <Clock size={9} />,
     success: <Check size={9} />,
     error: <X size={9} />,
   };
-  const typeLabels = {
+  const typeLabels: Record<string, string> = {
     create: 'Link created',
     render: 'Rendered',
     import: 'Imported to Resolve',
+    'reaper-create': 'REAPER link created',
   };
 
   const time = new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

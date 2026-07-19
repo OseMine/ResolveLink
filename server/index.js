@@ -9,6 +9,7 @@ const { WebSocketServer } = require('ws');
 const http = require('http');
 const config = require('./config.json');
 const resolveBridge = require('./resolve-service');
+const reaperService = require('./reaper-service');
 const { createLogger } = require('./logger');
 const { perfMiddleware, getPerfStats, getSlowEndpoints } = require('./perf');
 
@@ -18,6 +19,7 @@ const logAuto = createLogger('Auto');
 const logWatch = createLogger('Watcher');
 const logWS = createLogger('WS');
 const logResolve = createLogger('Resolve');
+const logReaper = createLogger('REAPER');
 
 const app = express();
 const server = http.createServer(app);
@@ -254,6 +256,7 @@ app.get('/api/setup', (_req, res) => {
 
   const python = detectPythonPath();
   const aePath = detectAEPath();
+  const reaperStatus = reaperService.getStatus();
 
   res.json({
     hasEnv,
@@ -261,6 +264,9 @@ app.get('/api/setup', (_req, res) => {
       pythonPath: python?.path || null,
       pythonVersion: python?.version || null,
       aePath: aePath || null,
+      reaperPath: reaperStatus.installPath || null,
+      reaperVersion: reaperStatus.version || null,
+      reaperInstalled: reaperStatus.installed,
       platform: process.platform,
     },
     config: {
@@ -271,13 +277,14 @@ app.get('/api/setup', (_req, res) => {
       pythonPath: process.env.PYTHON_PATH || '',
       aePath: process.env.AE_PATH_WIN || process.env.AE_PATH_MAC || '',
       scriptingPath: process.env.RESOLVE_SCRIPTING_PATH || '',
+      reaperPath: process.env.REAPER_PATH_WIN || process.env.REAPER_PATH_MAC || '',
     },
   });
 });
 
 // POST /api/setup — write .env file
 app.post('/api/setup', (req, res) => {
-  const { pythonPath, aePath, exportDir, tempDir, port, host, scriptingPath } = req.body;
+  const { pythonPath, aePath, reaperPath, exportDir, tempDir, port, host, scriptingPath } = req.body;
 
   const lines = [
     '# ResolveLink Configuration',
@@ -297,6 +304,13 @@ app.post('/api/setup', (req, res) => {
     }
   }
   if (scriptingPath) lines.push(`RESOLVE_SCRIPTING_PATH=${scriptingPath}`);
+  if (reaperPath) {
+    if (process.platform === 'win32') {
+      lines.push(`REAPER_PATH_WIN=${reaperPath}`);
+    } else {
+      lines.push(`REAPER_PATH_MAC=${reaperPath}`);
+    }
+  }
   lines.push('');
 
   const envPath = path.join(__dirname, '..', '.env');
@@ -908,6 +922,162 @@ app.post('/api/render-active-comp', (req, res) => {
   res.json({ scriptPath });
 });
 
+// --- REAPER Endpoints ---
+
+// Check REAPER status
+app.get('/api/reaper/status', (_req, res) => {
+  res.json(reaperService.getStatus());
+});
+
+// Create a REAPER link: Resolve sends audio clip data, we generate REAPER import script
+app.post('/api/reaper/link-clip', (req, res) => {
+  const { clipData, settings } = req.body;
+
+  if (!clipData || !Array.isArray(clipData) || clipData.length === 0) {
+    return res.status(400).json({ error: 'clipData array is required' });
+  }
+
+  const linkId = uuidv4();
+
+  const link = {
+    id: linkId,
+    target: 'reaper',
+    clips: clipData.map((clip) => ({
+      ...clip,
+      linkId,
+      status: 'pending',
+    })),
+    settings: {
+      fps: settings?.fps || 24,
+      sampleRate: settings?.sampleRate || 48000,
+      duration: settings?.duration || 10,
+    },
+    createdAt: new Date().toISOString(),
+    status: 'created',
+    exportPath: null,
+  };
+
+  activeLinks.set(linkId, link);
+
+  // Generate REAPER payload (JSON)
+  const reaperPayload = generateReaperPayload(link);
+  const payloadPath = path.join(TEMP_DIR, `${linkId}_reaper.json`);
+  fs.writeFileSync(payloadPath, JSON.stringify(reaperPayload, null, 2));
+
+  // Generate REAPER import Lua script
+  const reaperScript = generateReaperImportScript(link);
+  const scriptPath = path.join(TEMP_DIR, `${linkId}_reaper.lua`);
+  fs.writeFileSync(scriptPath, reaperScript);
+
+  // Generate REAPER render Lua script
+  const renderScript = generateReaperRenderScript(link);
+  const renderPath = path.join(TEMP_DIR, `render_${linkId}_reaper.lua`);
+  fs.writeFileSync(renderPath, renderScript);
+
+  link.reaperScriptPath = scriptPath;
+  link.renderScriptPath = renderPath;
+  link.payloadPath = payloadPath;
+
+  broadcast('link:created', link);
+  addJobHistory({ type: 'reaper-create', linkId: link.id, status: 'created', clipCount: link.clips.length, target: 'reaper' });
+
+  logReaper.info(`REAPER link created: ${linkId} (${link.clips.length} clips)`);
+
+  res.json({ linkId, status: 'created', scriptPath, payloadPath, renderPath });
+});
+
+// REAPER auto-workflow: launch REAPER or queue job for polling script
+app.post('/api/links/:id/reaper-auto', async (req, res) => {
+  const { id } = req.params;
+  const link = activeLinks.get(id);
+
+  if (!link) return res.status(404).json({ error: 'Link not found' });
+
+  link.status = 'sending';
+  broadcast('link:updated', link);
+
+  if (!link.reaperScriptPath || !fs.existsSync(link.reaperScriptPath)) {
+    link.status = 'error';
+    broadcast('link:updated', link);
+    return res.status(500).json({ error: 'REAPER import script not found' });
+  }
+
+  // Check if REAPER is running (polling script can pick up jobs)
+  if (reaperService.isReaperRunning()) {
+    // Queue job for the REAPER polling script
+    const jobId = uuidv4();
+    const job = {
+      type: 'execute-reaper',
+      linkId: id,
+      reaperScriptPath: link.reaperScriptPath,
+      payloadPath: link.payloadPath,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    jobQueue.set(jobId, job);
+    logReaper.info(`REAPER running, job queued: ${jobId} for link: ${id}`);
+
+    res.json({
+      status: 'queued',
+      jobId: jobId,
+      message: 'Job queued. REAPER polling script (reaper-callback.lua) will pick it up automatically.',
+    });
+  } else {
+    // REAPER not running — launch it
+    const installPath = reaperService.detectReaperPath();
+    if (!installPath) {
+      link.status = 'error';
+      broadcast('link:updated', link);
+      return res.status(500).json({ error: 'REAPER not found on this system' });
+    }
+
+    logReaper.info(`REAPER not running, launching from: ${installPath}`);
+
+    const launched = reaperService.launchReaper(installPath);
+    if (!launched) {
+      link.status = 'error';
+      broadcast('link:updated', link);
+      return res.status(500).json({ error: 'Failed to launch REAPER' });
+    }
+
+    // Queue the job — the polling script will pick it up once REAPER is ready
+    const jobId = uuidv4();
+    const job = {
+      type: 'execute-reaper',
+      linkId: id,
+      reaperScriptPath: link.reaperScriptPath,
+      payloadPath: link.payloadPath,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+    jobQueue.set(jobId, job);
+
+    link.status = 'sending';
+    broadcast('link:updated', link);
+
+    res.json({
+      status: 'sending',
+      jobId: jobId,
+      message: 'REAPER launched. Polling script will pick up the job automatically.',
+    });
+  }
+});
+
+// Generate REAPER render script for a link
+app.get('/api/links/:id/reaper-render-script', (req, res) => {
+  const { id } = req.params;
+  const link = activeLinks.get(id);
+
+  if (!link) return res.status(404).json({ error: 'Link not found' });
+
+  const renderScript = generateReaperRenderScript(link);
+  const scriptPath = path.join(TEMP_DIR, `render_${id}_reaper.lua`);
+  fs.writeFileSync(scriptPath, renderScript);
+
+  res.json({ scriptPath, message: 'Run this script inside REAPER: Actions > Show action list > Load' });
+});
+
 // --- ExtendScript Generator ---
 
 function generateJSXPayload(link) {
@@ -1073,6 +1243,269 @@ function generateRenderScript(link) {
 
     alert("ResolveLink: Render complete!\\n" + exportPath + ".mov");
 })();
+`;
+}
+
+// --- REAPER Script Generators ---
+
+function generateReaperPayload(link) {
+  const fps = link.settings.fps || 24;
+  const sampleRate = link.settings.sampleRate || 48000;
+
+  // Convert frame-based timing to seconds for REAPER
+  const firstClipStart = link.clips.reduce((min, clip) => {
+    const s = clip.start || 0;
+    return s < min ? s : min;
+  }, Infinity);
+
+  const maxEnd = link.clips.reduce((max, clip) => {
+    const end = (clip.start || 0) + (clip.duration || 0);
+    return end > max ? end : max;
+  }, 0);
+
+  const totalDurationSec = (maxEnd - firstClipStart) / fps;
+
+  // Group clips by track
+  const trackMap = new Map();
+  for (const clip of link.clips) {
+    const trackIdx = clip.trackIndex || 1;
+    if (!trackMap.has(trackIdx)) {
+      trackMap.set(trackIdx, {
+        trackIndex: trackIdx,
+        name: clip.trackName || `Track ${trackIdx}`,
+        items: [],
+      });
+    }
+    trackMap.get(trackIdx).items.push({
+      name: clip.name,
+      filePath: (clip.sourcePath || '').replace(/\\/g, '/'),
+      positionSeconds: ((clip.start || 0) - firstClipStart) / fps,
+      durationSeconds: (clip.duration || 0) / fps,
+      sourceOffsetSeconds: (clip.sourceIn || 0) / fps,
+      volume: clip.volume != null ? clip.volume : 1.0,
+      muted: clip.muted || false,
+    });
+  }
+
+  return {
+    linkId: link.id,
+    projectName: `ResolveLink_Audio_${link.id.slice(0, 8)}`,
+    sampleRate,
+    fps,
+    totalDuration: totalDurationSec,
+    tracks: Array.from(trackMap.values()),
+  };
+}
+
+function generateReaperImportScript(link) {
+  const payload = generateReaperPayload(link);
+  const payloadJSON = JSON.stringify(payload);
+  const payloadPath = path.join(TEMP_DIR, `${link.id}_reaper.json`).replace(/\\/g, '/');
+
+  return `-- ResolveLink REAPER Import Script
+-- Link ID: ${link.id}
+-- Generated: ${new Date().toISOString()}
+--
+-- Usage: Run this script inside REAPER (Actions > Show action list > Load)
+-- It reads the payload from: ${payloadPath}
+
+local json_path = "${payloadPath}"
+
+-- Read JSON file
+local function readFile(path)
+    local f = io.open(path, "r")
+    if not f then return nil end
+    local content = f:read("*a")
+    f:close()
+    return content
+end
+
+-- Minimal JSON decoder (handles nested objects and arrays)
+local function json_decode(str)
+    local pos = 1
+    local function skip_ws()
+        pos = str:find("[^ \t\n\r]", pos) or (#str + 1)
+    end
+    local function peek() skip_ws(); return str:sub(pos, pos) end
+    local function advance() pos = pos + 1 end
+    local parse_val
+
+    local function parse_string()
+        pos = pos + 1
+        local start = pos
+        while pos <= #str do
+            local c = str:sub(pos, pos)
+            if c == '\\\\' then pos = pos + 2
+            elseif c == '"' then
+                local s = str:sub(start, pos - 1)
+                pos = pos + 1
+                return s
+            else pos = pos + 1
+            end
+        end
+        return str:sub(start)
+    end
+
+    local function parse_number()
+        local start = pos
+        if str:sub(pos, pos) == '-' then pos = pos + 1 end
+        while pos <= #str and str:sub(pos, pos):match("[%d%.eE%+%-]") do pos = pos + 1 end
+        return tonumber(str:sub(start, pos - 1))
+    end
+
+    local function parse_array()
+        pos = pos + 1
+        local arr = {}
+        skip_ws()
+        if peek() == ']' then pos = pos + 1; return arr end
+        while true do
+            arr[#arr + 1] = parse_val()
+            skip_ws()
+            if peek() == ',' then advance()
+            elseif peek() == ']' then advance(); return arr
+            else break end
+        end
+        return arr
+    end
+
+    local function parse_object()
+        pos = pos + 1
+        local obj = {}
+        skip_ws()
+        if peek() == '}' then pos = pos + 1; return obj end
+        while true do
+            skip_ws()
+            local key = parse_string()
+            skip_ws()
+            advance() -- ':'
+            obj[key] = parse_val()
+            skip_ws()
+            if peek() == ',' then advance()
+            elseif peek() == '}' then advance(); return obj
+            else break end
+        end
+        return obj
+    end
+
+    parse_val = function()
+        skip_ws()
+        local c = peek()
+        if c == '"' then return parse_string()
+        elseif c == '{' then return parse_object()
+        elseif c == '[' then return parse_array()
+        elseif c == 't' then pos = pos + 4; return true
+        elseif c == 'f' then pos = pos + 5; return false
+        elseif c == 'n' then pos = pos + 4; return nil
+        else return parse_number()
+        end
+    end
+
+    return parse_val()
+end
+
+-- Main import logic
+local json_str = readFile(json_path)
+if not json_str then
+    reaper.ShowMessageBox("Could not read payload:\\n" .. json_path, "ResolveLink", 0)
+    return
+end
+
+local data = json_decode(json_str)
+if not data then
+    reaper.ShowMessageBox("Invalid JSON payload", "ResolveLink", 0)
+    return
+end
+
+-- Create new project
+reaper.Main_OnCommand(40023, 0) -- File: New project
+
+-- Set project sample rate if available
+if data.sampleRate then
+    reaper.SetCurrentBPM(0, data.sampleRate, false)
+end
+
+-- Insert media items on tracks
+for _, trackData in ipairs(data.tracks) do
+    local trackIdx = trackData.trackIndex - 1
+    local track = reaper.GetTrack(0, trackIdx)
+
+    if not track then
+        -- Create tracks as needed
+        local trackCount = reaper.CountTracks(0)
+        while trackCount < trackData.trackIndex do
+            reaper.InsertTrackAtIndex(trackCount, true)
+            trackCount = reaper.CountTracks(0)
+        end
+        track = reaper.GetTrack(0, trackIdx)
+    end
+
+    if track then
+        reaper.GetSetMediaTrackInfo_String(track, "P_NAME", trackData.name, true)
+
+        for _, item in ipairs(trackData.items) do
+            local source = reaper.PCM_Source_Create(item.filePath)
+            if source then
+                local newItem = reaper.CreateNewMediaItemOnProj(item.positionSeconds, item.durationSeconds, source)
+                if newItem then
+                    reaper.SetMediaItem_Track(newItem, track)
+
+                    -- Set source offset (sourceIn)
+                    local take = reaper.GetActiveTake(newItem)
+                    if take and item.sourceOffsetSeconds then
+                        reaper.SetMediaItemTakeInfo_Value(take, "D_STARTOFFS", item.sourceOffsetSeconds)
+                    end
+
+                    -- Set volume
+                    if take and item.volume then
+                        reaper.SetMediaItemTakeInfo_Value(take, "D_VOL", item.volume)
+                    end
+
+                    -- Set mute
+                    if item.muted then
+                        reaper.SetMediaItemInfo_Value(newItem, "B_MUTE", 1)
+                    end
+
+                    reaper.UpdateItemInProject(newItem)
+                end
+                reaper.PCM_Source_Destroy(source)
+            end
+        end
+    end
+end
+
+-- Fit project to content
+reaper.Main_OnCommand(40295, 0) -- View: Zoom to selected items
+reaper.UpdateArrange()
+
+reaper.ShowMessageBox("ResolveLink: Imported " .. #data.tracks .. " track(s) from Resolve", "ResolveLink", 0)
+`;
+}
+
+function generateReaperRenderScript(link) {
+  const payload = generateReaperPayload(link);
+  const compName = `ResolveLink_Audio_${link.id.slice(0, 8)}`;
+  const exportDir = EXPORT_DIR.replace(/\\/g, '/');
+  const exportPath = path.join(exportDir, compName).replace(/\\/g, '/');
+
+  return `-- ResolveLink REAPER Render Script
+-- Link ID: ${link.id}
+-- Generated: ${new Date().toISOString()}
+
+local export_dir = "${exportDir}"
+local export_path = "${exportPath}"
+local comp_name = "${compName}"
+
+-- Ensure export directory exists
+reaper.RecursiveCreateDirectory(export_dir, 0)
+
+-- Render master mix
+reaper.Main_OnCommand(40015, 0) -- File: Render to file
+
+-- Set render dialog fields
+reaper.GetSetProjectInfo(0, "RENDER_PATTERN", export_path, true)
+reaper.GetSetProjectInfo(0, "RENDER_SRATE", 48000, true)
+
+reaper.ShowMessageBox("ResolveLink: Render configured.\\nCheck the Render dialog and click Render.\\nOutput: " .. export_path .. ".wav", "ResolveLink", 0)
 `;
 }
 

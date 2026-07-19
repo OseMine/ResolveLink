@@ -13,7 +13,7 @@
   },
   "watcher": {
     "enabled": true,
-    "extensions": [".mov", ".mp4", ".exr", ".png", ".tif", ".jpg"],
+    "extensions": [".mov", ".mp4", ".exr", ".png", ".tif", ".jpg", ".wav", ".flac", ".aiff", ".ogg", ".mp3"],
     "debounceMs": 1000
   },
   "ae": {
@@ -24,5 +24,13 @@
     "pythonPath": "python",
     "pollIntervalMs": 2000,
     "bridgeScript": "./resolve-bridge.py"
+  },
+  "reaper": {
+    "installPath": {
+      "win32": "C:\\Program Files\\REAPER",
+      "darwin": "/Applications/REAPER.app/Contents/MacOS"
+    },
+    "pollIntervalMs": 2000,
+    "renderFormat": "wav"
   }
 }

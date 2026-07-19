@@ -5,8 +5,9 @@ $root = Split-Path $PSScriptRoot -Parent
 $dstDir = "$env:APPDATA\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility"
 
 $scripts = @(
-    @{ Src = "$root\resolve-scripts\send-to-ae.py";   Dst = "$dstDir\send-to-ae.py" },
-    @{ Src = "$root\resolve-scripts\ResolveLink.lua";  Dst = "$dstDir\ResolveLink.lua" }
+    @{ Src = "$root\resolve-scripts\send-to-ae.py";      Dst = "$dstDir\send-to-ae.py" },
+    @{ Src = "$root\resolve-scripts\send-to-reaper.py";   Dst = "$dstDir\send-to-reaper.py" },
+    @{ Src = "$root\resolve-scripts\ResolveLink.lua";     Dst = "$dstDir\ResolveLink.lua" }
 )
 
 New-Item -ItemType Directory -Force -Path $dstDir | Out-Null

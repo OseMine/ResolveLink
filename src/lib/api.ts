@@ -72,6 +72,9 @@ export interface ClipData {
   sourceIn?: number;
   sourceOut?: number;
   trackIndex?: number;
+  trackName?: string;
+  volume?: number;
+  muted?: boolean;
 }
 
 export interface LinkClip {
@@ -96,6 +99,24 @@ export interface Link {
   exportPath: string | null;
   createdAt: string;
   updatedAt?: string;
+  target?: 'ae' | 'reaper';
+}
+
+// --- REAPER Types ---
+
+export interface ReaperStatus {
+  installed: boolean;
+  installPath: string | null;
+  running: boolean;
+  version: string | null;
+}
+
+export interface ReaperLink {
+  linkId: string;
+  status: string;
+  scriptPath: string;
+  payloadPath: string;
+  renderPath: string;
 }
 
 export interface ServerFile {
@@ -123,6 +144,9 @@ export interface SetupConfig {
     pythonPath: string | null;
     pythonVersion: string | null;
     aePath: string | null;
+    reaperPath: string | null;
+    reaperVersion: string | null;
+    reaperInstalled: boolean;
     platform: string;
   };
   config: {
@@ -133,17 +157,19 @@ export interface SetupConfig {
     pythonPath: string;
     aePath: string;
     scriptingPath: string;
+    reaperPath: string;
   };
 }
 
 export interface JobHistoryEntry {
-  type: 'create' | 'render' | 'import';
+  type: 'create' | 'render' | 'import' | 'reaper-create';
   linkId: string;
   status: 'created' | 'success' | 'error';
   file?: string;
   clipCount?: number;
   error?: string;
   timestamp: string;
+  target?: 'ae' | 'reaper';
 }
 
 export interface RenderPreset {
@@ -249,6 +275,17 @@ export const api = {
     request<{ status: string }>(`/links/${id}/render`, { method: 'POST' }),
   autoWorkflow: (id: string) =>
     request<{ status: string; message: string }>(`/links/${id}/auto`, { method: 'POST' }),
+
+  // REAPER
+  reaperStatus: () => request<ReaperStatus>('/reaper/status'),
+  reaperLinkClip: (clipData: ClipData[], settings?: { fps?: number; sampleRate?: number; duration?: number }) =>
+    request<ReaperLink>('/reaper/link-clip', {
+      method: 'POST', body: JSON.stringify({ clipData, settings }),
+    }),
+  reaperAuto: (id: string) =>
+    request<{ status: string; jobId?: string; message: string }>(`/links/${id}/reaper-auto`, { method: 'POST' }),
+  reaperRenderScript: (id: string) =>
+    request<{ scriptPath: string; message: string }>(`/links/${id}/reaper-render-script`),
 
   // Resolve Scripting API
   resolveStatus: () => request<ResolveStatus>('/resolve/status'),
