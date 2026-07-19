@@ -134,8 +134,28 @@ do
     end
 end
 
--- ── HTTP helper (uses curl) ───────────────────────────────
+-- ── HTTP helpers ─────────────────────────────────────────
+-- Tries SWS (SNM_CreateFastHTTPRequest) or js_ReaScriptAPI (JS_HTTP_Get)
+-- first to avoid io.popen which spawns visible console windows on Windows.
+local use_sws = (reaper.SNM_CreateFastHTTPRequest ~= nil)
+local use_jsapi = (reaper.JS_HTTP_Get ~= nil)
+
 local function http_get(url)
+    -- js_ReaScriptAPI (preferred, no console window)
+    if use_jsapi then
+        local ok, content = reaper.JS_HTTP_Get(url)
+        if ok and content then return content end
+    end
+    -- SWS extension (preferred, no console window)
+    if use_sws then
+        local fs = reaper.SNM_CreateFastHTTPRequest(url, 0)
+        if fs then
+            local content = reaper.SNM_GetFastString(fs)
+            reaper.SNM_FreeFastString(fs)
+            if content and content ~= "" then return content end
+        end
+    end
+    -- Fallback: io.popen (spawns console window on Windows)
     local handle = io.popen('curl -sf "' .. url .. '" 2>&1')
     if not handle then return nil end
     local result = handle:read("*a")
@@ -144,6 +164,22 @@ local function http_get(url)
 end
 
 local function http_put(url, data)
+    -- js_ReaScriptAPI
+    if use_jsapi then
+        local ok, content = reaper.JS_HTTP_Put(url, data, "application/json")
+        if ok then return content end
+    end
+    -- SWS extension (type 1 = PUT)
+    if use_sws then
+        local fs = reaper.SNM_CreateFastHTTPRequest(url, 1)
+        if fs then
+            reaper.SNM_AddFastString(fs, data)
+            local result = reaper.SNM_GetFastString(fs)
+            reaper.SNM_FreeFastString(fs)
+            if result and result ~= "" then return result end
+        end
+    end
+    -- Fallback
     local body = data:gsub("'", "\\'")
     local handle = io.popen("curl -sf -X PUT \"" .. url .. "\" -H \"Content-Type: application/json\" -d '" .. body .. "' 2>&1")
     if not handle then return nil end
@@ -274,6 +310,10 @@ local function poll()
 end
 
 -- ── Start ─────────────────────────────────────────────────
+local httpMethod = "io.popen (console windows may appear)"
+if use_jsapi then httpMethod = "js_ReaScriptAPI (no console windows)"
+elseif use_sws then httpMethod = "SWS (no console windows)" end
+reaper.ShowConsoleMsg("ResolveLink: HTTP via " .. httpMethod .. "\n")
 reaper.ShowConsoleMsg("ResolveLink: Callback started. Polling " .. SERVER_URL .. " every " .. POLL_INTERVAL .. "s.\n")
 reaper.ShowConsoleMsg("ResolveLink: Press the button again to stop.\n")
 
