@@ -15,16 +15,18 @@
 -- ============================================================
 -- Resolve Connection
 -- ============================================================
-local resolve = nil
+local _resolveObj = nil
 
 local function GetResolve()
-    if resolve then return resolve end
-    local ok, res = pcall(function()
-        return ScriptApp("Resolve")
-    end)
+    if _resolveObj then return _resolveObj end
+    if resolve then
+        _resolveObj = resolve
+        return _resolveObj
+    end
+    local ok, res = pcall(Resolve)
     if ok and res then
-        resolve = res
-        return resolve
+        _resolveObj = res
+        return _resolveObj
     end
     return nil
 end
@@ -98,8 +100,8 @@ local function get_timeline_info()
     if not tl then return nil end
     return {
         name = tl:GetName(),
-        frames = tl:GetTimelineFrameCount(),
-        fps = tl:GetTimelineFrameRate(),
+        frames = tl:GetEndFrame() - tl:GetStartFrame(),
+        fps = tl:GetSetting("timelineFrameRate"),
     }
 end
 
@@ -126,7 +128,17 @@ local function action_send_to_ae()
         resolve_scripts_dir = appdata .. "\\Blackmagic Design\\DaVinci Resolve\\Support\\Fusion\\Scripts\\Utility"
     else
         local home = os.getenv("HOME") or "~"
-        resolve_scripts_dir = home .. "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Support/Fusion/Scripts/Utility"
+        local handle = io.popen("uname -s 2>/dev/null")
+        local uname = ""
+        if handle then
+            uname = handle:read("*a"):gsub("%s+", "")
+            handle:close()
+        end
+        if uname == "Darwin" then
+            resolve_scripts_dir = home .. "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility"
+        else
+            resolve_scripts_dir = home .. "/.local/share/DaVinciResolve/Fusion/Scripts/Utility"
+        end
     end
     local script_path = resolve_scripts_dir .. sep .. "send-to-ae.py"
     if is_windows() then
@@ -134,7 +146,7 @@ local function action_send_to_ae()
     end
     local fu = Fusion()
     if fu then
-        fu:Execute('load("' .. script_path .. '")')
+        fu:RunScript(script_path)
     else
         print("[ResolveLink] Could not access Fusion to run send-to-ae.py")
     end
@@ -227,7 +239,7 @@ local function show_dialog()
     end
 
     local ui = fu.UIManager
-    local disp = bmd.UIDispatcher(fu)
+    local disp = bmd.UIDispatcher(ui)
     if not ui or not disp then
         print("[ResolveLink] Fusion UI Manager not available. Running status check instead.")
         action_status()
@@ -239,77 +251,76 @@ local function show_dialog()
     local statusColor = isRunning and "#4CAF50" or "#F44336"
     local statusText = isRunning and "Server running" or "Server stopped"
 
-    -- Build window with inline UI hierarchy
+    -- Build window — AddWindow takes (window table, layout)
     local win = disp:AddWindow({
         ID = "ResolveLink_Launcher",
         WindowTitle = "ResolveLink",
         Geometry = { 100, 100, 340, 480 },
+    },
+    ui:VGroup{
+        ID = "RootLayout",
 
-        ui:VGroup{
-            ID = "RootLayout",
+        -- Header
+        ui:Label{
+            ID = "Header",
+            Text = "<h2>ResolveLink</h2>",
+        },
+        ui:Label{
+            ID = "Status",
+            Text = "<span style='color:" .. statusColor .. ";'>● " .. statusText .. "</span>",
+        },
+        ui:Label{ Text = "<hr/>" },
 
-            -- Header
-            ui:Label{
-                ID = "Header",
-                Text = "<h2>ResolveLink</h2>",
-            },
-            ui:Label{
-                ID = "Status",
-                Text = "<span style='color:" .. statusColor .. ";'>● " .. statusText .. "</span>",
-            },
-            ui:Label{ Text = "<hr/>" },
+        -- Quick Actions
+        ui:Label{
+            ID = "QuickTitle",
+            Text = "<b>Quick Actions</b>",
+        },
+        ui:Button{
+            ID = "SendBtn",
+            Text = "Send Clips to After Effects",
+            MinimumSize = { 300, 32 },
+        },
+        ui:Button{
+            ID = "WebBtn",
+            Text = "Open Web UI",
+            MinimumSize = { 300, 28 },
+        },
+        ui:Label{ Text = "<hr/>" },
 
-            -- Quick Actions
-            ui:Label{
-                ID = "QuickTitle",
-                Text = "<b>Quick Actions</b>",
-            },
-            ui:Button{
-                ID = "SendBtn",
-                Text = "Send Clips to After Effects",
-                MinimumSize = { 300, 32 },
-            },
-            ui:Button{
-                ID = "WebBtn",
-                Text = "Open Web UI",
-                MinimumSize = { 300, 28 },
-            },
-            ui:Label{ Text = "<hr/>" },
+        -- Server Control
+        ui:Label{
+            ID = "ServerTitle",
+            Text = "<b>Server Control</b>",
+        },
+        ui:HGroup{
+            ID = "ServerBtns",
+            ui:Button{ ID = "StartBtn", Text = "Start", MinimumSize = { 95, 28 } },
+            ui:Button{ ID = "StopBtn", Text = "Stop", MinimumSize = { 95, 28 } },
+            ui:Button{ ID = "RestartBtn", Text = "Restart", MinimumSize = { 95, 28 } },
+        },
+        ui:Label{ Text = "<hr/>" },
 
-            -- Server Control
-            ui:Label{
-                ID = "ServerTitle",
-                Text = "<b>Server Control</b>",
-            },
-            ui:HGroup{
-                ID = "ServerBtns",
-                ui:Button{ ID = "StartBtn", Text = "Start", MinimumSize = { 95, 28 } },
-                ui:Button{ ID = "StopBtn", Text = "Stop", MinimumSize = { 95, 28 } },
-                ui:Button{ ID = "RestartBtn", Text = "Restart", MinimumSize = { 95, 28 } },
-            },
-            ui:Label{ Text = "<hr/>" },
+        -- System
+        ui:Label{
+            ID = "SysTitle",
+            Text = "<b>System</b>",
+        },
+        ui:Button{
+            ID = "StatusBtn",
+            Text = "Check Status",
+            MinimumSize = { 300, 28 },
+        },
+        ui:Button{
+            ID = "UpdateBtn",
+            Text = "Update ResolveLink",
+            MinimumSize = { 300, 28 },
+        },
+        ui:Label{ Text = "<hr/>" },
 
-            -- System
-            ui:Label{
-                ID = "SysTitle",
-                Text = "<b>System</b>",
-            },
-            ui:Button{
-                ID = "StatusBtn",
-                Text = "Check Status",
-                MinimumSize = { 300, 28 },
-            },
-            ui:Button{
-                ID = "UpdateBtn",
-                Text = "Update ResolveLink",
-                MinimumSize = { 300, 28 },
-            },
-            ui:Label{ Text = "<hr/>" },
-
-            ui:Label{
-                ID = "Footer",
-                Text = "<span style='color:#666;'>v1.0.0 — github.com/OseMine/ResolveLink</span>",
-            },
+        ui:Label{
+            ID = "Footer",
+            Text = "<span style='color:#666;'>v1.0.0 — github.com/OseMine/ResolveLink</span>",
         },
     })
 
