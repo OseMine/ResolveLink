@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-global
 --[[
     ResolveLink — DaVinci Resolve Launcher
     =======================================
@@ -263,12 +264,12 @@ local function show_dialog()
                 ID = "QuickTitle",
                 Text = "<b>Quick Actions</b>",
             },
-            ui:PushButton{
+            ui:Button{
                 ID = "SendBtn",
                 Text = "Send Clips to After Effects",
                 MinimumSize = { 300, 32 },
             },
-            ui:PushButton{
+            ui:Button{
                 ID = "WebBtn",
                 Text = "Open Web UI",
                 MinimumSize = { 300, 28 },
@@ -282,9 +283,9 @@ local function show_dialog()
             },
             ui:HGroup{
                 ID = "ServerBtns",
-                ui:PushButton{ ID = "StartBtn", Text = "Start", MinimumSize = { 95, 28 } },
-                ui:PushButton{ ID = "StopBtn", Text = "Stop", MinimumSize = { 95, 28 } },
-                ui:PushButton{ ID = "RestartBtn", Text = "Restart", MinimumSize = { 95, 28 } },
+                ui:Button{ ID = "StartBtn", Text = "Start", MinimumSize = { 95, 28 } },
+                ui:Button{ ID = "StopBtn", Text = "Stop", MinimumSize = { 95, 28 } },
+                ui:Button{ ID = "RestartBtn", Text = "Restart", MinimumSize = { 95, 28 } },
             },
             ui:Label{ Text = "<hr/>" },
 
@@ -293,12 +294,12 @@ local function show_dialog()
                 ID = "SysTitle",
                 Text = "<b>System</b>",
             },
-            ui:PushButton{
+            ui:Button{
                 ID = "StatusBtn",
                 Text = "Check Status",
                 MinimumSize = { 300, 28 },
             },
-            ui:PushButton{
+            ui:Button{
                 ID = "UpdateBtn",
                 Text = "Update ResolveLink",
                 MinimumSize = { 300, 28 },
