@@ -193,7 +193,7 @@ local function executeImport(payloadPath)
             reaper.GetSetMediaTrackInfo_String(track, "P_NAME", trackData.name, true)
 
             for _, item in ipairs(trackData.items or {}) do
-                local source = reaper.PCM_Source_Create(item.filePath)
+                local source = reaper.PCM_Source_CreateFromFile(item.filePath)
                 if source then
                     local newItem = reaper.CreateNewMediaItemOnProj(item.positionSeconds, item.durationSeconds, source)
                     if newItem then
