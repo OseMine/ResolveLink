@@ -403,7 +403,6 @@ end
 -- ── ReaImGui setup ────────────────────────────────────────
 local hasImGui = (reaper.ImGui_CreateContext ~= nil)
 local ctx
-local monoFont = nil
 
 -- AE-panel-matched palette (see extension/client/style.css):
 -- dark base #141414, blue primary #2563a0, green accent, status dots
@@ -464,125 +463,123 @@ end
 
 -- ── Main loop: single defer chain doing both polling + UI.
 --    Polling is throttled to POLL_INTERVAL; the UI redraws every
---    frame (cheap) regardless. ImGui_End/EndChild are ALWAYS called
---    to match Begin/BeginChild, whether visible or not (this was the
---    earlier crash: End() was only called inside `if visible`, which
---    corrupts ReaImGui's window stack every frame). ──────────────
+--    frame (cheap) regardless. The entire ImGui block is wrapped in
+--    pcall so any API error is caught and the push/pop stack is
+--    always restored. ──────────────────────────────────────────
+local function drawUI()
+    local varCount, colorCount = pushStyle()
+
+    reaper.ImGui_SetNextWindowSize(ctx, 440, 380, reaper.ImGui_Cond_FirstUseEver())
+    local visible, open = reaper.ImGui_Begin(ctx, "ResolveLink###resolvelink_main", true)
+
+    if visible then
+        local httpMethod = "io.popen (fallback, spawns console windows)"
+        if use_jsapi then httpMethod = "js_ReaScriptAPI"
+        elseif use_sws then httpMethod = "SWS" end
+
+        reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), col(COL_BLUE_HOV))
+        reaper.ImGui_Text(ctx, "RESOLVELINK")
+        reaper.ImGui_PopStyleColor(ctx, 1)
+        reaper.ImGui_SameLine(ctx)
+        if serverReachable == true then
+            statusDot(true)
+        elseif serverReachable == false then
+            statusDot(false)
+        else
+            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), col(COL_ORANGE))
+            reaper.ImGui_Text(ctx, "\226\151\143 checking...")
+            reaper.ImGui_PopStyleColor(ctx, 1)
+        end
+
+        dimText(SERVER_URL)
+
+        reaper.ImGui_Dummy(ctx, 0, 4)
+        reaper.ImGui_Separator(ctx)
+        reaper.ImGui_Dummy(ctx, 0, 4)
+
+        dimText("Jobs completed")
+        reaper.ImGui_Text(ctx, tostring(jobCount))
+
+        reaper.ImGui_Dummy(ctx, 0, 2)
+        dimText("Server")
+        if serverReachable == true then
+            reaper.ImGui_Text(ctx, SERVER_URL .. " (up)")
+        elseif serverReachable == false then
+            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), col(COL_RED))
+            reaper.ImGui_Text(ctx, SERVER_URL .. " (unreachable)")
+            reaper.ImGui_PopStyleColor(ctx, 1)
+        else
+            reaper.ImGui_Text(ctx, SERVER_URL)
+        end
+
+        reaper.ImGui_Dummy(ctx, 0, 2)
+        dimText("Job source")
+        reaper.ImGui_Text(ctx, "files + HTTP backup")
+
+        reaper.ImGui_Dummy(ctx, 0, 2)
+        dimText("HTTP transport")
+        if not use_jsapi and not use_sws then
+            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), col(COL_ORANGE))
+            reaper.ImGui_Text(ctx, httpMethod .. " — install js_ReaScriptAPI")
+            reaper.ImGui_PopStyleColor(ctx, 1)
+        else
+            reaper.ImGui_Text(ctx, httpMethod)
+        end
+
+        reaper.ImGui_Dummy(ctx, 0, 6)
+        reaper.ImGui_Separator(ctx)
+        reaper.ImGui_Dummy(ctx, 0, 6)
+
+        reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Button(), col(running and COL_RED or COL_BLUE))
+        reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_ButtonHovered(), col(running and COL_RED_HOV or COL_BLUE_HOV))
+        reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_ButtonActive(), col(running and COL_RED_HOV or COL_BLUE_HOV))
+        if reaper.ImGui_Button(ctx, running and "  Stop  " or "  Start  ") then
+            running = not running
+            _G.resolveLinkRunning = running
+            if running then lastPollTime = 0 end
+        end
+        reaper.ImGui_PopStyleColor(ctx, 3)
+
+        reaper.ImGui_Dummy(ctx, 0, 8)
+        dimText("Log")
+
+        local childVisible = reaper.ImGui_BeginChild(ctx, "log", 0, -1, reaper.ImGui_ChildFlags_Border())
+        if childVisible then
+            for _, line in ipairs(logLines) do
+                reaper.ImGui_TextWrapped(ctx, line)
+            end
+            if reaper.ImGui_GetScrollY(ctx) >= reaper.ImGui_GetScrollMaxY(ctx) - 1 then
+                reaper.ImGui_SetScrollHereY(ctx, 1.0)
+            end
+        end
+        reaper.ImGui_EndChild(ctx)
+    end
+
+    reaper.ImGui_End(ctx)
+    popStyle(varCount, colorCount)
+    return open
+end
+
 local function mainLoop()
     if not running then return end
 
-    -- 1. throttled poll
     local now = reaper.time_precise()
     if now - lastPollTime >= POLL_INTERVAL then
         lastPollTime = now
         doPoll()
     end
 
-    -- 2. server reachability check (less frequent than job polling)
     if now - lastPingTime >= PING_INTERVAL then
         lastPingTime = now
         pingServer()
     end
 
-    -- 2. UI (only if ReaImGui is available)
     if hasImGui then
-        local varCount, colorCount = pushStyle()
-        if monoFont then reaper.ImGui_PushFont(ctx, monoFont) end
-
-        reaper.ImGui_SetNextWindowSize(ctx, 440, 380, reaper.ImGui_Cond_FirstUseEver())
-        local visible, open = reaper.ImGui_Begin(ctx, "ResolveLink###resolvelink_main", true)
-
-        if visible then
-            local httpMethod = "io.popen (fallback, spawns console windows)"
-            if use_jsapi then httpMethod = "js_ReaScriptAPI"
-            elseif use_sws then httpMethod = "SWS" end
-
-            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), col(COL_BLUE_HOV))
-            reaper.ImGui_Text(ctx, "RESOLVELINK")
-            reaper.ImGui_PopStyleColor(ctx, 1)
-            reaper.ImGui_SameLine(ctx)
-            if serverReachable == true then
-                statusDot(true)
-            elseif serverReachable == false then
-                statusDot(false)
-            else
-                reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), col(COL_ORANGE))
-                reaper.ImGui_Text(ctx, "\226\151\143 checking...")
-                reaper.ImGui_PopStyleColor(ctx, 1)
-            end
-
-            dimText(SERVER_URL)
-
-            reaper.ImGui_Dummy(ctx, 0, 4)
-            reaper.ImGui_Separator(ctx)
-            reaper.ImGui_Dummy(ctx, 0, 4)
-
-            dimText("Jobs completed")
-            reaper.ImGui_Text(ctx, tostring(jobCount))
-
-            reaper.ImGui_Dummy(ctx, 0, 2)
-            dimText("Server")
-            if serverReachable == true then
-                reaper.ImGui_Text(ctx, SERVER_URL .. " (up)")
-            elseif serverReachable == false then
-                reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), col(COL_RED))
-                reaper.ImGui_Text(ctx, SERVER_URL .. " (unreachable)")
-                reaper.ImGui_PopStyleColor(ctx, 1)
-            else
-                reaper.ImGui_Text(ctx, SERVER_URL)
-            end
-
-            reaper.ImGui_Dummy(ctx, 0, 2)
-            dimText("Job source")
-            reaper.ImGui_Text(ctx, "files + HTTP backup")
-
-            reaper.ImGui_Dummy(ctx, 0, 2)
-            dimText("HTTP transport")
-            if not use_jsapi and not use_sws then
-                reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), col(COL_ORANGE))
-                reaper.ImGui_Text(ctx, httpMethod .. " — install js_ReaScriptAPI")
-                reaper.ImGui_PopStyleColor(ctx, 1)
-            else
-                reaper.ImGui_Text(ctx, httpMethod)
-            end
-
-            reaper.ImGui_Dummy(ctx, 0, 6)
-            reaper.ImGui_Separator(ctx)
-            reaper.ImGui_Dummy(ctx, 0, 6)
-
-            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Button(), col(running and COL_RED or COL_BLUE))
-            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_ButtonHovered(), col(running and COL_RED_HOV or COL_BLUE_HOV))
-            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_ButtonActive(), col(running and COL_RED_HOV or COL_BLUE_HOV))
-            if reaper.ImGui_Button(ctx, running and "  Stop  " or "  Start  ") then
-                running = not running
-                _G.resolveLinkRunning = running
-                if running then lastPollTime = 0 end
-            end
-            reaper.ImGui_PopStyleColor(ctx, 3)
-
-            reaper.ImGui_Dummy(ctx, 0, 8)
-            dimText("Log")
-
-            local childVisible = reaper.ImGui_BeginChild(ctx, "log", 0, -1, reaper.ImGui_ChildFlags_Border())
-            if childVisible then
-                for _, line in ipairs(logLines) do
-                    reaper.ImGui_TextWrapped(ctx, line)
-                end
-                if reaper.ImGui_GetScrollY(ctx) >= reaper.ImGui_GetScrollMaxY(ctx) - 1 then
-                    reaper.ImGui_SetScrollHereY(ctx, 1.0)
-                end
-            end
-            -- BeginChild's matching EndChild must ALWAYS be called
-            -- once BeginChild has been called, regardless of its return value.
-            reaper.ImGui_EndChild(ctx)
+        local ok, open = pcall(drawUI)
+        if not ok then
+            reaper.ShowConsoleMsg("ResolveLink UI error: " .. tostring(open) .. "\n")
         end
-
-        -- Always call End(), matching Begin() above, regardless of `visible`.
-        reaper.ImGui_End(ctx)
-        if monoFont then reaper.ImGui_PopFont(ctx) end
-        popStyle(varCount, colorCount)
-
-        if not open then
+        if open == false then
             running = false
             _G.resolveLinkRunning = false
         end
@@ -613,16 +610,6 @@ end
 
 if hasImGui then
     ctx = reaper.ImGui_CreateContext("ResolveLink")
-    -- Best-effort monospace font for the log panel; silently falls
-    -- back to the default font if unavailable on this system.
-    local ok, f = pcall(reaper.ImGui_CreateFont, "JetBrains Mono", 14)
-    if not (ok and f) then
-        ok, f = pcall(reaper.ImGui_CreateFont, "Consolas", 14)
-    end
-    if ok and f then
-        monoFont = f
-        reaper.ImGui_Attach(ctx, monoFont)
-    end
     log("Callback started (polling every " .. POLL_INTERVAL .. "s).")
     log("Watching " .. EXPORTS_JOBS_DIR .. " for job files.")
 else
