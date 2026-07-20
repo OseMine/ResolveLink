@@ -1749,25 +1749,27 @@ process.on('uncaughtException', (err) => {
   log.error('Uncaught exception:', err);
 });
 
-server.listen(PORT, HOST, () => {
-  log.info(`Server running on http://${HOST}:${PORT}`);
-  startWatcher();
-  startReaperResultsWatcher();
+if (require.main === module) {
+  server.listen(PORT, HOST, () => {
+    log.info(`Server running on http://${HOST}:${PORT}`);
+    startWatcher();
+    startReaperResultsWatcher();
 
-  // Start polling DaVinci Resolve connection status
-  const stopPolling = resolveBridge.startPolling((status) => {
-    const changed = !lastResolveStatus || status.connected !== lastResolveStatus.connected;
-    lastResolveStatus = status;
+    // Start polling DaVinci Resolve connection status
+    const stopPolling = resolveBridge.startPolling((status) => {
+      const changed = !lastResolveStatus || status.connected !== lastResolveStatus.connected;
+      lastResolveStatus = status;
 
-    if (changed) {
-      logResolve.info(`${status.connected ? 'Connected' : 'Disconnected'} ${status.version || ''}`);
-      broadcast('resolve:status', status);
-    }
+      if (changed) {
+        logResolve.info(`${status.connected ? 'Connected' : 'Disconnected'} ${status.version || ''}`);
+        broadcast('resolve:status', status);
+      }
+    });
+
+    // Clean shutdown
+    process.on('SIGTERM', stopPolling);
+    process.on('SIGINT', stopPolling);
   });
-
-  // Clean shutdown
-  process.on('SIGTERM', stopPolling);
-  process.on('SIGINT', stopPolling);
-});
+}
 
 module.exports = { app, server };

@@ -30,7 +30,7 @@
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Assign to a toolbar button. Click to render and send audio to DaVinci Resolve.\\par}
 }]]></description>
       </metadata>
-      <version name="1.3.0" author="Oskar" time="2026-07-20T12:00:00Z">
+      <version name="1.0.0" author="Oskar" time="2026-07-20T12:00:00Z">
         <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/send-to-resolve.lua</source>
       </version>
     </reapack>
@@ -69,7 +69,7 @@
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Or assign to a toolbar button.\\par}
 }]]></description>
       </metadata>
-      <version name="2.2.0" author="Oskar" time="2026-07-20T16:00:00Z">
+      <version name="1.0.0" author="Oskar" time="2026-07-20T16:00:00Z">
         <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/resolve-link-panel.lua</source>
       </version>
     </reapack>
