@@ -210,14 +210,17 @@ local function main()
     local matched = 0
     local unmatched = 0
     local totalTracks = reaper.CountTracks(0)
+    log("REAPER tracks: " .. totalTracks)
 
     for trackIdx = 0, totalTracks - 1 do
         local track = reaper.GetTrack(0, trackIdx)
         local itemCount = reaper.CountTrackMediaItems(track)
+        log("Track " .. (trackIdx + 1) .. ": " .. itemCount .. " item(s)")
 
         for itemIdx = 0, itemCount - 1 do
             local item = reaper.GetTrackMediaItem(track, itemIdx)
             local sourceFile = getItemSourceFile(item)
+            log("  Item " .. (itemIdx + 1) .. " source: " .. (sourceFile or "nil"))
 
             if sourceFile then
                 local norm = normalizePath(sourceFile)
