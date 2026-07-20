@@ -1,6 +1,6 @@
 # Architecture
 
-ResolveLink is composed of four distinct layers that communicate through well-defined interfaces.
+ResolveLink is composed of distinct layers that communicate through well-defined interfaces.
 
 ## System Overview
 
@@ -38,7 +38,7 @@ ResolveLink is composed of four distinct layers that communicate through well-de
 │  │  │                   │  │                                │  │    │
 │  │  │ - execFile()      │──│ - GetProjectManager()         │  │    │
 │  │  │ - Caching (3s TTL)│  │ - GetCurrentProject()         │  │    │
-│  │  │ - Polling (2s)    │  │ - GetCurrentTimeline()        │  │    │
+│  │  │ - Polling (5s)    │  │ - GetCurrentTimeline()        │  │    │
 │  │  │ - JSON parsing    │  │ - GetItemListInTrack()        │  │    │
 │  │  └──────────────────┘  │ - GetMediaPoolItem()           │  │    │
 │  │                         │ - CreateCompoundClip()         │  │    │
@@ -67,12 +67,12 @@ ResolveLink is composed of four distinct layers that communicate through well-de
 │  │  │  REAPER Service       │  │  - Lua import scripts     │  │    │
 │  │  │  - Path detection     │  │  - JSON payloads (sec)   │  │    │
 │  │  │  - Process detection  │  │  - Render Lua scripts     │  │    │
-│  │  │  - Version detection  │  │                           │  │    │
-│  │  │  - Launch / getDir    │  └───────────────────────────┘  │    │
-│  │  └──────────────────────┘                                  │    │
+│  │  │  - CLI (positional)   │  │  - Job files (IPC)        │  │    │
+│  │  │  - File-based IPC     │  │                           │  │    │
+│  │  └──────────────────────┘  └───────────────────────────┘  │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                              │                                      │
-│          HTTP REST (job polling) + File System Watch                │
+│          HTTP REST + File System (Job/Result directories)           │
 │                              │                                      │
 ├──────────────────────────────┼──────────────────────────────────────┤
 │                     LAYER 3: CEP EXTENSION                          │
@@ -101,19 +101,24 @@ ResolveLink is composed of four distinct layers that communicate through well-de
 │                  (Inside REAPER DAW)                                │
 │                              │                                      │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │  reaper-callback.lua                                        │    │
+│  │  resolve-link-panel.lua (Pure GFX, v2.2.0)                 │    │
 │  │                                                             │    │
 │  │  ┌──────────────────┐  ┌────────────────────────────────┐  │    │
-│  │  │ Job Polling      │  │ Project Creation               │  │    │
-│  │  │ (reaper.defer)   │  │ - Read JSON payload            │  │    │
-│  │  │ - GET /jobs/     │  │ - Create media items           │  │    │
-│  │  │   pending        │  │ - Position on timeline          │  │    │
-│  │  │ - Execute Lua    │  │ - Render via dialog            │  │    │
-│  │  │ - Report status  │  │                                │  │    │
+│  │  │ Callback Toggle  │  │ Action Buttons                 │  │    │
+│  │  │ - ON/OFF state   │  │ - Send Render to Resolve       │  │    │
+│  │  │ - Polls job dir  │  │ - Update Project from Resolve  │  │    │
+│  │  │ - File-based IPC │  │                                │  │    │
+│  │  └──────────────────┘  └────────────────────────────────┘  │    │
+│  │                                                             │    │
+│  │  ┌──────────────────┐  ┌────────────────────────────────┐  │    │
+│  │  │ Import Handler   │  │ Status + Log                   │  │    │
+│  │  │ - Read payload   │  │ - Colored status indicator     │  │    │
+│  │  │ - Create items   │  │ - Scrollable log console       │  │    │
+│  │  │ - Auto-save      │  │ - Job counter                  │  │    │
 │  │  └──────────────────┘  └────────────────────────────────┘  │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                              │                                      │
-│                    ExtendScript execution                            │
+│              File System (exports/reaper-jobs/)                     │
 │                              │                                      │
 ├──────────────────────────────┼──────────────────────────────────────┤
 │                        LAYER 4: AFTER EFFECTS                       │
@@ -237,45 +242,50 @@ User clicks "Send Audio to REAPER"
 │ server/index.js     │
 │                     │
 │ 1. Generate UUID    │
-│ 2. Store in Map     │
-│ 3. Write .json      │──> temp/{uuid}.json (seconds-based)
-│ 4. Generate .lua    │──> temp/{uuid}_import.lua
-│ 5. Broadcast event  │──> WebSocket clients
-└─────────┬───────────┘
-          │ POST /api/links/:id/reaper-auto
-          ▼
-┌─────────────────────┐
-│ REAPER Auto-Workflow│
-│                     │
-│ Is REAPER running?  │
-│   YES ──> Queue job │──> Job Queue (reaper-create)
-│   NO  ──> Launch REAPER │──> spawn(reaper.exe -r lua)
-└─────────┬───────────┘
+│ 2. Convert frames   │
+│    to seconds       │
+│ 3. Write .json      │──> temp/{uuid}.json
+│ 4. Write job file   │──> exports/reaper-jobs/{uuid}.json
+│ 5. Store link       │
+└─────────────────────┘
           │
           ▼
 ┌─────────────────────┐
-│ reaper-callback.lua │
-│ (if REAPER running) │
+│ resolve-link-panel  │
+│ Callback (ON)       │
 │                     │
-│ 1. Polls /jobs/     │
-│    pending (defer)  │
-│ 2. Reads .json      │
-│ 3. Creates items    │
-│ 4. Reports status   │
+│ 1. Polls job dir    │
+│    every 2s         │
+│ 2. Reads job file   │
+│ 3. Reads payload    │
+│ 4. Creates items    │
+│ 5. Writes result    │
 └─────────┬───────────┘
-          │ PUT /api/jobs/:id/status
+          │
           ▼
 ┌─────────────────────┐
 │ REAPER Mix & Render │
 │                     │
 │ 1. Audio engineer   │
 │    mixes project    │
-│ 2. Renders to       │
-│    exports/         │
-│ 3. File watcher     │
-│    detects audio    │
-│ 4. Auto-import to   │
-│    Resolve          │
+│ 2. Panel auto-saves │
+│    project          │
+│ 3. Renders to       │
+│    export dir       │
+│ 4. Panel sends      │
+│    to server        │
+└─────────────────────┘
+          │
+          ▼
+┌─────────────────────┐
+│ Server receives     │
+│ audio file          │
+│                     │
+│ 1. Bridge imports   │
+│    to Resolve       │
+│ 2. Creates audio    │
+│    track            │
+│ 3. Mutes old clips  │
 └─────────────────────┘
 ```
 
@@ -319,53 +329,48 @@ exports/ directory receives new .mov/.mp4
 
 ## Component Responsibilities
 
-### Electron Main Process (`electron.js`)
-
-- Creates the frameless BrowserWindow (420x700, dark background)
-- Spawns the backend server as a child process
-- Handles window controls (minimize, close) via IPC
-- Manages app lifecycle (quit, activate)
-- In development mode, loads `http://localhost:5173`; in production, loads the built HTML
-
-### Preload Script (`preload.js`)
-
-- Exposes a safe `electronAPI` to the renderer via `contextBridge`
-- Available methods: `minimize()`, `close()`, `openExternal(url)`
-- All communication is context-isolated (no nodeIntegration)
-
 ### Backend Server (`server/index.js`)
 
-- **Express REST API** — Handles link CRUD, Resolve scripting proxy, job queue, auto-workflow, setup wizard, job history, render presets, batch export, markers, update check, clear
+- **Express REST API** — Handles link CRUD, Resolve scripting proxy, job queue, auto-workflow, setup wizard, job history, render presets, batch export, markers, update check, clear, REAPER import-to-resolve
 - **WebSocket Server** — Pushes real-time updates to all connected UI clients
 - **Chokidar File Watcher** — Monitors exports + extra directories (multi-folder via `WATCH_FOLDERS`)
 - **ExtendScript Generator** — Dynamically creates `.jsx` scripts and `.json` payloads
 - **Job Queue** — Pending jobs for CEP extension polling
 - **Auto-Workflow** — If AE is running, queues jobs; if not, launches AE with `-r` flag
 - **Render Watch** — Polls for render output, triggers auto-import
-- **AE Path Detection** — Finds `aerender`/`AfterFX` on Windows/macOS
-- **Resolve Polling** — Broadcasts connection status via WebSocket
-- **Structured Logging** — Leveled, tagged, timestamped output via `server/logger.js`
-- **History Tracking** — Tracks link creation, render, import success/failure (capped at 100)
+- **Resolve Polling** — Broadcasts connection status via WebSocket (5s interval)
+- **REAPER File IPC** — Writes job files to `exports/reaper-jobs/`, watches `exports/reaper-results/` for responses
+- **REAPER Import** — `POST /api/reaper/import-to-resolve` receives rendered audio, calls bridge to import into Resolve
 
 ### Resolve Bridge (`server/resolve-service.js` + `server/resolve-bridge.py`)
 
 - **resolve-service.js** - Node.js wrapper that executes the Python bridge via `child_process.execFile`
-  - 3-second connection status cache to avoid hammering Python
-  - Configurable polling interval for Resolve connection checks
+  - 3-second connection status cache
+  - 5-second polling interval for Resolve connection checks
 - **resolve-bridge.py** - Python script that connects to DaVinci Resolve's scripting API
   - Auto-discovers `DaVinciResolveScript` module from multiple install paths
-  - Supports: status, project, timeline, selection, clip-properties, create-compound
-  - `create-compound` command: imports render, disables originals, creates compound clip
+  - Commands: status, project, timeline, selection, clip-properties, create-compound, import-audio, import-rendered
+  - `import-audio`: Imports rendered audio into Resolve media pool "REAPER Renders" bin, adds to audio track, mutes old clips
 
 ### REAPER Service (`server/reaper-service.js`)
 
-- **Path Detection** — Auto-finds REAPER install on Windows (`C:\Program Files\REAPER`) and macOS (`/Applications/REAPER.app`)
+- **Path Detection** — Auto-finds REAPER install on Windows and macOS
 - **Process Detection** — Checks if REAPER is running via `tasklist` (Windows) or `pgrep` (macOS)
 - **Version Detection** — Parses REAPER version from executable properties
-- **Launch** — Spawns REAPER with `-r` flag pointing to generated Lua scripts
-- **getScriptsDir()** — Returns REAPER scripts directory path for deploying `reaper-callback.lua`
-- **Lua Generation** — Generates import scripts that read JSON payloads and create REAPER media items on the timeline
-- **Render Scripts** — Generates standalone Lua scripts that open REAPER's render dialog
+- **CLI Execution** — Runs scripts via positional arguments (e.g., `reaper.exe -nonewinst "path/to/script.lua"`)
+- **Lua Generation** — Generates import scripts, render scripts, and callback scripts
+- **File-based IPC** — Writes job files to `exports/reaper-jobs/`, watches `exports/reaper-results/`
+
+### REAPER Panel (`reaper-scripts/resolve-link-panel.lua`)
+
+- **Pure GFX UI** — No external dependencies, works on any REAPER install
+- **Custom Dark Theme** — Sleek dark background with card-based layout
+- **Callback Toggle** — ON/OFF button to start/stop background polling
+- **Send to Resolve** — Renders audio and sends to DaVinci via server
+- **Update Project** — Fetches Resolve timeline, syncs REAPER items (position, length, track)
+- **Import Handler** — Reads job payloads, creates media items, positions on timeline
+- **Auto-Save** — Saves REAPER project to `exports/reaper-projects/`
+- **Scrollable Log** — Shows recent activity with timestamps
 
 ### CEP Extension (`extension/`)
 
@@ -375,35 +380,11 @@ exports/ directory receives new .mov/.mp4
   - Reports job completion/error back to the server
   - Handles rendering via ExtendScript render queue
   - Import-back: calls `/api/import-back` to create compound clips in Resolve
-  - Persists state via `localStorage` (rendered file path, active link, export dir)
 - **host.jsx** - ExtendScript host functions callable from the CEP panel
-- **CSInterface.js** - Adobe's CSInterface library for CEP communication
-
-### React Frontend (`src/`)
-
-- **App.tsx** - Root component, orchestrates layout
-- **Titlebar.tsx** - Custom window chrome with drag region
-- **Dashboard.tsx** - Shows active link count and connection status
-- **SendButton.tsx** - Primary action button with loading states
-- **LinkQueue.tsx** - Scrollable list of active links (or empty state)
-- **LinkCard.tsx** - Individual link with status badge, clip list, metadata
-- **StatusIndicator.tsx** - Colored dots and badges for link status
-- **useResolveBridge.ts** - React hook managing WebSocket + REST state + Resolve polling
-- **api.ts** - Typed API client for REST and WebSocket
-
-### ExtendScript (`adobe/import_pipeline.jsx`)
-
-- **createLinkedComp()** - Main function: creates AE comp, imports footage, places layers
-- **renderCurrentComp()** - Adds active comp to render queue and starts render
-- **timecodeToFrames()** - Parses HH:MM:SS:FF strings to frame numbers
-- Exports functions to `$.global` for BridgeTalk communication
-- Can accept a JSON file path as argument for direct execution
 
 ## Communication Protocols
 
 ### REST API (HTTP)
-
-The frontend and CEP extension communicate with the server via standard HTTP requests:
 
 ```
 Client (React)  ──POST /api/link-clip──────>  Server (Express)
@@ -415,26 +396,27 @@ Client (React)  ──POST /api/import-back────>  Server (Express)
 
 CEP Extension   ──GET  /api/jobs/pending───>  Server (Express)
 CEP Extension   ──PUT  /api/jobs/:id/stat─>  Server (Express)
-CEP Extension   ──POST /api/import-back───>  Server (Express)
+
+REAPER Scripts  ──PUT  /api/reaper/import-to-resolve──>  Server (Express)
+REAPER Scripts  ──GET  /api/resolve/timeline──────────>  Server (Express)
 ```
 
-### WebSocket (Real-time)
+### File System (REAPER IPC)
 
-The server pushes state changes to all connected clients:
+REAPER scripts communicate with the server via the file system:
 
 ```
-Server  ──{ type: "init", payload: { links } }──────>  Client
-Server  ──{ type: "link:created", payload: {...} }──>  Client
-Server  ──{ type: "link:updated", payload: {...} }──>  Client
-Server  ──{ type: "link:rendered", payload: {...} }─>  Client
-Server  ──{ type: "link:deleted", payload: { id } }─>  Client
-Server  ──{ type: "file:new", payload: {...} }──────>  Client
-Server  ──{ type: "resolve:status", payload: {...} }>  Client
+Server writes:  exports/reaper-jobs/{uuid}.json   (job file)
+Panel reads:    exports/reaper-jobs/{uuid}.json   (polls directory)
+Panel deletes:  exports/reaper-jobs/{uuid}.json   (after reading)
+
+Panel writes:   exports/reaper-results/{uuid}.json (result file)
+Server watches: exports/reaper-results/            (chokidar watcher)
 ```
 
-### File System (Watch)
+This approach avoids network dependencies between REAPER scripts and the server. The panel polls the jobs directory every 2 seconds using `reaper.EnumerateFiles()`.
 
-Chokidar monitors the exports directory:
+### File System (AE Watch)
 
 ```
 exports/ ──watch──>  new .mov/.mp4 detected
@@ -461,27 +443,11 @@ CEP Extension ──GET /api/jobs/pending──>  Server
                         └── Server updates link status
 ```
 
-### REAPER Polling (Lua Callback)
-
-The `reaper-callback.lua` script polls for pending REAPER jobs using `reaper.defer()`:
-
-```
-reaper-callback.lua ──GET /api/jobs/pending──>  Server
-                        │
-                        ├── No job? Call reaper.defer() to poll again
-                        └── Has job? Mark as "dispatched", return job details
-                              │
-                              ├── Lua reads JSON payload from disk
-                              ├── Lua creates REAPER project + media items
-                              ├── Lua reports status back to server
-                              └── Server updates link status
-```
-
 ## State Management
 
 ### In-Memory Link Registry
 
-The server maintains a `Map<string, Link>` in memory. Each link has:
+The server maintains a `Map<string, Link>` in memory:
 
 ```typescript
 {
@@ -494,45 +460,32 @@ The server maintains a `Map<string, Link>` in memory. Each link has:
     duration: number;
   };
   status: 'created' | 'sending' | 'queued' | 'linked' | 'rendering' | 'rendered' | 'imported' | 'error';
-  exportPath: string | null;     // Path to rendered output
-  createdAt: string;             // ISO timestamp
-  updatedAt?: string;            // Last status change
-  jsxPath?: string;              // Generated .jsx path
-  payloadPath?: string;          // Generated .json path
-  error?: string;                // Error message if status is 'error'
+  exportPath: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  jsxPath?: string;
+  payloadPath?: string;
+  error?: string;
 }
 ```
 
 ### In-Memory Job Queue
 
-The server maintains a `Map<string, Job>` for CEP extension and REAPER callback job polling:
+The server maintains a `Map<string, Job>` for CEP extension job polling:
 
 ```typescript
 // AE job
 {
   type: 'execute-jsx';
-  linkId: string;                // Associated link UUID
-  jsxPath: string;               // Path to JSX file to execute
-  compName: string;              // Expected composition name
+  linkId: string;
+  jsxPath: string;
+  compName: string;
   status: 'pending' | 'dispatched' | 'executing' | 'completed' | 'error';
   createdAt: string;
-  dispatchedAt?: string;
-  result?: { compName: string };
-  error?: string;
 }
 
-// REAPER job
-{
-  type: 'reaper-create';
-  linkId: string;                // Associated link UUID
-  payloadPath: string;           // Path to JSON payload (seconds-based)
-  importScriptPath: string;      // Path to Lua import script
-  status: 'pending' | 'dispatched' | 'executing' | 'completed' | 'error';
-  createdAt: string;
-  dispatchedAt?: string;
-  result?: { projectName: string };
-  error?: string;
-}
+// REAPER jobs are file-based (no in-memory queue)
+// Job files written to: exports/reaper-jobs/{uuid}.json
 ```
 
 ### React State (useResolveBridge hook)
@@ -544,17 +497,11 @@ The server maintains a `Map<string, Job>` for CEP extension and REAPER callback 
   newFiles: ServerFile[];        // Unmatched detected files
   resolve: ResolveStatus;        // DaVinci Resolve connection status
   selection: ResolveSelection;   // Current clip selection from Resolve
-  selectionLoading: boolean;     // Selection fetch in progress
+  selectionLoading: boolean;
 }
 ```
 
-State is updated via WebSocket events, not polling. The hook manages:
-
-1. Initial link fetch on mount
-2. WebSocket connection with auto-reconnect (3s interval)
-3. State mutations for each event type
-4. Resolve connection status polling (3s interval)
-5. Action callbacks: `sendToAE()`, `deleteLink()`, `triggerRender()`, `fetchSelection()`
+State is updated via WebSocket events, not polling.
 
 ## Security Model
 
@@ -564,44 +511,3 @@ State is updated via WebSocket events, not polling. The hook manages:
 - **Local Only**: Server binds to `localhost` only, no external network access
 - **CORS**: Enabled for local development cross-origin requests
 - **CEP Debug Mode**: Requires `PlayerDebugMode=1` registry key for unsigned extensions
-
-## Extension Points
-
-### Adding New Export Formats
-
-Add extensions to `server/config.json`:
-
-```json
-{
-  "watcher": {
-    "extensions": [".mov", ".mp4", ".exr", ".png", ".tif", ".jpg", ".webm"]
-  }
-}
-```
-
-### Adding New Status States
-
-1. Add the state to `Link.status` in `src/lib/api.ts`
-2. Add a color/label entry in `StatusIndicator.tsx`
-3. Handle the new state in the WebSocket message handler
-
-### Custom AE Compositions
-
-Modify `adobe/import_pipeline.jsx` or the `generateExtendScript()` function in `server/index.js` to customize how compositions are built (e.g., adding adjustment layers, markers, or expressions).
-
-### REAPER Script Generation
-
-The REAPER integration generates Lua scripts dynamically. You can customize:
-
-- **`generateReaperImportScript(link)`** in `server/reaper-service.js` — Controls how media items are placed on the REAPER timeline (track grouping, item positioning, fade settings)
-- **`generateReaperRenderScript(link)`** — Controls the render dialog configuration (format, bounds, output path)
-- **`generateReaperPayload(link)`** — Controls how frame-based clip data is converted to seconds-based data for REAPER
-
-To add new REAPER script templates, create `.lua` files in the `reaper-scripts/` directory and reference them from the generation functions.
-
-### Adding Resolve Scripting Commands
-
-1. Add a new `cmd_*` function in `server/resolve-bridge.py`
-2. Register it in the `COMMANDS` dict
-3. Add a wrapper method in `server/resolve-service.js`
-4. Add a REST endpoint in `server/index.js`

@@ -1041,6 +1041,100 @@ Generates a standalone Lua script that opens REAPER's render dialog for the spec
 
 ---
 
+### REAPER Import Audio to Resolve
+
+```
+PUT /api/reaper/import-to-resolve
+```
+
+Imports a rendered audio file from REAPER back into DaVinci Resolve. Adds the audio to a new audio track and mutes the old audio clips.
+
+**Request Body:**
+```json
+{
+  "filePath": "X:/coding/AE-Link/exports/MyProject_Timeline1.wav",
+  "trackName": "REAPER Audio",
+  "positionFrames": 0
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `filePath` | string | Yes | Absolute path to the rendered audio file |
+| `trackName` | string | No | Name for the audio track (default: "REAPER Audio") |
+| `positionFrames` | number | No | Position on timeline in frames (default: 0) |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "filePath": "X:/coding/AE-Link/exports/MyProject_Timeline1.wav"
+}
+```
+
+**Response (500):**
+```json
+{
+  "error": "Bridge command failed"
+}
+```
+
+The import process:
+1. Imports the audio file into the Resolve media pool under "REAPER Renders" bin
+2. Creates a new audio track (if needed)
+3. Appends the audio clip to the timeline
+4. Mutes all old audio clips on the timeline
+
+---
+
+### File-Based IPC (REAPER Jobs)
+
+REAPER scripts communicate with the server via the file system rather than HTTP polling:
+
+#### Job File Structure
+
+Jobs are written to `exports/reaper-jobs/` as JSON files:
+
+```json
+{
+  "jobId": "32b0ff89-8d3b-4724-a3f4-e273c2547b54",
+  "type": "execute-reaper",
+  "payloadPath": "X:\\coding\\AE-Link\\temp\\payload.json"
+}
+```
+
+#### Result File Structure
+
+Results are written to `exports/reaper-results/` as JSON files:
+
+```json
+{
+  "jobId": "32b0ff89-8d3b-4724-a3f4-e273c2547b54",
+  "status": "completed",
+  "message": "Import complete"
+}
+```
+
+#### Polling Flow
+
+```
+Server writes job file ──> exports/reaper-jobs/{uuid}.json
+                              │
+Panel polls directory ────────┘
+                              │
+Panel reads + deletes file ───┘
+                              │
+Panel executes import ────────┘
+                              │
+Panel writes result file ────> exports/reaper-results/{uuid}.json
+                              │
+Server watches directory ─────┘
+                              │
+Server reads + deletes file ──┘
+```
+
+---
+
 ### Job Queue API
 
 These endpoints are used by the CEP extension and REAPER callback script to poll for and report on jobs.

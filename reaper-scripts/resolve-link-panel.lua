@@ -39,7 +39,6 @@ local C_AMBER      = {1.00, 0.62, 0.04}
 -- ── Core Helpers ───────────────────────────────────────────
 local function log(msg)
     local line = os.date("%H:%M:%S") .. "  " .. msg
-    reaper.ShowConsoleMsg("[ResolveLink] " .. line .. "\n")
     logLines[#logLines + 1] = line
     if #logLines > MAX_LOG_LINES then
         table.remove(logLines, 1)
