@@ -15,11 +15,11 @@
 local SERVER_URL = "http://127.0.0.1:3030"
 local TEMP_DIR = "X:/coding/AE-Link/temp"
 
-local AUTO_RENDER = false
+local AUTO_RENDER = true
 
--- Action ID for "File: Render project, using the most recent
--- render settings". Set to nil if your REAPER version doesn't have it.
-local RENDER_COMMAND_ID = 41824
+-- Action ID for "File: Render project, using last render settings"
+-- This renders silently without opening the render dialog.
+local RENDER_COMMAND_ID = 40010
 
 -- ── Helpers ────────────────────────────────────────────────
 local function log(msg)

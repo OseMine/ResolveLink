@@ -1525,7 +1525,7 @@ function generateReaperRenderScript(link) {
   const payload = generateReaperPayload(link);
   const compName = `ResolveLink_Audio_${link.id.slice(0, 8)}`;
   const exportDir = EXPORT_DIR.replace(/\\/g, '/');
-  const exportPath = path.join(exportDir, compName).replace(/\\/g, '/');
+  const exportPath = path.join(exportDir, compName + '.wav').replace(/\\/g, '/');
 
   return `-- ResolveLink REAPER Render Script
 -- Link ID: ${link.id}
@@ -1545,7 +1545,7 @@ reaper.Main_OnCommand(40015, 0) -- File: Render to file
 reaper.GetSetProjectInfo(0, "RENDER_PATTERN", export_path, true)
 reaper.GetSetProjectInfo(0, "RENDER_SRATE", "48000", true)
 
-reaper.ShowMessageBox("ResolveLink: Render configured.\\nCheck the Render dialog and click Render.\\nOutput: " .. export_path .. ".wav", "ResolveLink", 0)
+reaper.ShowMessageBox("ResolveLink: Render configured.\\nCheck the Render dialog and click Render.\\nOutput: " .. export_path, "ResolveLink", 0)
 `;
 }
 
