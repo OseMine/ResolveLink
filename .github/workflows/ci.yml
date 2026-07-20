@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        node-version: [20, 22]
 
     steps:
       - name: Checkout
@@ -41,7 +41,7 @@ jobs:
         run: |
           node server/index.js &
           sleep 3
-          curl -sf http://localhost:3030/api/health || exit 1
+          curl -sf http://127.0.0.1:3030/api/health || exit 1
           kill %1 2>/dev/null || true
 
   lint:
