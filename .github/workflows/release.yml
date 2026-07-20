@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get tag
+        id: tag
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Inject version into installer
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          sed "s|__RELEASE_TAG__|${VERSION}|g" install.lua > install-release.lua
+          echo "Installer patched for ${VERSION}"
+
+      - name: Generate release notes from commits
+        id: notes
+        run: |
+          # Get commits since last tag (or all if first tag)
+          PREV_TAG=$(git tag --sort=-v:refname | head -1 | sed 's/^/^/' | sed 's/$/\$/' || true)
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "^$" ]; then
+            COMMITS=$(git log --oneline --no-decorate "${PREV_TAG}..HEAD" -- . ':!.github' || git log --oneline -20)
+          else
+            COMMITS=$(git log --oneline -20)
+          fi
+
+          # Build notes file
+          {
+            echo "## What's New"
+            echo ""
+            echo "$COMMITS" | while IFS= read -r line; do
+              # Skip merge commits and CI commits
+              echo "$line" | grep -qE "(Merge|ci:|chore:)" && continue
+              echo "- $line"
+            done
+            echo ""
+            echo "## Installation"
+            echo ""
+            echo "### DaVinci Resolve (Recommended)"
+            echo "1. Download \`install.lua\` below"
+            echo "2. Open DaVinci Resolve"
+            echo "3. Go to **Workspace > Console** (or press Alt+F9)"
+            echo "4. Paste the contents of \`install.lua\` and press Enter"
+            echo ""
+            echo "### REAPER (ReaPack)"
+            echo "Add this URL in ReaPack > Edit repositories:"
+            echo "\`https://raw.githubusercontent.com/OseMine/ResolveLink/feature/reaper-integration/index.xml\`"
+            echo ""
+            echo "## Requirements"
+            echo "- [Git](https://git-scm.com)"
+            echo "- [Node.js](https://nodejs.org) 18+"
+            echo "- [DaVinci Resolve Studio](https://www.blackmagicdesign.com/products/davinciresolve/) 18+"
+          } > RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "ResolveLink ${{ steps.tag.outputs.version }}"
+          body_path: RELEASE_NOTES.md
+          files: install-release.lua
+          draft: false
+          prerelease: false

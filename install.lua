@@ -5,10 +5,9 @@
 
     What it does:
     1. Detects your OS and checks for Git + Node.js
-    2. Installs missing prerequisites if possible
-    3. Clones ResolveLink to the standard app directory
-    4. Runs the full setup (deps, build, extensions, .env)
-    5. Starts the server
+    2. Downloads the correct release version (or clones from repo)
+    3. Runs the full setup (deps, build, extensions, .env)
+    4. Deploys scripts and starts the server
 
     Install locations:
       Windows:  %LOCALAPPDATA%\ResolveLink
@@ -16,11 +15,19 @@
       Linux:    ~/.local/share/ResolveLink
 ]]
 
-local function log(msg, color)
-    color = color or "white"
+-- ============================================================
+-- Release version (set by GitHub Actions at release time)
+-- If this is "__RELEASE_TAG__", the installer clones from repo.
+-- If it's a real tag like "v1.0.0", it downloads that release.
+-- ============================================================
+local RELEASE_TAG = "__RELEASE_TAG__"
+local REPO_URL = "https://github.com/OseMine/ResolveLink.git"
+local REPO_OWNER = "OseMine"
+local REPO_NAME = "ResolveLink"
+
+local function log(msg)
     print("[ResolveLink] " .. msg)
 end
-
 local function log_ok(msg)    log(msg) end
 local function log_warn(msg)  log("WARN: " .. msg) end
 local function log_err(msg)   log("ERROR: " .. msg) end
@@ -69,7 +76,7 @@ end
 log("Install directory: " .. install_dir)
 
 -- ============================================================
--- Helper: run command and return output
+-- Helpers
 -- ============================================================
 local function run(cmd)
     local handle = io.popen(cmd .. " 2>&1")
@@ -95,6 +102,38 @@ local function dir_exists(path)
     end
 end
 
+local function read_file(path)
+    local f = io.open(path, "r")
+    if not f then return nil end
+    local content = f:read("*a")
+    f:close()
+    return content
+end
+
+local function write_file(path, content)
+    local f = io.open(path, "w")
+    if not f then return false end
+    f:write(content)
+    f:close()
+    return true
+end
+
+local function rm_rf(path)
+    if os_flag == "win32" then
+        os.execute('rmdir /s /q "' .. path .. '" 2>nul')
+    else
+        os.execute('rm -rf "' .. path .. '" 2>/dev/null')
+    end
+end
+
+local function sleep(seconds)
+    if os_flag == "win32" then
+        os.execute("timeout /t " .. seconds .. " /nobreak >nul 2>&1")
+    else
+        os.execute("sleep " .. seconds .. " 2>/dev/null")
+    end
+end
+
 -- ============================================================
 -- Step 1: Check and install Git
 -- ============================================================
@@ -112,7 +151,6 @@ if not has_git then
         log_warn("A macOS dialog may have appeared. Accept it, then re-run this script.")
         return
     else
-        -- Try apt
         local installed = false
         for _, pkg_mgr in ipairs({"apt", "dnf", "pacman", "zypper"}) do
             if os.execute("which " .. pkg_mgr .. " >/dev/null 2>&1") == 0 then
@@ -151,7 +189,6 @@ if not has_node then
         log_err("Then re-run this script.")
         return
     elseif os_flag == "darwin" then
-        -- Try brew
         if os.execute("which brew >/dev/null 2>&1") == 0 then
             os.execute("brew install node")
         else
@@ -160,7 +197,6 @@ if not has_node then
             return
         end
     else
-        -- Try nvm or direct
         local installed = false
         if os.execute("which nvm >/dev/null 2>&1") == 0 or file_exists(os.getenv("HOME") .. "/.nvm/nvm.sh") then
             os.execute('bash -c "source ~/.nvm/nvm.sh && nvm install --lts"')
@@ -191,51 +227,135 @@ end
 log_ok("npm found: " .. run("npm --version"))
 
 -- ============================================================
--- Step 4: Clone or update repository
+-- Step 4: Download source code
 -- ============================================================
-local repo = "https://github.com/OseMine/ResolveLink.git"
+local is_release = RELEASE_TAG ~= "__RELEASE_TAG__" and RELEASE_TAG ~= nil and RELEASE_TAG ~= ""
 
-if dir_exists(install_dir .. "/.git") then
-    log_step("ResolveLink already installed. Updating...")
-    os.execute('cd "' .. install_dir .. '" && git pull')
-else
-    log_step("Cloning ResolveLink to " .. install_dir .. "...")
-    if dir_exists(install_dir) then
-        log_warn("Directory exists but is not a git repo. Removing...")
-        if os_flag == "win32" then
-            os.execute('rmdir /s /q "' .. install_dir .. '"')
-        else
-            os.execute('rm -rf "' .. install_dir .. '"')
+if is_release then
+    log_step("Installing ResolveLink " .. RELEASE_TAG .. " (release)...")
+
+    local tmp_dir = (os_flag == "win32")
+        and (os.getenv("TEMP") or os.getenv("TMP") or "C:\\Temp")
+        or "/tmp"
+    local zip_path = tmp_dir .. "\\resolvelink.zip"
+    local extract_dir = tmp_dir .. "\\resolvelink-extract"
+
+    -- Clean previous temp files
+    rm_rf(zip_path)
+    rm_rf(extract_dir)
+
+    -- Download release zip
+    local zip_url = "https://github.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/archive/refs/tags/" .. RELEASE_TAG .. ".zip"
+    log("Downloading " .. zip_url)
+
+    local dl_ok
+    if os_flag == "win32" then
+        dl_ok = os.execute('curl -fSL -o "' .. zip_path .. '" "' .. zip_url .. '"')
+    else
+        dl_ok = os.execute('curl -fSL -o "' .. zip_path .. '" "' .. zip_url .. '"')
+    end
+
+    if not dl_ok or not file_exists(zip_path) then
+        log_err("Download failed. Check your internet connection.")
+        log_err("URL: " .. zip_url)
+        return
+    end
+    log_ok("Downloaded " .. RELEASE_TAG .. ".zip")
+
+    -- Extract
+    log("Extracting...")
+    if os_flag == "win32" then
+        os.execute('mkdir "' .. extract_dir .. '" 2>nul')
+        os.execute('tar -xf "' .. zip_path .. '" -C "' .. extract_dir .. '"')
+    else
+        os.execute('mkdir -p "' .. extract_dir .. '"')
+        os.execute('unzip -q "' .. zip_path .. '" -d "' .. extract_dir .. '"')
+    end
+
+    -- The zip extracts to REPO_NAME-RELEASE_TAG/ (e.g. ResolveLink-v1.0.0/)
+    -- Find the extracted directory
+    local inner_dir
+    if os_flag == "win32" then
+        local handle = io.popen('dir /b /ad "' .. extract_dir .. '" 2>nul')
+        if handle then
+            inner_dir = handle:read("*l")
+            handle:close()
+        end
+    else
+        local handle = io.popen('ls -1 "' .. extract_dir .. '" 2>/dev/null')
+        if handle then
+            inner_dir = handle:read("*l")
+            handle:close()
         end
     end
-    -- Spawn git clone in background, then poll for completion
-    if os_flag == "win32" then
-        os.execute('start "" /b cmd /c git clone "' .. repo .. '" "' .. install_dir .. '"')
-    else
-        os.execute('nohup git clone "' .. repo .. '" "' .. install_dir .. '" >/dev/null 2>&1 &')
-    end
-end
 
--- Wait for clone to finish (some Lua embeds don't block on io.popen)
-local wait = 0
-while not dir_exists(install_dir .. "/.git") and wait < 60 do
-    if os_flag == "win32" then
-        os.execute("timeout /t 1 /nobreak >nul 2>&1")
-    else
-        os.execute("sleep 1 2>/dev/null")
+    if not inner_dir then
+        log_err("Could not find extracted directory")
+        rm_rf(zip_path)
+        rm_rf(extract_dir)
+        return
     end
-    wait = wait + 1
-    if wait % 5 == 0 then
-        log("  Waiting for clone... (" .. wait .. "s)")
-    end
-end
 
-if not dir_exists(install_dir .. "/.git") then
-    log_err("Clone failed after " .. wait .. "s. Check your internet connection.")
-    log_err("Try manually: git clone " .. repo)
-    return
+    local src_dir = extract_dir .. "/" .. inner_dir
+
+    -- Move to install directory
+    if dir_exists(install_dir) then
+        log("Removing previous installation...")
+        rm_rf(install_dir)
+    end
+
+    if os_flag == "win32" then
+        os.execute('xcopy /E /Y /I "' .. src_dir .. '" "' .. install_dir .. '"')
+    else
+        os.execute('mv "' .. src_dir .. '" "' .. install_dir .. '"')
+    end
+
+    -- Clean up temp
+    rm_rf(zip_path)
+    rm_rf(extract_dir)
+
+    -- Verify
+    if not dir_exists(install_dir) then
+        log_err("Installation failed - directory not created")
+        return
+    end
+    log_ok("Source code installed to " .. install_dir)
+
+else
+    -- Development / fallback: clone from repo
+    log_step("Installing ResolveLink (from repository)...")
+
+    if dir_exists(install_dir .. "/.git") then
+        log_step("ResolveLink already installed. Updating...")
+        os.execute('cd "' .. install_dir .. '" && git pull')
+    else
+        log_step("Cloning ResolveLink to " .. install_dir .. "...")
+        if dir_exists(install_dir) then
+            log_warn("Directory exists but is not a git repo. Removing...")
+            rm_rf(install_dir)
+        end
+        if os_flag == "win32" then
+            os.execute('start "" /b cmd /c git clone "' .. REPO_URL .. '" "' .. install_dir .. '"')
+        else
+            os.execute('nohup git clone "' .. REPO_URL .. '" "' .. install_dir .. '" >/dev/null 2>&1 &')
+        end
+
+        local wait = 0
+        while not dir_exists(install_dir .. "/.git") and wait < 60 do
+            sleep(1)
+            wait = wait + 1
+            if wait % 5 == 0 then
+                log("  Waiting for clone... (" .. wait .. "s)")
+            end
+        end
+
+        if not dir_exists(install_dir .. "/.git") then
+            log_err("Clone failed after " .. wait .. "s. Check your internet connection.")
+            return
+        end
+    end
+    log_ok("Repository ready at " .. install_dir)
 end
-log_ok("Repository ready at " .. install_dir)
 
 -- ============================================================
 -- Step 5: Run platform-specific setup
@@ -268,14 +388,12 @@ else
     resolve_scripts_dir = home .. "/.local/share/DaVinci Resolve/Support/Fusion/Scripts/Utility"
 end
 
--- Create directory
 if os_flag == "win32" then
     os.execute('mkdir "' .. resolve_scripts_dir .. '" 2>nul')
 else
     os.execute('mkdir -p "' .. resolve_scripts_dir .. '"')
 end
 
--- Copy scripts
 local scripts_to_deploy = {
     { src = "send-to-ae.py",      dst = "send-to-ae.py" },
     { src = "send-to-reaper.py",   dst = "send-to-reaper.py" },
@@ -333,14 +451,8 @@ else
     os.execute('cd "' .. install_dir .. '" && nohup node server/index.js > /dev/null 2>&1 &')
 end
 
--- Wait for server
-if os_flag == "win32" then
-    os.execute("timeout /t 3 /nobreak >nul")
-else
-    os.execute("sleep 3")
-end
+sleep(3)
 
--- Check health
 local health_ok = false
 if os_flag == "win32" then
     health_ok = os.execute('curl -sf http://localhost:3030/api/health >nul 2>&1') == 0
@@ -351,13 +463,17 @@ end
 -- ============================================================
 -- Done
 -- ============================================================
+local version_str = is_release and (" (" .. RELEASE_TAG .. ")") or ""
 print("")
 print("========================================")
-print("  ResolveLink installed successfully!")
+print("  ResolveLink installed successfully!" .. version_str)
 print("========================================")
 print("")
 print("  Server:  http://localhost:3030")
 print("  Install: " .. install_dir)
+if is_release then
+    print("  Version: " .. RELEASE_TAG)
+end
 print("")
 print("  Usage in Resolve:")
 print("    Workspace > Scripts > send-to-ae.py")
