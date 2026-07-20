@@ -87,8 +87,19 @@ end
 -- ── Trigger a render using REAPER's most recent render settings ─
 local function triggerRender()
     ensureDir(RENDER_DIR)
-    log("Auto-render: setting render output to " .. RENDER_DIR)
-    reaper.GetSetProjectInfo_String(0, "RENDER_FILE", RENDER_DIR, true)
+
+    local projName = reaper.GetProjectName(0, "")
+    if projName == "" or projName == "untitled" then
+        local tlName = reaper.GetSetMediaTrackInfo_String and ""
+        local _, trackName = reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", "", false)
+        projName = "resolve_render_" .. os.date("%Y%m%d_%H%M%S")
+    else
+        projName = projName:gsub("%.RPP$", "")
+    end
+
+    local outputPath = RENDER_DIR .. "/" .. projName .. ".wav"
+    log("Auto-render: setting render output to " .. outputPath)
+    reaper.GetSetProjectInfo_String(0, "RENDER_FILE", outputPath, true)
     reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", "", true)
     log("Auto-render: starting render with most recent render settings...")
     reaper.Main_OnCommand(RENDER_COMMAND_ID, 0)
