@@ -15,7 +15,10 @@
 local SERVER_URL = "http://127.0.0.1:3030"
 local TEMP_DIR = "X:/coding/AE-Link/temp"
 
-local AUTO_RENDER = true
+local AUTO_RENDER = false
+
+-- Action ID for "File: Render project, using the most recent
+-- render settings". Set to nil if your REAPER version doesn't have it.
 local RENDER_COMMAND_ID = 41824
 
 -- ── Helpers ────────────────────────────────────────────────
@@ -87,8 +90,8 @@ local function readConfigFromRenderScript()
     return nil
 end
 
--- ── Find latest audio file in directory ────────────────────
-local function findLatestAudio(dir)
+-- ── Find latest audio file matching export path ────────────
+local function findLatestAudio(dir, compName)
     local latestFile = nil
     local latestTime = 0
     local idx = 0
@@ -99,17 +102,20 @@ local function findLatestAudio(dir)
 
         local lower = fn:lower()
         if lower:match("%.wav$") or lower:match("%.mp3$") or lower:match("%.flac$") or lower:match("%.aiff$") then
-            local fullPath = dir .. "/" .. fn
-            local f = io.open(fullPath, "r")
-            if f then
-                f:close()
-                local modTime = 0
-                if reaper.GetFileModTime then
-                    modTime = reaper.GetFileModTime(fullPath) or 0
-                end
-                if modTime >= latestTime then
-                    latestTime = modTime
-                    latestFile = fullPath
+            -- Prefer matching compName, but accept any audio file
+            if not compName or fn:lower():find(compName:lower(), 1, true) then
+                local fullPath = dir .. "/" .. fn
+                local f = io.open(fullPath, "r")
+                if f then
+                    f:close()
+                    local modTime = 0
+                    if reaper.GetFileModTime then
+                        modTime = reaper.GetFileModTime(fullPath) or 0
+                    end
+                    if modTime >= latestTime then
+                        latestTime = modTime
+                        latestFile = fullPath
+                    end
                 end
             end
         end
@@ -192,13 +198,13 @@ local function main()
     log("Export dir: " .. config.exportDir)
     log("Export path: " .. config.exportPath)
 
-    local preRenderPath, preRenderTime = findLatestAudio(config.exportDir)
+    local preRenderPath, preRenderTime = findLatestAudio(config.exportDir, config.compName)
 
     if AUTO_RENDER then
         triggerRender(config)
     end
 
-    local renderPath, renderTime = findLatestAudio(config.exportDir)
+    local renderPath, renderTime = findLatestAudio(config.exportDir, config.compName)
 
     if not renderPath then
         log("No rendered audio found in " .. config.exportDir)
