@@ -1,5 +1,5 @@
 -- @reapack ResolveLink Send to Resolve
--- @version 1.3.0
+-- @version 1.4.0
 -- @author Oskar
 -- @repository https://github.com/OseMine/ResolveLink
 --
@@ -14,12 +14,7 @@
 
 local SERVER_URL = "http://127.0.0.1:3030"
 local TEMP_DIR = "X:/coding/AE-Link/temp"
-
 local AUTO_RENDER = true
-
--- Action ID for "File: Render project, using last render settings"
--- This renders silently without opening the render dialog.
-local RENDER_COMMAND_ID = 40010
 
 -- ── Helpers ────────────────────────────────────────────────
 local function log(msg)
@@ -40,8 +35,13 @@ local function readFile(path)
     return content
 end
 
+local function fileExists(path)
+    local f = io.open(path, "r")
+    if f then f:close(); return true end
+    return false
+end
+
 -- ── Read config from latest render script in temp/ ──────────
--- Scans for render_*_reaper.lua, extracts export_dir and export_path.
 local function readConfigFromRenderScript()
     local latestFile = nil
     local latestTime = 0
@@ -90,8 +90,8 @@ local function readConfigFromRenderScript()
     return nil
 end
 
--- ── Find latest audio file matching export path ────────────
-local function findLatestAudio(dir, compName)
+-- ── Find latest audio file in directory ────────────────────
+local function findLatestAudio(dir)
     local latestFile = nil
     local latestTime = 0
     local idx = 0
@@ -102,20 +102,17 @@ local function findLatestAudio(dir, compName)
 
         local lower = fn:lower()
         if lower:match("%.wav$") or lower:match("%.mp3$") or lower:match("%.flac$") or lower:match("%.aiff$") then
-            -- Prefer matching compName, but accept any audio file
-            if not compName or fn:lower():find(compName:lower(), 1, true) then
-                local fullPath = dir .. "/" .. fn
-                local f = io.open(fullPath, "r")
-                if f then
-                    f:close()
-                    local modTime = 0
-                    if reaper.GetFileModTime then
-                        modTime = reaper.GetFileModTime(fullPath) or 0
-                    end
-                    if modTime >= latestTime then
-                        latestTime = modTime
-                        latestFile = fullPath
-                    end
+            local fullPath = dir .. "/" .. fn
+            local f = io.open(fullPath, "r")
+            if f then
+                f:close()
+                local modTime = 0
+                if reaper.GetFileModTime then
+                    modTime = reaper.GetFileModTime(fullPath) or 0
+                end
+                if modTime >= latestTime then
+                    latestTime = modTime
+                    latestFile = fullPath
                 end
             end
         end
@@ -123,19 +120,6 @@ local function findLatestAudio(dir, compName)
     end
 
     return latestFile, latestTime
-end
-
--- ── Auto-render ────────────────────────────────────────────
-local function triggerRender(config)
-    ensureDir(config.exportDir)
-
-    log("Auto-render: setting render output to " .. config.exportPath)
-    reaper.GetSetProjectInfo_String(0, "RENDER_FILE", config.exportPath, true)
-    reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", "", true)
-
-    log("Auto-render: starting render...")
-    reaper.Main_OnCommand(RENDER_COMMAND_ID, 0)
-    log("Auto-render: render command returned.")
 end
 
 -- ── HTTP via curl ──────────────────────────────────────────
@@ -189,8 +173,7 @@ local function main()
         reaper.ShowMessageBox(
             "No render configuration found.\n\n"
             .. "First send audio from DaVinci to REAPER\n"
-            .. "(ResolveLink panel > Send Audio to REAPER),\n"
-            .. "which creates the render script with paths.",
+            .. "(ResolveLink panel > Send Audio to REAPER).",
             "ResolveLink", 0)
         return
     end
@@ -198,24 +181,41 @@ local function main()
     log("Export dir: " .. config.exportDir)
     log("Export path: " .. config.exportPath)
 
-    local preRenderPath, preRenderTime = findLatestAudio(config.exportDir, config.compName)
+    ensureDir(config.exportDir)
 
-    if AUTO_RENDER then
-        triggerRender(config)
+    local wavPath = config.exportPath
+    if not wavPath:lower():match("%.wav$") then
+        wavPath = wavPath .. ".wav"
     end
 
-    local renderPath, renderTime = findLatestAudio(config.exportDir, config.compName)
+    local preRenderPath, preRenderTime = findLatestAudio(config.exportDir)
+
+    if AUTO_RENDER then
+        log("Auto-render: setting render output to " .. config.exportPath)
+        reaper.GetSetProjectInfo_String(0, "RENDER_FILE", config.exportDir, true)
+        reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", config.exportPath, true)
+        reaper.GetSetProjectInfo_String(0, "RENDER_SRATE", "48000", true)
+
+        log("Auto-render: triggering render (41824)...")
+        reaper.Main_OnCommand(41824, 0)
+        log("Auto-render: render command returned.")
+
+        reaper.defer(function() end)
+    end
+
+    local renderPath, renderTime = findLatestAudio(config.exportDir)
 
     if not renderPath then
         log("No rendered audio found in " .. config.exportDir)
         reaper.ShowMessageBox(
-            "No rendered audio files found in:\n" .. config.exportDir,
+            "No rendered audio files found in:\n" .. config.exportDir
+            .. "\n\nMake sure your project has audio items to render.",
             "ResolveLink", 0)
         return
     end
 
     if AUTO_RENDER and preRenderPath and renderPath == preRenderPath and renderTime <= preRenderTime then
-        log("WARNING: Auto-render did not produce a new file. Sending existing latest render.")
+        log("WARNING: File unchanged after render. Sending latest anyway.")
     end
 
     log("Found render: " .. renderPath)
