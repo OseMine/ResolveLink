@@ -243,15 +243,38 @@ local function main()
                     local newPos = davinciClip.start / fps
                     local newLen = davinciClip.duration / fps
 
+                    -- Determine target track from video track number
+                    local videoTrackNum = tonumber(davinciClip.trackKey:match("video_(%d+)")) or 1
+                    local targetTrack = reaper.GetTrack(0, videoTrackNum - 1)
+                    local currentTrack = reaper.GetMediaItem_Track(item)
+                    local trackChanged = targetTrack and currentTrack ~= targetTrack
+
+                    -- Ensure target track exists
+                    if not targetTrack then
+                        local trackCount = reaper.CountTracks(0)
+                        while trackCount < videoTrackNum do
+                            reaper.InsertTrackAtIndex(trackCount, true)
+                            trackCount = reaper.CountTracks(0)
+                        end
+                        targetTrack = reaper.GetTrack(0, videoTrackNum - 1)
+                    end
+
                     local posChanged = math.abs(oldPos - newPos) > 0.001
                     local lenChanged = math.abs(oldLen - newLen) > 0.001
 
-                    if posChanged or lenChanged then
+                    if posChanged or lenChanged or trackChanged then
+                        if trackChanged and targetTrack then
+                            reaper.MoveMediaItemToTrack(item, targetTrack, false)
+                        end
                         reaper.SetMediaItemInfo_Value(item, "D_POSITION", newPos)
                         reaper.SetMediaItemInfo_Value(item, "D_LENGTH", newLen)
                         reaper.UpdateItemInProject(item)
                         updated = updated + 1
-                        log("Updated: " .. norm .. " pos=" .. string.format("%.2f", newPos) .. " len=" .. string.format("%.2f", newLen))
+                        local changes = {}
+                        if trackChanged then changes[#changes+1] = "track=" .. videoTrackNum end
+                        if posChanged then changes[#changes+1] = "pos=" .. string.format("%.2f", newPos) end
+                        if lenChanged then changes[#changes+1] = "len=" .. string.format("%.2f", newLen) end
+                        log("Updated: " .. norm .. " (" .. table.concat(changes, ", ") .. ")")
                     end
                 else
                     unmatched = unmatched + 1
