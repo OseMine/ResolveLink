@@ -1,12 +1,16 @@
 -- @reapack ResolveLink Send to Resolve
--- @version 1.0.0
+-- @version 1.1.0
 -- @author Oskar
 -- @repository https://github.com/OseMine/ResolveLink
 --
 -- ResolveLink - Send Rendered Audio to DaVinci Resolve
 -- =====================================================
--- Renders current REAPER project to WAV, then imports it
--- into DaVinci Resolve via the ResolveLink server.
+-- Imports the most recently rendered WAV from the REAPER
+-- render directory into DaVinci Resolve via the ResolveLink server.
+--
+-- 1. Render your project in REAPER (File > Render)
+-- 2. Click this script's button
+-- 3. Audio appears in DaVinci Resolve
 --
 -- Usage: Actions > Show action list > Load > select this file
 -- Then assign to a toolbar button for easy access.
@@ -31,41 +35,39 @@ local function fileExists(path)
     return false
 end
 
-local function getTimestamp()
-    return os.date("%Y%m%d_%H%M%S")
+-- ── Find latest WAV/MP3 in render directory ────────────────
+local function findLatestRender()
+    local latestFile = nil
+    local latestTime = 0
+    local idx = 0
+
+    while true do
+        local fn = reaper.EnumerateFiles(RENDER_DIR, idx)
+        if not fn then break end
+
+        local lower = fn:lower()
+        if lower:match("%.wav$") or lower:match("%.mp3$") or lower:match("%.flac$") or lower:match("%.aiff$") then
+            local fullPath = RENDER_DIR .. "/" .. fn
+            local f = io.open(fullPath, "r")
+            if f then
+                f:close()
+                local modTime = 0
+                if reaper.GetFileModTime then
+                    modTime = reaper.GetFileModTime(fullPath) or 0
+                end
+                if modTime >= latestTime then
+                    latestTime = modTime
+                    latestFile = fullPath
+                end
+            end
+        end
+        idx = idx + 1
+    end
+
+    return latestFile
 end
 
--- ── Render project to WAV ──────────────────────────────────
-local function renderProject()
-    ensureDir(RENDER_DIR)
-
-    -- Get project name for filename
-    local projName = reaper.GetProjectName(0, "")
-    if projName == "" then projName = "untitled" end
-    projName = projName:gsub("%.RPP$", "")
-
-    local timestamp = getTimestamp()
-    local outputPath = RENDER_DIR .. "/" .. projName .. "_" .. timestamp .. ".wav"
-
-    -- Save current render settings
-    local _, renderFile = reaper.GetSetProjectInfo_String(0, "RENDER_FILE", "", false)
-    local _, renderPattern = reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", "", false)
-
-    -- Set render to single file WAV
-    reaper.GetSetProjectInfo_String(0, "RENDER_FILE", outputPath, true)
-    reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", "", true)
-
-    -- Render (command 40010 = File: Render project, using last render settings)
-    reaper.Main_OnCommand(40010, 0)
-
-    -- Restore original render settings
-    reaper.GetSetProjectInfo_String(0, "RENDER_FILE", renderFile, true)
-    reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", renderPattern, true)
-
-    return outputPath
-end
-
--- ── HTTP via curl (most reliable on Windows) ───────────────
+-- ── HTTP via curl ──────────────────────────────────────────
 local function sendToResolve(filePath)
     ensureDir(RENDER_DIR)
     local resultFile = RENDER_DIR .. "/import_result.json"
@@ -111,27 +113,22 @@ end
 
 -- ── Main ───────────────────────────────────────────────────
 local function main()
-    log("Starting render...")
+    local renderPath = findLatestRender()
 
-    local outputPath = renderProject()
-    log("Rendered to: " .. outputPath)
-
-    -- Wait for file to appear
-    local waitTime = 0
-    while not fileExists(outputPath) and waitTime < 30 do
-        reaper.defer(function()
-            waitTime = waitTime + 0.1
-        end)
-    end
-
-    if not fileExists(outputPath) then
-        log("ERROR: Rendered file not found after 30s: " .. outputPath)
-        reaper.ShowMessageBox("Render failed. File not found:\n" .. outputPath, "ResolveLink", 0)
+    if not renderPath then
+        log("No rendered audio found in " .. RENDER_DIR)
+        reaper.ShowMessageBox(
+            "No rendered audio files found.\n\n"
+            .. "First render your project:\n"
+            .. "  File > Render > choose WAV output > Render\n\n"
+            .. "Render directory:\n" .. RENDER_DIR,
+            "ResolveLink", 0)
         return
     end
 
-    log("File ready, sending to Resolve...")
-    local result = sendToResolve(outputPath)
+    log("Found render: " .. renderPath)
+
+    local result = sendToResolve(renderPath)
 
     if result then
         log("Server response: " .. result)
