@@ -201,9 +201,17 @@ export interface PerfStats {
   slowCount: number;
 }
 
+export interface ProjectStats {
+  bugs: number;
+  features: number;
+  bugLabels: string[];
+  featureLabels: string[];
+}
+
 export const api = {
   // Health
   health: () => request<{ status: string; links: number }>('/health'),
+  stats: () => request<ProjectStats>('/stats'),
 
   // Setup
   getSetup: () => request<SetupConfig>('/setup'),
