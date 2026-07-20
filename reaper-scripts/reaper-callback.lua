@@ -255,11 +255,16 @@ local function executeImport(payloadPath)
             reaper.GetSetMediaTrackInfo_String(track, "P_NAME", trackData.name, true)
 
             for _, item in ipairs(trackData.items or {}) do
-                local source = reaper.PCM_Source_CreateFromFile(item.filePath)
-                if source then
-                    local newItem = reaper.CreateNewMediaItemOnProj(item.positionSeconds, item.durationSeconds, source)
+                if item.filePath and item.filePath ~= "" then
+                    reaper.SetOnlyTrackSelected(track)
+                    reaper.SetEditCurPos(item.positionSeconds, false, false)
+                    reaper.InsertMedia(item.filePath, 0)
+
+                    local itemCount = reaper.CountTrackMediaItems(track)
+                    local newItem = reaper.GetTrackMediaItem(track, itemCount - 1)
                     if newItem then
-                        reaper.SetMediaItem_Track(newItem, track)
+                        reaper.SetMediaItemInfo_Value(newItem, "D_POSITION", item.positionSeconds)
+                        reaper.SetMediaItemInfo_Value(newItem, "D_LENGTH", item.durationSeconds)
 
                         local take = reaper.GetActiveTake(newItem)
                         if take then
@@ -277,7 +282,6 @@ local function executeImport(payloadPath)
 
                         reaper.UpdateItemInProject(newItem)
                     end
-                    reaper.PCM_Source_Destroy(source)
                 end
             end
         end
@@ -548,7 +552,7 @@ local function drawUI()
         reaper.ImGui_Dummy(ctx, 0, 8)
         dimText("Log")
 
-        local childVisible = reaper.ImGui_BeginChild(ctx, "log", 0, -1, true)
+        local childVisible = reaper.ImGui_BeginChild(ctx, "log", 0, -1)
         if childVisible then
             for _, line in ipairs(logLines) do
                 reaper.ImGui_TextWrapped(ctx, line)

@@ -1339,7 +1339,7 @@ end
 local function json_decode(str)
     local pos = 1
     local function skip_ws()
-        pos = str:find("[^ \t\n\r]", pos) or (#str + 1)
+        pos = str:find("[^ \\t\\n\\r]", pos) or (#str + 1)
     end
     local function peek() skip_ws(); return str:sub(pos, pos) end
     local function advance() pos = pos + 1 end
@@ -1434,18 +1434,15 @@ end
 -- Create new project
 reaper.Main_OnCommand(40023, 0) -- File: New project
 
--- Set project sample rate if available
 if data.sampleRate then
     reaper.SetCurrentBPM(0, data.sampleRate, false)
 end
 
--- Insert media items on tracks
 for _, trackData in ipairs(data.tracks) do
     local trackIdx = trackData.trackIndex - 1
     local track = reaper.GetTrack(0, trackIdx)
 
     if not track then
-        -- Create tracks as needed
         local trackCount = reaper.CountTracks(0)
         while trackCount < trackData.trackIndex do
             reaper.InsertTrackAtIndex(trackCount, true)
@@ -1458,37 +1455,38 @@ for _, trackData in ipairs(data.tracks) do
         reaper.GetSetMediaTrackInfo_String(track, "P_NAME", trackData.name, true)
 
         for _, item in ipairs(trackData.items) do
-            local source = reaper.PCM_Source_Create(item.filePath)
-            if source then
-                local newItem = reaper.CreateNewMediaItemOnProj(item.positionSeconds, item.durationSeconds, source)
+            if item.filePath and item.filePath ~= "" then
+                reaper.SetOnlyTrackSelected(track)
+                reaper.SetEditCurPos(item.positionSeconds, false, false)
+                reaper.InsertMedia(item.filePath, 0)
+
+                local itemCount = reaper.CountTrackMediaItems(track)
+                local newItem = reaper.GetTrackMediaItem(track, itemCount - 1)
                 if newItem then
-                    reaper.SetMediaItem_Track(newItem, track)
+                    reaper.SetMediaItemInfo_Value(newItem, "D_POSITION", item.positionSeconds)
+                    reaper.SetMediaItemInfo_Value(newItem, "D_LENGTH", item.durationSeconds)
 
-                    -- Set source offset (sourceIn)
                     local take = reaper.GetActiveTake(newItem)
-                    if take and item.sourceOffsetSeconds then
-                        reaper.SetMediaItemTakeInfo_Value(take, "D_STARTOFFS", item.sourceOffsetSeconds)
+                    if take then
+                        if item.sourceOffsetSeconds then
+                            reaper.SetMediaItemTakeInfo_Value(take, "D_STARTOFFS", item.sourceOffsetSeconds)
+                        end
+                        if item.volume then
+                            reaper.SetMediaItemTakeInfo_Value(take, "D_VOL", item.volume)
+                        end
                     end
 
-                    -- Set volume
-                    if take and item.volume then
-                        reaper.SetMediaItemTakeInfo_Value(take, "D_VOL", item.volume)
-                    end
-
-                    -- Set mute
                     if item.muted then
                         reaper.SetMediaItemInfo_Value(newItem, "B_MUTE", 1)
                     end
 
                     reaper.UpdateItemInProject(newItem)
                 end
-                reaper.PCM_Source_Destroy(source)
             end
         end
     end
 end
 
--- Fit project to content
 reaper.Main_OnCommand(40295, 0) -- View: Zoom to selected items
 reaper.UpdateArrange()
 
