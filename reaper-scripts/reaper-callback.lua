@@ -19,6 +19,7 @@ local lastPollTime = 0
 
 local EXPORTS_JOBS_DIR    = "X:/coding/AE-Link/exports/reaper-jobs"
 local EXPORTS_RESULTS_DIR = "X:/coding/AE-Link/exports/reaper-results"
+local PROJECTS_DIR        = "X:/coding/AE-Link/exports/reaper-projects"
 
 -- ── Helpers ────────────────────────────────────────────────
 local function log(msg)
@@ -218,6 +219,20 @@ local function executeImport(payloadPath)
 
     reaper.Main_OnCommand(40295, 0) -- View: Zoom to selected items
     reaper.UpdateArrange()
+
+    -- Auto-save project
+    local projName = data.projectName or "ResolveLink"
+    local tlName = data.timelineName or "Timeline"
+    local safeName = projName .. "_" .. tlName
+    safeName = safeName:gsub('[<>:"/\\|?*]', '_')
+    local savePath = PROJECTS_DIR .. "/" .. safeName .. ".rpp"
+
+    if reaper.RecursiveCreateDirectory then
+        pcall(reaper.RecursiveCreateDirectory, PROJECTS_DIR, 0)
+    end
+    reaper.Main_SaveProject(0, savePath)
+    log("Project saved: " .. savePath)
+
     return true
 end
 

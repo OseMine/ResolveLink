@@ -339,6 +339,8 @@ def main():
     payload = {
         "clipData": server_clips,
         "timelineMode": full_timeline,
+        "projectName": meta["projectName"],
+        "timelineName": meta["timelineName"],
         "settings": {
             "fps": fps,
             "sampleRate": meta["sampleRate"],

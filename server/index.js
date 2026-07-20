@@ -937,7 +937,7 @@ app.get('/api/reaper/status', (_req, res) => {
 
 // Create a REAPER link: Resolve sends audio clip data, we generate REAPER import script
 app.post('/api/reaper/link-clip', (req, res) => {
-  const { clipData, settings, timelineMode } = req.body;
+  const { clipData, settings, timelineMode, projectName, timelineName } = req.body;
 
   if (!clipData || !Array.isArray(clipData) || clipData.length === 0) {
     return res.status(400).json({ error: 'clipData array is required' });
@@ -949,6 +949,8 @@ app.post('/api/reaper/link-clip', (req, res) => {
     id: linkId,
     target: 'reaper',
     timelineMode: !!timelineMode,
+    projectName: projectName || 'ResolveLink',
+    timelineName: timelineName || 'Timeline',
     clips: clipData.map((clip) => ({
       ...clip,
       linkId,
@@ -1334,7 +1336,8 @@ function generateReaperPayload(link) {
 
   return {
     linkId: link.id,
-    projectName: `ResolveLink_Audio_${link.id.slice(0, 8)}`,
+    projectName: link.projectName || `ResolveLink_Audio_${link.id.slice(0, 8)}`,
+    timelineName: link.timelineName || 'Timeline',
     sampleRate,
     fps,
     totalDuration: totalDurationSec,
