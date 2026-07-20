@@ -52,17 +52,16 @@
         <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/update-project.lua</source>
       </version>
     </reapack>
-    <reapack name="ResolveLink Panel.lua" type="script" desc="Unified control panel for all ResolveLink functions (ReaImGui)">
+    <reapack name="ResolveLink Panel.lua" type="script" desc="Unified control panel for all ResolveLink functions (Pure GFX)">
       <metadata>
         <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Panel (ReaImGui)\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Unified control panel combining all ResolveLink functions into one UI:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Panel (Pure GFX)\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Unified control panel with custom dark theme. No dependencies required.\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - Toggle Callback (on/off)\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - Send to Resolve (render + import)\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - Update Project (sync to DaVinci timeline)\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - Live status and scrollable log\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ReaImGui (install via ReaPack)\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
@@ -70,7 +69,7 @@
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Or assign to a toolbar button.\\par}
 }]]></description>
       </metadata>
-      <version name="2.0.0" author="Oskar" time="2026-07-20T15:00:00Z">
+      <version name="2.2.0" author="Oskar" time="2026-07-20T16:00:00Z">
         <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/resolve-link-panel.lua</source>
       </version>
     </reapack>

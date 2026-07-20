@@ -1,13 +1,7 @@
--- @reapack ResolveLink Panel (ReaImGui Version)
--- @version 2.0.0
+-- @reapack ResolveLink Panel (Pure GFX Version)
+-- @version 2.2.0
 -- @author Oskar
 -- @repository https://github.com/OseMine/ResolveLink
-
--- Ensure ReaImGui is available
-if not reaper.ImGui_CreateContext then
-    reaper.MB("ReaImGui is required for this script.\nPlease install it via ReaPack.", "Missing Dependency", 0)
-    return
-end
 
 local SERVER_URL = "http://127.0.0.1:3030"
 local TEMP_DIR = "X:/coding/AE-Link/temp"
@@ -21,16 +15,28 @@ local callbackActive = false
 local lastPollTime = 0
 local jobCount = 0
 local statusMsg = "Idle"
-local statusColor = 0x999999FF -- ImGui RGBA uint32
+local statusColor = {0.6, 0.6, 0.6} -- RGB 0..1
 local logLines = {}
 local MAX_LOG_LINES = 100
+local mouseWasDown = false
 
--- ── ReaImGui Context ───────────────────────────────────────
-local ctx = reaper.ImGui_CreateContext('ResolveLink Control Panel')
-local font = reaper.ImGui_CreateFont('sans-serif', 13)
-reaper.ImGui_Attach(ctx, font)
+-- ── Theme Colors (Sleek Dark Theme) ───────────────────────
+local C_BG         = {0.12, 0.12, 0.14}
+local C_CARD       = {0.18, 0.18, 0.20}
+local C_BORDER     = {0.25, 0.25, 0.28}
+local C_TEXT       = {0.90, 0.90, 0.92}
+local C_TEXT_MUTED = {0.50, 0.50, 0.55}
 
--- ── Helpers ────────────────────────────────────────────────
+local C_BTN        = {0.22, 0.22, 0.25}
+local C_BTN_HOVER  = {0.28, 0.28, 0.32}
+local C_BTN_ACTIVE = {0.00, 0.48, 1.00} -- Accent Blue
+
+local C_GREEN      = {0.20, 0.78, 0.35}
+local C_GREEN_HOV  = {0.25, 0.85, 0.40}
+local C_RED        = {1.00, 0.23, 0.19}
+local C_AMBER      = {1.00, 0.62, 0.04}
+
+-- ── Core Helpers ───────────────────────────────────────────
 local function log(msg)
     local line = os.date("%H:%M:%S") .. "  " .. msg
     reaper.ShowConsoleMsg("[ResolveLink] " .. line .. "\n")
@@ -42,7 +48,7 @@ end
 
 local function setStatus(msg, color)
     statusMsg = msg
-    statusColor = color or 0x999999FF
+    statusColor = color or {0.6, 0.6, 0.6}
 end
 
 local function readFile(path)
@@ -65,7 +71,7 @@ local function fileExists(path)
     return false
 end
 
--- ── JSON decoder (inline) ──────────────────────────────────
+-- ── JSON Decoder ───────────────────────────────────────────
 local json_decode
 do
     local pos = 1
@@ -155,7 +161,7 @@ do
     end
 end
 
--- ── HTTP via curl ──────────────────────────────────────────
+-- ── HTTP via Curl ──────────────────────────────────────────
 local function httpGet(url)
     local tmpFile = TEMP_DIR .. "/_panel_result.json"
     local curlCmd = 'curl -sf "' .. url .. '" -o "' .. tmpFile .. '" 2>&1'
@@ -192,7 +198,7 @@ local function httpPut(url, data)
     return json
 end
 
--- ── Normalize file path ────────────────────────────────────
+-- ── File Path Normalization ────────────────────────────────
 local function normalizePath(p)
     if not p then return nil end
     p = p:gsub("\\", "/")
@@ -321,9 +327,9 @@ local function handleJob(job, jobId)
     )
     if ok then
         jobCount = jobCount + 1
-        setStatus("Imported #" .. jobCount, 0x66CC66FF)
+        setStatus("Imported #" .. jobCount, C_GREEN)
     else
-        setStatus("Import failed", 0xCC4444FF)
+        setStatus("Import failed", C_RED)
     end
 end
 
@@ -343,7 +349,7 @@ local function callbackPoll()
     end
 end
 
--- ── Send to Resolve ────────────────────────────────────────
+-- ── Resolve Handlers ───────────────────────────────────────
 local function readConfigFromRenderScript()
     local latestFile = nil
     local latestTime = 0
@@ -412,7 +418,7 @@ local function doSendToResolve()
     local config = readConfigFromRenderScript()
     if not config then
         log("No render config in " .. TEMP_DIR)
-        setStatus("No render config", 0xCC4444FF)
+        setStatus("No render config", C_RED)
         return
     end
 
@@ -426,7 +432,7 @@ local function doSendToResolve()
     reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", fileName, true)
     reaper.GetSetProjectInfo_String(0, "RENDER_SRATE", "48000", true)
 
-    setStatus("Rendering...", 0xCCCC44FF)
+    setStatus("Rendering...", C_AMBER)
 
     reaper.Main_OnCommand(40009, 0)
 
@@ -435,18 +441,18 @@ local function doSendToResolve()
 
     if not renderPath then
         log("No rendered audio found")
-        setStatus("Render failed", 0xCC4444FF)
+        setStatus("Render failed", C_RED)
         return
     end
 
     log("Sending: " .. renderPath)
-    setStatus("Sending to Resolve...", 0x6699CCFF)
+    setStatus("Sending to Resolve...", C_BTN_ACTIVE)
 
     local resultFile = TEMP_DIR .. "/_import_result.json"
     local tmpFile = TEMP_DIR .. "/_import_request.json"
     local normalizedPath = renderPath:gsub("\\", "/")
     local f = io.open(tmpFile, "w")
-    if not f then setStatus("Write error", 0xCC4444FF); return end
+    if not f then setStatus("Write error", C_RED); return end
     f:write('{"filePath":"' .. normalizedPath .. '"}')
     f:close()
 
@@ -465,33 +471,32 @@ local function doSendToResolve()
         os.remove(resultFile)
         if json and json:find('"success":true') then
             log("Import complete!")
-            setStatus("Sent to Resolve", 0x66CC66FF)
+            setStatus("Sent to Resolve", C_GREEN)
         else
             log("Import may have failed")
-            setStatus("Import failed", 0xCC4444FF)
+            setStatus("Import failed", C_RED)
         end
     else
         log("No response from server")
-        setStatus("Server unreachable", 0xCC4444FF)
+        setStatus("Server unreachable", C_RED)
     end
 end
 
--- ── Update Project ─────────────────────────────────────────
 local function doUpdateProject()
     log("Fetching DaVinci timeline...")
-    setStatus("Updating...", 0x6699CCFF)
+    setStatus("Updating...", C_BTN_ACTIVE)
 
     local json = httpGet(SERVER_URL .. "/api/resolve/timeline")
     if not json then
         log("Cannot reach server")
-        setStatus("Server unreachable", 0xCC4444FF)
+        setStatus("Server unreachable", C_RED)
         return
     end
 
     local timeline = json_decode(json)
     if not timeline or timeline.error then
         log("Error: " .. (timeline and timeline.error or "Invalid"))
-        setStatus("Error", 0xCC4444FF)
+        setStatus("Error", C_RED)
         return
     end
 
@@ -521,7 +526,7 @@ local function doUpdateProject()
     log("Found " .. clipCount .. " clip(s)")
 
     if clipCount == 0 then
-        setStatus("No clips", 0xCC9944FF)
+        setStatus("No clips", C_AMBER)
         return
     end
 
@@ -576,88 +581,128 @@ local function doUpdateProject()
 
     reaper.UpdateArrange()
     log("Matched: " .. matched .. " Updated: " .. updated)
-    setStatus("Updated " .. updated .. " clip(s)", 0x66CC66FF)
+    setStatus("Updated " .. updated .. " clip(s)", C_GREEN)
 end
 
--- ── Main Loop (ReaImGui Frame) ─────────────────────────────
+-- ── Custom Vector GUI Renderer ─────────────────────────────
+local function setColor(c)
+    gfx.r, gfx.g, gfx.b, gfx.a = c[1], c[2], c[3], c[4] or 1.0
+end
+
+local function drawRect(x, y, w, h, c)
+    setColor(c)
+    gfx.rect(x, y, w, h, 1)
+end
+
+local function drawBorder(x, y, w, h, c)
+    setColor(c)
+    gfx.rect(x, y, w, h, 0)
+end
+
+local function drawButton(x, y, w, h, text, bg, bgHover, isClick)
+    local hover = gfx.mouse_x >= x and gfx.mouse_x <= x + w and gfx.mouse_y >= y and gfx.mouse_y <= y + h
+    local color = hover and bgHover or bg
+
+    drawRect(x, y, w, h, color)
+    drawBorder(x, y, w, h, C_BORDER)
+
+    setColor(C_TEXT)
+    local tw, th = gfx.measurestr(text)
+    gfx.x = x + (w - tw) / 2
+    gfx.y = y + (h - th) / 2
+    gfx.drawstr(text)
+
+    return hover and isClick
+end
+
+-- ── Main Loop ──────────────────────────────────────────────
 local function mainLoop()
     callbackPoll()
 
-    -- Window options: No collapse, default padding
-    reaper.ImGui_SetNextWindowSize(ctx, 320, 360, reaper.ImGui_Cond_FirstUseEver())
+    local isMouseDown = (gfx.mouse_cap & 1) == 1
+    local isClick = mouseWasDown and not isMouseDown
+    mouseWasDown = isMouseDown
 
-    local visible, open = reaper.ImGui_Begin(ctx, 'ResolveLink', true)
-    if visible then
-        -- Header
-        reaper.ImGui_Text(ctx, "ResolveLink Control Panel")
-        reaper.ImGui_TextColored(ctx, statusColor, "Status: " .. statusMsg)
-        reaper.ImGui_Separator(ctx)
-        reaper.ImGui_Spacing(ctx)
+    -- Canvas clearing
+    drawRect(0, 0, gfx.w, gfx.h, C_BG)
 
-        -- Action Buttons
-        local btnWidth = reaper.ImGui_GetContentRegionAvail(ctx)
+    local pad = 16
+    local w = gfx.w - (pad * 2)
 
-        -- Toggle Button
+    -- Header / Title
+    setColor(C_TEXT)
+    gfx.x, gfx.y = pad, 14
+    gfx.drawstr("RESOLVELINK CONTROL PANEL")
+
+    -- Status Pill Card
+    drawRect(pad, 36, w, 32, C_CARD)
+    drawBorder(pad, 36, w, 32, C_BORDER)
+
+    setColor(C_TEXT_MUTED)
+    gfx.x, gfx.y = pad + 10, 44
+    gfx.drawstr("Status:")
+
+    setColor(statusColor)
+    gfx.x = pad + 60
+    gfx.drawstr(statusMsg)
+
+    -- Primary Toggle Button
+    local toggleText = callbackActive and "Auto-Sync Callback: ACTIVE" or "Start Auto-Sync Callback"
+    local btnBg = callbackActive and C_GREEN or C_BTN
+    local btnHov = callbackActive and C_GREEN_HOV or C_BTN_HOVER
+
+    if drawButton(pad, 80, w, 36, toggleText, btnBg, btnHov, isClick) then
+        callbackActive = not callbackActive
         if callbackActive then
-            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Button(), 0x228B22FF)
-            reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_ButtonHovered(), 0x32CD32FF)
-            if reaper.ImGui_Button(ctx, "Callback: ON  (click to stop)", btnWidth, 30) then
-                callbackActive = false
-                log("Callback stopped")
-                setStatus("Idle", 0x999999FF)
-            end
-            reaper.ImGui_PopStyleColor(ctx, 2)
+            ensureDir(EXPORTS_JOBS_DIR)
+            ensureDir(EXPORTS_RESULTS_DIR)
+            lastPollTime = 0
+            log("Callback started")
+            setStatus("Callback active", C_GREEN)
         else
-            if reaper.ImGui_Button(ctx, "Callback: OFF  (click to start)", btnWidth, 30) then
-                callbackActive = true
-                ensureDir(EXPORTS_JOBS_DIR)
-                ensureDir(EXPORTS_RESULTS_DIR)
-                lastPollTime = 0
-                log("Callback started")
-                setStatus("Callback active", 0x66CC66FF)
-            end
+            log("Callback stopped")
+            setStatus("Idle", C_TEXT_MUTED)
         end
-
-        reaper.ImGui_Spacing(ctx)
-
-        if reaper.ImGui_Button(ctx, "Send to Resolve", btnWidth, 30) then
-            doSendToResolve()
-        end
-
-        if reaper.ImGui_Button(ctx, "Update Project", btnWidth, 30) then
-            doUpdateProject()
-        end
-
-        reaper.ImGui_Spacing(ctx)
-        reaper.ImGui_Separator(ctx)
-
-        -- Scrollable Log View
-        reaper.ImGui_Text(ctx, "Log:")
-
-        -- Child window for scrolling log lines
-        local logBoxHeight = reaper.ImGui_GetContentRegionAvail(ctx) - 25
-        if reaper.ImGui_BeginChild(ctx, "LogConsole", btnWidth, logBoxHeight, true) then
-            for _, line in ipairs(logLines) do
-                reaper.ImGui_TextUnformatted(ctx, line)
-            end
-            -- Auto scroll to bottom on new log entry
-            if reaper.ImGui_GetScrollY(ctx) >= reaper.ImGui_GetScrollMaxY(ctx) then
-                reaper.ImGui_SetScrollHereY(ctx, 1.0)
-            end
-            reaper.ImGui_EndChild(ctx)
-        end
-
-        -- Footer Stats
-        reaper.ImGui_TextDisabled(ctx, "Jobs completed: " .. jobCount)
-
-        reaper.ImGui_End(ctx)
     end
 
-    if open then
+    -- Action Buttons
+    if drawButton(pad, 124, w, 32, "Send Render to Resolve", C_BTN, C_BTN_HOVER, isClick) then
+        doSendToResolve()
+    end
+
+    if drawButton(pad, 162, w, 32, "Update Project from Resolve", C_BTN, C_BTN_HOVER, isClick) then
+        doUpdateProject()
+    end
+
+    -- Console / Log View Box
+    local logY = 210
+    local logH = math.max(60, gfx.h - logY - 32)
+    drawRect(pad, logY, w, logH, C_CARD)
+    drawBorder(pad, logY, w, logH, C_BORDER)
+
+    setColor(C_TEXT_MUTED)
+    local startIdx = math.max(1, #logLines - math.floor(logH / 16) + 1)
+    local lineY = logY + 6
+    for i = startIdx, #logLines do
+        gfx.x, gfx.y = pad + 8, lineY
+        gfx.drawstr(logLines[i])
+        lineY = lineY + 15
+    end
+
+    -- Footer
+    setColor(C_TEXT_MUTED)
+    gfx.x, gfx.y = pad, gfx.h - 20
+    gfx.drawstr("Completed jobs: " .. jobCount)
+
+    -- Loop frame
+    local char = gfx.getchar()
+    if char >= 0 and char ~= 27 then
         reaper.defer(mainLoop)
     end
 end
 
--- Init log
+-- Init Window
+gfx.init("ResolveLink Panel", 360, 420, 0, 150, 150)
+gfx.setfont(1, "Arial", 13)
 log("Panel opened")
 reaper.defer(mainLoop)
