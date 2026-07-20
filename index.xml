@@ -34,6 +34,24 @@
         <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/send-to-resolve.lua</source>
       </version>
     </reapack>
+    <reapack name="ResolveLink Update Project.lua" type="script" desc="Syncs REAPER items to match DaVinci Resolve timeline cuts">
+      <metadata>
+        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Update Project\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Syncs REAPER items to match the current DaVinci Resolve timeline. When video cuts change in DaVinci, press this to update REAPER item positions and durations. Your REAPER effects, volume, and pan settings are preserved.\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - DaVinci Resolve open with a timeline\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Workspace > Scripts > ResolveLink > Update Project\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Or assign to a toolbar button.\\par}
+}]]></description>
+      </metadata>
+      <version name="1.0.0" author="Oskar" time="2026-07-20T13:00:00Z">
+        <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/update-project.lua</source>
+      </version>
+    </reapack>
   </category>
   <metadata>
     <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
