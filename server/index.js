@@ -1268,8 +1268,8 @@ function generateReaperPayload(link) {
   const fps = link.settings.fps || 24;
   const sampleRate = link.settings.sampleRate || 48000;
 
-  // Convert frame-based timing to seconds for REAPER
-  const firstClipStart = link.clips.reduce((min, clip) => {
+  // In timeline mode, positions are already absolute — don't re-zero
+  const firstClipStart = link.timelineMode ? 0 : link.clips.reduce((min, clip) => {
     const s = clip.start || 0;
     return s < min ? s : min;
   }, Infinity);
