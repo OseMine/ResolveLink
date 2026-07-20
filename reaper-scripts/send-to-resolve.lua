@@ -69,20 +69,33 @@ end
 local function sendToResolve(filePath)
     ensureDir(RENDER_DIR)
     local resultFile = RENDER_DIR .. "/import_result.json"
+    local tmpFile = os.tmpname() .. ".json"
+
+    local normalizedPath = filePath:gsub("\\", "/")
+    local json = '{"filePath":"' .. normalizedPath .. '"}'
+    local f = io.open(tmpFile, "w")
+    if not f then
+        log("ERROR: Could not write temp file")
+        return nil
+    end
+    f:write(json)
+    f:close()
 
     local curlCmd = 'curl -sf -X PUT "' .. SERVER_URL .. '/api/reaper/import-to-resolve" '
         .. '-H "Content-Type: application/json" '
-        .. '-d "{\\"filePath\\": \\"'" .. filePath:gsub("\\", "/"):gsub('"', '\\"') .. '\\"}" '
+        .. '-d @"' .. tmpFile .. '" '
         .. '-o "' .. resultFile .. '" 2>&1'
 
     log("Sending to Resolve: " .. filePath)
     local handle = io.popen(curlCmd)
     if not handle then
         log("ERROR: Failed to run curl")
+        os.remove(tmpFile)
         return nil
     end
     local result = handle:read("*a")
     handle:close()
+    os.remove(tmpFile)
 
     -- Read result file
     local rf = io.open(resultFile, "r")
