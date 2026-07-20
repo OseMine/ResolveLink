@@ -50,7 +50,7 @@ export function Screenshots() {
 
         {/* Image */}
         {(() => { const as = screenshots[active]; return (
-        <div className={cn('site-card overflow-hidden', as.colour === 'accent' && 'ring-1 ring-accent/30')}>
+        <div className="site-card overflow-hidden">
           <img
             src={as.src}
             alt={as.label}
