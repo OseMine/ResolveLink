@@ -1696,13 +1696,6 @@ function startReaperResultsWatcher() {
           if (link) {
             link.status = 'completed';
             broadcast('link:updated', link);
-
-            // Clean up temp files from link creation
-            try {
-              if (link.reaperScriptPath && fs.existsSync(link.reaperScriptPath)) fs.unlinkSync(link.reaperScriptPath);
-              if (link.renderScriptPath && fs.existsSync(link.renderScriptPath)) fs.unlinkSync(link.renderScriptPath);
-              if (link.payloadPath && fs.existsSync(link.payloadPath)) fs.unlinkSync(link.payloadPath);
-            } catch (e) { /* ignore cleanup errors */ }
           }
         }
       } else if (result.status === 'error') {
@@ -1757,19 +1750,6 @@ server.listen(PORT, HOST, () => {
   log.info(`Server running on http://${HOST}:${PORT}`);
   startWatcher();
   startReaperResultsWatcher();
-
-  // Clean up leftover temp files from previous runs
-  try {
-    const tempFiles = fs.readdirSync(TEMP_DIR);
-    let cleaned = 0;
-    for (const f of tempFiles) {
-      if (f.match(/^[0-9a-f-]+_reaper\.(json|lua)$/) || f.match(/^render_[0-9a-f-]+_reaper\.lua$/)) {
-        fs.unlinkSync(path.join(TEMP_DIR, f));
-        cleaned++;
-      }
-    }
-    if (cleaned > 0) log.info(`Cleaned up ${cleaned} leftover temp file(s)`);
-  } catch (e) { /* ignore */ }
 
   // Start polling DaVinci Resolve connection status
   const stopPolling = resolveBridge.startPolling((status) => {
