@@ -17,9 +17,12 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" alt="Platform" />
   <img src="https://img.shields.io/badge/Resolve-Studio%2021+-orange" alt="DaVinci Resolve" />
+  <a href="https://github.com/OseMine/ResolveLink/actions"><img src="https://github.com/OseMine/ResolveLink/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+</p>
+<br>
+<p align="center">
   <img src="https://img.shields.io/badge/bugs-44-red" alt="44 bugs" />
   <img src="https://img.shields.io/badge/features-54-blueviolet" alt="54 features" />
-  <a href="https://github.com/OseMine/ResolveLink/actions"><img src="https://github.com/OseMine/ResolveLink/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
 </p>
 
 ---
