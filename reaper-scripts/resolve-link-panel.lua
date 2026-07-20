@@ -282,7 +282,17 @@ local function executeImport(payloadPath)
     local safeName = (projName .. "_" .. tlName):gsub('[<>:"/\\|?*]', '_')
     local savePath = PROJECTS_DIR .. "/" .. safeName .. ".rpp"
     ensureDir(PROJECTS_DIR)
-    reaper.Main_SaveProject(0, savePath)
+    reaper.Main_SaveProject(0, false)
+    local projPath = reaper.GetProjectPath("")
+    local srcProj = projPath .. "/" .. reaper.GetProjectName(0, "")
+    if fileExists(srcProj) then
+        local isWin = package.config:sub(1,1) == "\\"
+        if isWin then
+            os.execute('copy /Y "' .. srcProj .. '" "' .. savePath .. '"')
+        else
+            os.execute('cp "' .. srcProj .. '" "' .. savePath .. '"')
+        end
+    end
     log("Project saved: " .. savePath)
 
     return true
