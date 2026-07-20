@@ -17,6 +17,23 @@
         <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/reaper-callback.lua</source>
       </version>
     </reapack>
+    <reapack name="ResolveLink Send to Resolve.lua" type="script" desc="Renders REAPER project and imports audio into DaVinci Resolve">
+      <metadata>
+        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Send to Resolve\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Renders the current REAPER project to WAV, then imports the rendered audio into DaVinci Resolve via the ResolveLink server. Creates a new audio track in the active timeline.\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - DaVinci Resolve open with a timeline\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Assign to a toolbar button. Click to render and send audio to DaVinci Resolve.\\par}
+}]]></description>
+      </metadata>
+      <version name="1.0.0" author="Oskar" time="2026-07-20T10:00:00Z">
+        <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/send-to-resolve.lua</source>
+      </version>
+    </reapack>
   </category>
   <metadata>
     <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
