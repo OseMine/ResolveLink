@@ -183,17 +183,17 @@ local function main()
 
     ensureDir(config.exportDir)
 
-    local wavPath = config.exportPath
-    if not wavPath:lower():match("%.wav$") then
-        wavPath = wavPath .. ".wav"
-    end
+    local wavPath = config.exportDir .. "/" .. (config.exportPath:match("([^/\\]+)$") or "output") .. ".wav"
 
     local preRenderPath, preRenderTime = findLatestAudio(config.exportDir)
 
     if AUTO_RENDER then
-        log("Auto-render: setting render output to " .. config.exportPath)
+        local fileName = config.exportPath:match("([^/\\]+)$") or config.exportPath
+        fileName = fileName:gsub("%.[^.]+$", "")
+
+        log("Auto-render: RENDER_FILE=" .. config.exportDir .. " RENDER_PATTERN=" .. fileName)
         reaper.GetSetProjectInfo_String(0, "RENDER_FILE", config.exportDir, true)
-        reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", config.exportPath, true)
+        reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", fileName, true)
         reaper.GetSetProjectInfo_String(0, "RENDER_SRATE", "48000", true)
 
         log("Auto-render: triggering render (41824)...")
