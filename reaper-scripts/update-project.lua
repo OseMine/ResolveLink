@@ -14,6 +14,7 @@
 -- Or assign to a toolbar button.
 
 local SERVER_URL = "http://127.0.0.1:3030"
+local TEMP_DIR = "X:/coding/AE-Link/temp"
 
 -- ── Helpers ────────────────────────────────────────────────
 local function log(msg)
@@ -120,7 +121,7 @@ end
 
 -- ── HTTP via curl ──────────────────────────────────────────
 local function httpGet(url)
-    local tmpFile = os.tmpname() .. ".json"
+    local tmpFile = TEMP_DIR .. "/_update_project_result.json"
     local curlCmd = 'curl -sf "' .. url .. '" -o "' .. tmpFile .. '" 2>&1'
     local handle = io.popen(curlCmd)
     if not handle then os.remove(tmpFile); return nil end
