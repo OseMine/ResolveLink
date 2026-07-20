@@ -5,10 +5,12 @@ on:
     branches: [main, master]
     paths:
       - "web/**"
+      - ".github/workflows/deploy-web.yml"
   pull_request:
     branches: [main, master]
     paths:
       - "web/**"
+      - ".github/workflows/deploy-web.yml"
 
 jobs:
   deploy:
