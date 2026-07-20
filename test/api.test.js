@@ -1,7 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
+import { server } from '../server/index.js';
 
-const BASE = 'http://127.0.0.1:3030';
+let BASE;
+
+beforeAll(async () => {
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const addr = server.address();
+  BASE = `http://127.0.0.1:${addr.port}`;
+});
+
+afterAll(async () => {
+  await new Promise((resolve) => server.close(resolve));
+});
 
 function get(path) {
   return new Promise((resolve, reject) => {
