@@ -163,8 +163,6 @@ local function executeImport(payloadPath)
         return false
     end
 
-    reaper.Main_OnCommand(40023, 0) -- File: New project
-
     if data.sampleRate then
         reaper.SetCurrentBPM(0, data.sampleRate, false)
     end
