@@ -455,33 +455,23 @@ var heartbeatInterval = null;
 var lastHeartbeatComp = null;
 
 function sendEditingHeartbeat(compName) {
-  // Try to match comp name to a link ID (format: Resolve_Link_{id8})
-  var match = compName ? compName.match(/^Resolve_Link_([0-9a-f]{8})/) : null;
-  var linkId = null;
-
-  // Try activeLinkId first
-  if (activeLinkId) {
-    linkId = activeLinkId;
-  } else if (match) {
-    linkId = match[1];
+  // Only send heartbeat when we have a full link ID from a job
+  if (!activeLinkId) {
+    lastHeartbeatComp = compName;
+    return;
   }
 
   // Send heartbeat to server
-  if (linkId) {
-    api("POST", "/api/links/" + linkId + "/editing", {
-      compName: compName,
-      status: compName ? "editing" : "idle"
-    }).catch(function () {});
-  }
+  api("POST", "/api/links/" + activeLinkId + "/editing", {
+    compName: compName,
+    status: compName ? "editing" : "idle"
+  }).catch(function () {});
 
   // Tell previous comp it's no longer being edited
   if (lastHeartbeatComp && lastHeartbeatComp !== compName) {
-    var prevMatch = lastHeartbeatComp.match(/^Resolve_Link_([0-9a-f]{8})/);
-    if (prevMatch && prevMatch[1] !== linkId) {
-      api("POST", "/api/links/" + prevMatch[1] + "/editing", {
-        status: "idle"
-      }).catch(function () {});
-    }
+    api("POST", "/api/links/" + activeLinkId + "/editing", {
+      status: "idle"
+    }).catch(function () {});
   }
 
   lastHeartbeatComp = compName;

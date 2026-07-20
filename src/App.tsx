@@ -11,7 +11,7 @@ import { BatchExport } from './components/BatchExport';
 import { RenderPresets } from './components/RenderPresets';
 import { useKeyboardShortcuts, ShortcutHint as KeyboardShortcutsHint } from './components/KeyboardShortcuts';
 import { useResolveBridge } from './lib/useResolveBridge';
-import { api } from './lib/api';
+import { api, createWebSocket } from './lib/api';
 import type { ResolveProject } from './lib/api';
 
 export default function App() {
@@ -72,27 +72,22 @@ export default function App() {
       Notification.requestPermission();
     }
 
-    const ws = new WebSocket(`ws://${window.location.hostname}:${window.location.port || 3030}`);
-    ws.onmessage = (event) => {
-      try {
-        const { type, payload } = JSON.parse(event.data);
-        if (type === 'link:updated' && payload.status === 'imported') {
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('ResolveLink', {
-              body: `Render imported to Resolve successfully`,
-            });
-          }
+    const ws = createWebSocket((type, payload) => {
+      if (type === 'link:updated' && payload.status === 'imported') {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('ResolveLink', {
+            body: `Render imported to Resolve successfully`,
+          });
         }
-        if (type === 'link:updated' && payload.status === 'error') {
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('ResolveLink', {
-              body: `Import failed — check job history for details`,
-            });
-          }
+      }
+      if (type === 'link:updated' && payload.status === 'error') {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('ResolveLink', {
+            body: `Import failed — check job history for details`,
+          });
         }
-      } catch {}
-    };
-    ws.onclose = () => {};
+      }
+    });
     return () => ws.close();
   }, []);
 

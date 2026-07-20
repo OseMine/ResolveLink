@@ -304,10 +304,16 @@ export const api = {
 
 type WSHandler = (type: string, payload: any) => void;
 
+let wsRetryDelay = 3000;
+const WS_MAX_RETRY = 30000;
+
 export function createWebSocket(onMessage: WSHandler): WebSocket {
   const ws = new WebSocket(WS_BASE);
 
-  ws.onopen = () => console.log('[WS] Connected to ResolveLink server');
+  ws.onopen = () => {
+    console.log('[WS] Connected to ResolveLink server');
+    wsRetryDelay = 3000;
+  };
 
   ws.onmessage = (event) => {
     try {
@@ -319,8 +325,9 @@ export function createWebSocket(onMessage: WSHandler): WebSocket {
   };
 
   ws.onclose = () => {
-    console.log('[WS] Disconnected. Reconnecting in 3s...');
-    setTimeout(() => createWebSocket(onMessage), 3000);
+    console.log(`[WS] Disconnected. Reconnecting in ${wsRetryDelay / 1000}s...`);
+    setTimeout(() => createWebSocket(onMessage), wsRetryDelay);
+    wsRetryDelay = Math.min(wsRetryDelay * 1.5, WS_MAX_RETRY);
   };
 
   ws.onerror = (err) => console.error('[WS] Error:', err);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Clock, Check, X, Send, Download, Upload, Music } from 'lucide-react';
-import { api, type JobHistoryEntry } from '../lib/api';
+import { api, createWebSocket, type JobHistoryEntry } from '../lib/api';
 
 export function JobHistory() {
   const [history, setHistory] = useState<JobHistoryEntry[]>([]);
@@ -12,14 +12,9 @@ export function JobHistory() {
 
   // Also listen for real-time updates via WebSocket
   useEffect(() => {
-    const ws = new WebSocket(`ws://${window.location.hostname}:${window.location.port || 3030}`);
-    ws.onmessage = (event) => {
-      try {
-        const { type, payload } = JSON.parse(event.data);
-        if (type === 'job:history') setHistory(payload);
-      } catch {}
-    };
-    ws.onclose = () => setTimeout(() => {}, 3000);
+    const ws = createWebSocket((type, payload) => {
+      if (type === 'job:history') setHistory(payload);
+    });
     return () => ws.close();
   }, []);
 
