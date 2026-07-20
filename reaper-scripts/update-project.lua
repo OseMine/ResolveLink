@@ -149,11 +149,19 @@ end
 local function getItemSourceFile(item)
     local take = reaper.GetActiveTake(item)
     if not take then return nil end
+
+    -- Try GetMediaSourceFileName first
     local source = reaper.GetMediaItemTake_Source(take)
-    if not source then return nil end
-    local _, filename = reaper.GetMediaSourceFileName(source, "")
-    if filename == "" then return nil end
-    return filename
+    if source then
+        local _, filename = reaper.GetMediaSourceFileName(source, "")
+        if filename and filename ~= "" then return filename end
+    end
+
+    -- Fallback: use take name (usually the filename)
+    local _, takeName = reaper.GetSetMediaItemTakeInfo_String(take, "P_NAME", "", false)
+    if takeName and takeName ~= "" then return takeName end
+
+    return nil
 end
 
 -- ── Main ───────────────────────────────────────────────────
