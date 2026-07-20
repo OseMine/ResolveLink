@@ -28,17 +28,17 @@
   <tr>
     <td align="center" valign="top">
       <b>DaVinci Resolve</b><br/>
-      <img src="assets/Screenshot Resolve.png" width="339" height="512" alt="ResolveLink in DaVinci Resolve" />
+      <img src="assets/Screenshot-Resolve.png" width="339" height="512" alt="ResolveLink in DaVinci Resolve" />
     </td>
     <td align="center" valign="top">
       <b>After Effects</b><br/>
-      <img src="assets/Screenshot AE.png" width="560" height="360" alt="ResolveLink CEP Extension in After Effects" />
+      <img src="assets/Screenshot-AE.png" width="560" height="360" alt="ResolveLink CEP Extension in After Effects" />
     </td>
   </tr>
   <tr>
       <td align="center" valign="top">
       <b>REAPER</b><br/>
-      <img src="assets/Screenshot REAPER.png" width="560" height="360" alt="ResolveLink Panel in REAPER" />
+      <img src="assets/Screenshot-REAPER.png" width="560" height="360" alt="ResolveLink Panel in REAPER" />
     </td>
     </tr>
 </table>

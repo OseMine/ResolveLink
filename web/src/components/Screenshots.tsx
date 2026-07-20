@@ -3,9 +3,9 @@ import { cn } from '@/lib/utils';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 const screenshots = [
-  { label: 'DaVinci Resolve', src: '/assets/Screenshot Resolve.png' },
-  { label: 'After Effects', src: '/assets/Screenshot AE.png' },
-  { label: 'REAPER', src: '/assets/Screenshot REAPER.png' },
+  { label: 'DaVinci Resolve', src: '/assets/Screenshot-Resolve.png' },
+  { label: 'After Effects', src: '/assets/Screenshot-AE.png' },
+  { label: 'REAPER', src: '/assets/Screenshot-REAPER.png' },
 ] as const;
 
 export function Screenshots() {
