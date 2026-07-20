@@ -103,6 +103,7 @@ local function sendToResolve(filePath)
 
     local normalizedPath = filePath:gsub("\\", "/")
     local json = '{"filePath":"' .. normalizedPath .. '"}'
+    local tmpFile = RENDER_DIR .. "/_import_request.json"
     local f = io.open(tmpFile, "w")
     if not f then
         log("ERROR: Could not write temp file")
