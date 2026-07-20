@@ -1432,9 +1432,6 @@ if not data then
     return
 end
 
--- Create new project
-reaper.Main_OnCommand(40023, 0) -- File: New project
-
 if data.sampleRate then
     reaper.SetCurrentBPM(0, data.sampleRate, false)
 end
