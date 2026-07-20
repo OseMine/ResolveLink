@@ -184,31 +184,6 @@ function startRenderWatch(link, renderInfo) {
 // --- REST API ---
 
 // Health check
-// Parse bug/feature counts from TOFIX.md and TODO.md
-const TOFIX_PATH = path.join(__dirname, '..', 'TOFIX.md');
-const TODO_PATH = path.join(__dirname, '..', 'TODO.md');
-let cachedStats = { bugs: 0, features: 0, bugLabels: [], featureLabels: [] };
-
-function updateStats() {
-  try {
-    const tofix = fs.readFileSync(TOFIX_PATH, 'utf-8');
-    const todo = fs.readFileSync(TODO_PATH, 'utf-8');
-    const bugs = (tofix.match(/- \[ \]/g) || []).length;
-    const features = (todo.match(/- \[ \]/g) || []).length;
-    const bugLines = tofix.split('\n').filter(l => l.match(/^- \[ \] .+/)).map(l => l.replace(/^- \[ \] /, ''));
-    const featureLines = todo.split('\n').filter(l => l.match(/^- \[ \] .+/)).map(l => l.replace(/^- \[ \] /, ''));
-    cachedStats = { bugs, features, bugLabels: bugLines.slice(0, 10), featureLabels: featureLines.slice(0, 10) };
-  } catch {}
-}
-
-updateStats();
-fs.watchFile(TOFIX_PATH, updateStats);
-fs.watchFile(TODO_PATH, updateStats);
-
-app.get('/api/stats', (_req, res) => {
-  res.json(cachedStats);
-});
-
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', links: activeLinks.size });
 });

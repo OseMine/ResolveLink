@@ -29,24 +29,24 @@
 
 ## Screenshots
 
-<table align="center" cellpadding="0" cellspacing="12">
-  <tr>
-    <td align="center" valign="top">
-      <b>DaVinci Resolve</b><br/>
-      <img src="https://raw.githubusercontent.com/OseMine/ResolveLink/main/assets/Screenshot-Resolve.png" width="339" height="512" alt="ResolveLink in DaVinci Resolve" />
-    </td>
-    <td align="center" valign="top">
-      <b>After Effects</b><br/>
-      <img src="https://raw.githubusercontent.com/OseMine/ResolveLink/main/assets/Screenshot-AE.png" width="560" height="360" alt="ResolveLink CEP Extension in After Effects" />
-    </td>
-  </tr>
-  <tr>
-      <td align="center" valign="top">
-      <b>REAPER</b><br/>
-      <img src="https://raw.githubusercontent.com/OseMine/ResolveLink/main/assets/Screenshot-REAPER.png" width="560" height="360" alt="ResolveLink Panel in REAPER" />
-    </td>
-    </tr>
-</table>
+<p align="center">
+  <b>DaVinci Resolve</b><br/>
+  <img src="https://raw.githubusercontent.com/OseMine/ResolveLink/main/assets/Screenshot-Resolve.png" width="339" alt="ResolveLink in DaVinci Resolve" />
+</p>
+
+<br/>
+
+<p align="center">
+  <b>After Effects</b><br/>
+  <img src="https://raw.githubusercontent.com/OseMine/ResolveLink/main/assets/Screenshot-AE.png" width="560" alt="ResolveLink CEP Extension in After Effects" />
+</p>
+
+<br/>
+
+<p align="center">
+  <b>REAPER</b><br/>
+  <img src="https://raw.githubusercontent.com/OseMine/ResolveLink/main/assets/Screenshot-REAPER.png" width="560" alt="ResolveLink Panel in REAPER" />
+</p>
 
 ---
 
