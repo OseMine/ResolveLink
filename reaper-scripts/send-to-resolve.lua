@@ -87,6 +87,9 @@ end
 -- ── Trigger a render using REAPER's most recent render settings ─
 local function triggerRender()
     ensureDir(RENDER_DIR)
+    log("Auto-render: setting render output to " .. RENDER_DIR)
+    reaper.GetSetProjectInfo_String(0, "RENDER_FILE", RENDER_DIR, true)
+    reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", "", true)
     log("Auto-render: starting render with most recent render settings...")
     reaper.Main_OnCommand(RENDER_COMMAND_ID, 0)
     log("Auto-render: render command returned.")
