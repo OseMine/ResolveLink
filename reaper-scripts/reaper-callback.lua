@@ -549,20 +549,13 @@ local function drawUI()
         end
         reaper.ImGui_PopStyleColor(ctx, 3)
 
-        reaper.ImGui_Dummy(ctx, 0, 8)
-        dimText("Log")
-
-        local childVisible = reaper.ImGui_BeginChild(ctx, "log", 0, -1)
-        if childVisible then
+            reaper.ImGui_Dummy(ctx, 0, 8)
+            dimText("Log")
+            reaper.ImGui_Separator(ctx)
             for _, line in ipairs(logLines) do
                 reaper.ImGui_TextWrapped(ctx, line)
             end
-            if reaper.ImGui_GetScrollY(ctx) >= reaper.ImGui_GetScrollMaxY(ctx) - 1 then
-                reaper.ImGui_SetScrollHereY(ctx, 1.0)
-            end
         end
-        reaper.ImGui_EndChild(ctx)
-    end
 
     reaper.ImGui_End(ctx)
     popStyle(varCount, colorCount)

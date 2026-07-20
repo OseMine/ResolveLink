@@ -270,11 +270,21 @@ def show_dialog(clips, meta):
     tk.Button(ft, text="Send to REAPER", command=on_send, font=("Segoe UI", 10, "bold"),
               bg="#0078d4", fg="white", relief="flat", padx=14).pack(side="right")
 
+    # ── mode toggle (full timeline vs selected clips) ──
+    mode_var = tk.BooleanVar(value=False)
+    mode_frame = tk.Frame(ft, bg="#2d2d2d")
+    mode_frame.pack(side="left")
+    tk.Checkbutton(mode_frame, text="Full Timeline", variable=mode_var, font=("Segoe UI", 9),
+                   bg="#2d2d2d", fg="#ccc", selectcolor="#333",
+                   activebackground="#2d2d2d", activeforeground="white").pack(side="left")
+    tk.Label(mode_frame, text="(uncheck = selected clips only)", font=("Segoe UI", 8),
+             fg="#666", bg="#2d2d2d").pack(side="left", padx=(4, 0))
+
     root.mainloop()
 
     if result["action"] != "send":
-        return None
-    return [i for i, v in selected.items() if v.get()]
+        return None, None
+    return [i for i, v in selected.items() if v.get()], mode_var.get()
 
 
 # ── Main ─────────────────────────────────────────────────────
@@ -293,19 +303,24 @@ def main():
         print("No audio clips on the timeline.")
         sys.exit(0)
 
-    indices = show_dialog(clips, meta)
-    if indices is None:
+    result = show_dialog(clips, meta)
+    if result is None:
         print("Cancelled.")
         sys.exit(0)
-    if not indices:
+    indices, full_timeline = result
+    if not indices and not full_timeline:
         print("No clips selected.")
         sys.exit(0)
 
-    sel = [clips[i] for i in indices]
+    # In full timeline mode, use ALL clips; otherwise use selection
+    sel = clips if full_timeline else [clips[i] for i in indices]
 
     # build server payload
     fps = meta["fps"]
-    first_start = min(c["start"] for c in sel)
+    if full_timeline:
+        first_start = 0
+    else:
+        first_start = min(c["start"] for c in sel)
     server_clips = []
     for c in sel:
         server_clips.append({
@@ -323,6 +338,7 @@ def main():
 
     payload = {
         "clipData": server_clips,
+        "timelineMode": full_timeline,
         "settings": {
             "fps": fps,
             "sampleRate": meta["sampleRate"],
