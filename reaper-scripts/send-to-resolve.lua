@@ -1,22 +1,43 @@
 -- @reapack ResolveLink Send to Resolve
--- @version 1.1.0
+-- @version 1.2.0
 -- @author Oskar
 -- @repository https://github.com/OseMine/ResolveLink
 --
 -- ResolveLink - Send Rendered Audio to DaVinci Resolve
 -- =====================================================
--- Imports the most recently rendered WAV from the REAPER
--- render directory into DaVinci Resolve via the ResolveLink server.
+-- Optionally auto-renders the project (using your most recently
+-- used render settings), then imports the newest WAV from the
+-- REAPER render directory into DaVinci Resolve via the
+-- ResolveLink server.
 --
--- 1. Render your project in REAPER (File > Render)
--- 2. Click this script's button
--- 3. Audio appears in DaVinci Resolve
+-- Setup (one-time):
+--   File > Render, set the output directory to match RENDER_DIR
+--   below, and render once so REAPER remembers these settings.
+--
+-- Usage:
+--   1. (Optional, if AUTO_RENDER is true) Just click the button -
+--      the script renders for you automatically.
+--   2. (If AUTO_RENDER is false) Render manually first
+--      (File > Render), then click this script's button.
+--   3. Audio appears in DaVinci Resolve.
 --
 -- Usage: Actions > Show action list > Load > select this file
 -- Then assign to a toolbar button for easy access.
 
 local SERVER_URL = "http://127.0.0.1:3030"
 local RENDER_DIR = "X:/coding/AE-Link/exports/reaper-renders"
+
+-- ── Auto-render settings ────────────────────────────────────
+-- If true, the script triggers a render using REAPER's "most
+-- recent render settings" before looking for a file to send.
+-- If false, the script only looks for a file that was already
+-- rendered manually (original behavior).
+local AUTO_RENDER = true
+
+-- Action ID for "File: Render project, using the most recent
+-- render settings". This shows the render progress dialog and
+-- blocks script execution until the render finishes.
+local RENDER_COMMAND_ID = 41824
 
 -- ── Helpers ────────────────────────────────────────────────
 local function log(msg)
@@ -29,13 +50,9 @@ local function ensureDir(dir)
     end
 end
 
-local function fileExists(path)
-    local f = io.open(path, "r")
-    if f then f:close(); return true end
-    return false
-end
-
--- ── Find latest WAV/MP3 in render directory ────────────────
+-- ── Find latest WAV/MP3/FLAC/AIFF in render directory ───────
+-- Returns the full path and mod-time of the newest matching file,
+-- or nil if none exist.
 local function findLatestRender()
     local latestFile = nil
     local latestTime = 0
@@ -64,7 +81,15 @@ local function findLatestRender()
         idx = idx + 1
     end
 
-    return latestFile
+    return latestFile, latestTime
+end
+
+-- ── Trigger a render using REAPER's most recent render settings ─
+local function triggerRender()
+    ensureDir(RENDER_DIR)
+    log("Auto-render: starting render with most recent render settings...")
+    reaper.Main_OnCommand(RENDER_COMMAND_ID, 0)
+    log("Auto-render: render command returned.")
 end
 
 -- ── HTTP via curl ──────────────────────────────────────────
@@ -113,17 +138,34 @@ end
 
 -- ── Main ───────────────────────────────────────────────────
 local function main()
-    local renderPath = findLatestRender()
+    -- Remember what the newest render was before we (maybe) render,
+    -- so we can confirm a NEW file actually showed up afterwards.
+    local preRenderPath, preRenderTime = findLatestRender()
+
+    if AUTO_RENDER then
+        triggerRender()
+    end
+
+    local renderPath, renderTime = findLatestRender()
 
     if not renderPath then
         log("No rendered audio found in " .. RENDER_DIR)
         reaper.ShowMessageBox(
             "No rendered audio files found.\n\n"
-            .. "First render your project:\n"
-            .. "  File > Render > choose WAV output > Render\n\n"
-            .. "Render directory:\n" .. RENDER_DIR,
+            .. (AUTO_RENDER
+                and ("Auto-render ran, but no output landed in:\n" .. RENDER_DIR
+                    .. "\n\nMake sure your project's render output path is\n"
+                    .. "set to this folder (File > Render), then render once\n"
+                    .. "manually so REAPER remembers the settings.")
+                or ("First render your project:\n"
+                    .. "  File > Render > choose WAV output > Render\n\n"
+                    .. "Render directory:\n" .. RENDER_DIR)),
             "ResolveLink", 0)
         return
+    end
+
+    if AUTO_RENDER and preRenderPath and renderPath == preRenderPath and renderTime <= preRenderTime then
+        log("WARNING: Auto-render did not appear to produce a new file. Sending existing latest render anyway.")
     end
 
     log("Found render: " .. renderPath)
