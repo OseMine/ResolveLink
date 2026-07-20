@@ -1094,6 +1094,35 @@ app.get('/api/links/:id/reaper-render-script', (req, res) => {
   res.json({ scriptPath, message: 'Run this script inside REAPER: Actions > Show action list > Load' });
 });
 
+// Import rendered audio from REAPER into DaVinci Resolve
+const importToResolveHandler = async (req, res) => {
+  const { filePath, trackName, positionFrames } = req.body;
+
+  if (!filePath) {
+    return res.status(400).json({ error: 'filePath is required' });
+  }
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(400).json({ error: `File not found: ${filePath}` });
+  }
+
+  try {
+    const bridgeArgs = [filePath.replace(/\\/g, '/')];
+    if (trackName) bridgeArgs.push(trackName);
+    if (typeof positionFrames === 'number') bridgeArgs.push(String(positionFrames));
+
+    const result = await resolveBridge.executeBridge('import-audio', bridgeArgs);
+    if (result.error) {
+      return res.status(500).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+app.post('/api/reaper/import-to-resolve', importToResolveHandler);
+app.put('/api/reaper/import-to-resolve', importToResolveHandler);
+
 // --- ExtendScript Generator ---
 
 function generateJSXPayload(link) {

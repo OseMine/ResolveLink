@@ -646,6 +646,113 @@ def cmd_markers(resolve):
         return {"error": str(e)}
 
 
+def cmd_import_audio(resolve, args=None):
+    """Import rendered audio from REAPER into DaVinci Resolve Media Pool and timeline.
+
+    Flow:
+      1. Import audio file into 'REAPER Renders' bin
+      2. Add new audio track to current timeline
+      3. Append audio clip to the new track
+
+    Usage: python resolve-bridge.py import-audio <audio_file> [track_name] [position_frames]
+    """
+    if resolve is None:
+        return {"connected": False, "error": "DaVinci Resolve not running"}
+
+    if not args or len(args) < 1:
+        return {"error": "Usage: import-audio <audio_file> [track_name] [position_frames]"}
+
+    audio_file = args[0]
+    track_name = args[1] if len(args) > 1 else "REAPER Audio"
+    position_frames = int(args[2]) if len(args) > 2 else None
+
+    if not os.path.isfile(audio_file):
+        return {"error": f"File not found: {audio_file}"}
+
+    try:
+        pm = resolve.GetProjectManager()
+        if pm is None:
+            return {"error": "Project manager unavailable"}
+
+        project = pm.GetCurrentProject()
+        if project is None:
+            return {"error": "No project open"}
+
+        timeline = project.GetCurrentTimeline()
+        if timeline is None:
+            return {"error": "No timeline open"}
+
+        media_pool = project.GetMediaPool()
+        if media_pool is None:
+            return {"error": "No media pool"}
+
+        # Step 1: Create/find 'REAPER Renders' folder in media pool
+        root_bin = media_pool.GetRootFolder()
+        render_folder = None
+        for folder in (root_bin.GetSubFolderList() or []):
+            if folder.GetName() == "REAPER Renders":
+                render_folder = folder
+                break
+        if render_folder is None:
+            render_folder = media_pool.AddSubFolder(root_bin, "REAPER Renders")
+
+        # Step 2: Import audio file
+        audio_path = audio_file.replace("\\", "/")
+        previous_folder = media_pool.GetCurrentFolder()
+        media_pool.SetCurrentFolder(render_folder)
+        imported = media_pool.ImportMedia([audio_path])
+        media_pool.SetCurrentFolder(previous_folder)
+
+        if not imported or len(imported) == 0:
+            imported2 = media_pool.ImportMedia([audio_path])
+            if not imported2 or len(imported2) == 0:
+                return {"error": f"Failed to import '{audio_path}' into media pool"}
+            imported = imported2
+
+        audio_mpi = imported[0]
+
+        # Step 3: Add new audio track
+        new_audio_track = timeline.GetTrackCount("audio") + 1
+        timeline.AddTrack("audio")
+
+        # Step 4: Determine position
+        if position_frames is None:
+            position_frames = 0
+
+        # Step 5: Append audio to timeline
+        append_result = media_pool.AppendToTimeline([{
+            "mediaPoolItem": audio_mpi,
+            "startFrame": 0,
+            "trackIndex": new_audio_track,
+            "recordFrame": position_frames,
+            "mediaType": 2,
+        }])
+
+        if not append_result:
+            return {"error": "Failed to append audio to timeline"}
+
+        # Get the item info for response
+        items = timeline.GetItemListInTrack("audio", new_audio_track) or []
+        item_info = None
+        if items:
+            last_item = items[-1]
+            item_info = {
+                "name": last_item.GetName(),
+                "start": last_item.GetStart(),
+                "duration": last_item.GetDuration(),
+            }
+
+        return {
+            "success": True,
+            "trackIndex": new_audio_track,
+            "trackName": track_name,
+            "item": item_info,
+            "file": audio_path,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def _frames_to_tc(frames, fps):
     """Convert frame number to timecode string HH:MM:SS:FF."""
     total_seconds = frames / fps
@@ -668,6 +775,7 @@ COMMANDS = {
     "clip-properties": cmd_clip_properties,
     "create-compound": cmd_import_rendered,
     "import-rendered": cmd_import_rendered,
+    "import-audio": cmd_import_audio,
     "timeline-at": cmd_timeline_at,
     "markers": cmd_markers,
 }
@@ -689,6 +797,8 @@ def main():
     try:
         if command in ("create-compound", "import-rendered"):
             result = cmd_import_rendered(resolve, sys.argv[2:])
+        elif command == "import-audio":
+            result = cmd_import_audio(resolve, sys.argv[2:])
         elif command == "timeline-at":
             result = cmd_timeline_at(resolve, sys.argv[2] if len(sys.argv) > 2 else None)
         else:
