@@ -731,6 +731,19 @@ def cmd_import_audio(resolve, args=None):
         if not append_result:
             return {"error": "Failed to append audio to timeline"}
 
+        # Step 6: Mute all existing audio clips (old clips replaced by render)
+        muted_count = 0
+        for t in range(1, timeline.GetTrackCount("audio") + 1):
+            if t == new_audio_track:
+                continue
+            items = timeline.GetItemListInTrack("audio", t) or []
+            for item in items:
+                try:
+                    item.SetClipEnabled(False)
+                    muted_count += 1
+                except Exception:
+                    pass
+
         # Get the item info for response
         items = timeline.GetItemListInTrack("audio", new_audio_track) or []
         item_info = None
