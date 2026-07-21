@@ -5,28 +5,28 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug. Please fill out the information below.
+        Thanks for reporting a bug. Please fill out the information below so we can reproduce and fix it.
 
   - type: input
     id: version
     attributes:
       label: ResolveLink Version
-      description: What version of ResolveLink are you using?
+      description: Found in the Electron app title bar or `package.json`.
       placeholder: "1.0.0"
     validations:
       required: true
 
   - type: dropdown
-    id: host-app
+    id: component
     attributes:
-      label: Host Application
-      description: Which host application is the bug in?
+      label: Where does the bug occur?
       options:
-        - DaVinci Resolve
-        - After Effects
-        - REAPER
-        - ResolveLink Bridge Server
-        - Electron App
+        - DaVinci Resolve (send clips, re-import, scripts)
+        - After Effects (CEP Extension, render, import)
+        - REAPER (Panel, Callback, Send to Resolve, Update Project)
+        - Bridge Server (API errors, WebSocket, file watcher)
+        - Electron App (UI, status, setup wizard)
+        - Installation / Setup
     validations:
       required: true
 
@@ -34,8 +34,22 @@ body:
     id: host-version
     attributes:
       label: Host Application Version
-      description: Version of the host application (e.g. Resolve Studio 19.1)
-      placeholder: "Resolve Studio 19.1"
+      description: Version of the affected host application.
+      placeholder: "Resolve Studio 21.0 / AE 25.2 / REAPER 7.30"
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js Version
+      description: Output of `node --version`.
+      placeholder: "v20.11.0"
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: Output of `python --version`. Only needed if the bug involves Resolve scripting.
+      placeholder: "3.11.4"
 
   - type: dropdown
     id: os
@@ -48,11 +62,23 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install ResolveLink?
+      options:
+        - install.lua (Resolve Console)
+        - install.ps1 / install.sh (manual)
+        - ReaPack (REAPER scripts only)
+        - Built from source
+    validations:
+      required: true
+
   - type: textarea
     id: description
     attributes:
       label: Bug Description
-      description: A clear and concise description of what the bug is.
+      description: A clear description of what went wrong.
     validations:
       required: true
 
@@ -60,11 +86,11 @@ body:
     id: steps
     attributes:
       label: Steps to Reproduce
-      description: Steps to reproduce the behavior.
+      description: Exact steps to trigger the bug.
       value: |
-        1.
-        2.
-        3.
+        1. Open DaVinci Resolve and select clips on the timeline
+        2. Click "Send to After Effects" / "Send to REAPER"
+        3. ...
     validations:
       required: true
 
@@ -72,19 +98,31 @@ body:
     id: expected
     attributes:
       label: Expected Behavior
-      description: What you expected to happen.
+      description: What should have happened.
     validations:
       required: true
 
   - type: textarea
     id: logs
     attributes:
-      label: Relevant Log Output
-      description: If applicable, paste any relevant log output or error messages.
+      label: Server / Console Logs
+      description: |
+        Paste relevant log output. Check these locations:
+        - Bridge Server terminal output
+        - Electron DevTools console (Ctrl+Shift+I)
+        - REAPER Script Console (Options > Show console)
+        - After Effects ExtendScript Toolkit or `~/Documents/Logs`
+      render: shell
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Relevant .env Configuration
+      description: Paste your `.env` file (redact any sensitive values).
       render: shell
 
   - type: textarea
     id: additional
     attributes:
       label: Additional Context
-      description: Any other context, screenshots, or files that help explain the problem.
+      description: Screenshots, file paths, or anything else that helps explain the issue.
