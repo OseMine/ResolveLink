@@ -14,7 +14,21 @@
 -- Or assign to a toolbar button.
 
 local SERVER_URL = "http://127.0.0.1:3030"
-local TEMP_DIR = "X:/coding/AE-Link/temp"
+local TEMP_DIR = ""
+
+-- Query server for actual paths on startup
+local function fetchConfig()
+    local handle = io.popen('curl -sf "' .. SERVER_URL .. '/api/config" 2>NUL')
+    if handle then
+        local raw = handle:read("*a")
+        handle:close()
+        if raw and raw ~= "" then
+            local temp = raw:match('"tempDir"%s*:%s*"([^"]*)"')
+            if temp then TEMP_DIR = temp:gsub("\\", "/") end
+        end
+    end
+end
+fetchConfig()
 
 -- ── Helpers ────────────────────────────────────────────────
 local function log(msg)

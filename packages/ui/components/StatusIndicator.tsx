@@ -1,6 +1,6 @@
 import { cn } from '../lib/utils';
 
-type Status = 'linked' | 'rendering' | 'rendered' | 'error' | 'pending' | 'created' | 'sending' | 'queued' | 'imported';
+type Status = 'linked' | 'rendering' | 'rendered' | 'error' | 'pending' | 'created' | 'sending' | 'queued' | 'imported' | 'completed' | 'sent';
 
 interface StatusIndicatorProps {
   status: Status;
@@ -15,6 +15,8 @@ const statusConfig: Record<Status, { color: string; label: string; pulse?: boole
   sending: { color: 'bg-accent', label: 'Sending', pulse: true },
   queued: { color: 'bg-accent', label: 'Queued', pulse: true },
   imported: { color: 'bg-success', label: 'Imported' },
+  completed: { color: 'bg-success', label: 'Completed' },
+  sent: { color: 'bg-success', label: 'Sent' },
   error: { color: 'bg-danger', label: 'Error' },
   pending: { color: 'bg-r-500', label: 'Pending' },
   created: { color: 'bg-accent', label: 'Created' },

@@ -17,9 +17,27 @@ local running = true
 local jobCount = 0
 local lastPollTime = 0
 
-local EXPORTS_JOBS_DIR    = "X:/coding/AE-Link/exports/reaper-jobs"
-local EXPORTS_RESULTS_DIR = "X:/coding/AE-Link/exports/reaper-results"
-local PROJECTS_DIR        = "X:/coding/AE-Link/exports/reaper-projects"
+local EXPORTS_JOBS_DIR    = ""
+local EXPORTS_RESULTS_DIR = ""
+local PROJECTS_DIR        = ""
+
+-- Query server for actual paths on startup
+local function fetchConfig()
+    local handle = io.popen('curl -sf "' .. SERVER_URL .. '/api/config" 2>NUL')
+    if handle then
+        local raw = handle:read("*a")
+        handle:close()
+        if raw and raw ~= "" then
+            local export = raw:match('"exportDir"%s*:%s*"([^"]*)"')
+            if export then
+                EXPORTS_JOBS_DIR = export:gsub("\\", "/") .. "/reaper-jobs"
+                EXPORTS_RESULTS_DIR = export:gsub("\\", "/") .. "/reaper-results"
+                PROJECTS_DIR = export:gsub("\\", "/") .. "/reaper-projects"
+            end
+        end
+    end
+end
+fetchConfig()
 
 -- ── Helpers ────────────────────────────────────────────────
 local function log(msg)
@@ -137,7 +155,13 @@ local function http_put(url, data)
             if result and result ~= "" then return result end
         end
     end
-    local tmpFile = os.tmpname() .. ".json"
+    -- Use EXPORTS_RESULTS_DIR when available, otherwise use os.tmpname() directly
+    local tmpFile
+    if EXPORTS_RESULTS_DIR ~= "" then
+        tmpFile = EXPORTS_RESULTS_DIR .. "/_import_request.json"
+    else
+        tmpFile = os.tmpname() .. ".json"
+    end
     local f = io.open(tmpFile, "w")
     if not f then return nil end
     f:write(data)

@@ -1,4 +1,4 @@
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const config = require('../config.json');
@@ -23,7 +23,7 @@ function detectReaperPath() {
 
     // Check registry
     try {
-      const reg = execSync('reg query "HKLM\\SOFTWARE\\REAPER" /ve 2>nul', { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
+      const reg = execSync('reg query "HKLM\\SOFTWARE\\REAPER" /ve 2>NUL', { timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
       const match = reg.match(/REG_SZ\s+(.*)/);
       if (match && fs.existsSync(match[1].trim())) return match[1].trim();
     } catch {}
@@ -49,7 +49,7 @@ function isReaperRunning() {
   const platform = process.platform;
   try {
     if (platform === 'win32') {
-      const out = execSync('tasklist /FI "IMAGENAME eq reaper.exe" /NH 2>nul', { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
+      const out = execSync('tasklist /FI "IMAGENAME eq reaper.exe" /NH 2>NUL', { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
       return out.toLowerCase().includes('reaper.exe');
     } else {
       const out = execSync('pgrep -x reaper 2>/dev/null || pgrep -x REAPER 2>/dev/null', { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }).toString().trim();
@@ -95,14 +95,15 @@ function launchReaper(reaperPath, opts = {}) {
   if (opts.nosplash) args.push('-nosplash');
   if (opts.noactivate) args.push('-noactivate');
 
-  const cmd = args.length
-    ? `"${fullPath}" ${args.join(' ')}`
-    : `"${fullPath}"`;
-
-  log.info(`Launching REAPER: ${cmd}`);
+  log.info(`Launching REAPER: "${fullPath}" ${args.join(' ')}`);
 
   try {
-    execSync(`start "" ${cmd}`, { timeout: 5000, stdio: 'ignore' });
+    const child = spawn(fullPath, args, {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    child.unref();
     log.info(`Launched REAPER: ${fullPath}`);
     return true;
   } catch (e) {
@@ -131,13 +132,17 @@ function launchWithScript(scriptPath, opts = {}) {
   }
 
   // Script path is a positional argument (not a flag)
-  args.push(`"${scriptPath}"`);
+  args.push(scriptPath);
 
-  const cmd = `"${fullPath}" ${args.join(' ')}`;
-  log.info(`Launching REAPER with script: ${cmd}`);
+  log.info(`Launching REAPER with script: "${fullPath}" ${args.join(' ')}`);
 
   try {
-    execSync(`start "" ${cmd}`, { timeout: 5000, stdio: 'ignore' });
+    const child = spawn(fullPath, args, {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    child.unref();
     return true;
   } catch (e) {
     log.error(`Failed to launch REAPER with script: ${e.message}`);
@@ -157,13 +162,17 @@ function runScriptInExisting(scriptPath, opts = {}) {
   const args = ['-nonewinst'];
   if (opts.noactivate) args.push('-noactivate');
   // Script path is a positional argument (not a flag)
-  args.push(`"${scriptPath}"`);
+  args.push(scriptPath);
 
-  const cmd = `"${fullPath}" ${args.join(' ')}`;
-  log.info(`Running script in existing REAPER: ${cmd}`);
+  log.info(`Running script in existing REAPER: "${fullPath}" ${args.join(' ')}`);
 
   try {
-    execSync(`start "" ${cmd}`, { timeout: 5000, stdio: 'ignore' });
+    const child = spawn(fullPath, args, {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    child.unref();
     return true;
   } catch (e) {
     log.error(`Failed to run script in REAPER: ${e.message}`);

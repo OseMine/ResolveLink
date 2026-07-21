@@ -1,6 +1,9 @@
 /**
  * After Effects Script Generators
  * Generates ExtendScript (.jsx) files for AE automation.
+ *
+ * Security: Clip data is base64-encoded into the JSX payload to prevent
+ * injection via malicious clip names (e.g. `"); app.quit(); //`).
  */
 const path = require('path');
 const { createLogger } = require('../../logger');
@@ -50,20 +53,39 @@ function generateJSXPayload(link) {
  */
 function generateExtendScript(link, exportDir) {
   const payload = generateJSXPayload(link);
-  const clipsJSON = JSON.stringify(payload.clips);
+  // Base64-encode the clips JSON to prevent injection via clip names
+  const clipsB64 = Buffer.from(JSON.stringify(payload.clips)).toString('base64');
 
   return `// ResolveLink Auto-Generated ExtendScript
 // Link ID: ${link.id}
 // Generated: ${new Date().toISOString()}
 
 (function() {
+    // Decode base64 payload to prevent injection via clip names
+    var b64 = "${clipsB64}";
+    var jsonStr = (function() {
+        var bins = util.binOrString;
+        var b = new bins(b64).toString();
+        var s = new bins();
+        s.encoding = "binary";
+        var bytes = [];
+        for (var i = 0; i < b.length; i += 2) {
+            bytes.push(parseInt(b.substr(i, 2), 16));
+        }
+        var str = "";
+        for (var i = 0; i < bytes.length; i++) {
+            str += String.fromCharCode(bytes[i]);
+        }
+        return str;
+    })();
+
     var linkData = {
         compName: "${payload.compName}",
         width: ${payload.width},
         height: ${payload.height},
         fps: ${payload.fps},
         duration: ${payload.duration},
-        clips: ${clipsJSON}
+        clips: eval("(" + jsonStr + ")")
     };
 
     var fps = linkData.fps;
@@ -98,7 +120,7 @@ function generateExtendScript(link, exportDir) {
             var durationSec = clip.durationFrames / fps;
             var sourceInSec = clip.sourceIn / fps;
 
-            layer.startTime = compStartSec - sourceInSec;
+            layer.startTime = Math.max(0, compStartSec - sourceInSec);
             layer.inPoint = compStartSec;
             layer.outPoint = compStartSec + durationSec;
 

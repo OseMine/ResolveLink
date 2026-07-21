@@ -56,7 +56,7 @@ export interface ProjectStats {
 }
 
 const API_BASE = '/api';
-const WS_BASE = `ws://${window.location.hostname}:${window.location.port || 3030}`;
+const WS_BASE = `ws://${window.location.hostname}:${window.location.port}`;
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

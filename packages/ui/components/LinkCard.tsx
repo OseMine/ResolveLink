@@ -33,7 +33,7 @@ function formatDuration(frames: number, fps: number): string {
 
 export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps) {
   const fps = link.settings.fps;
-  const totalFrames = link.clips.reduce((sum, c) => sum + (c.durationFrames || 0), 0);
+  const totalFrames = link.clips.reduce((sum, c) => sum + ((c.duration || 0) * fps), 0);
   const isReaper = link.target === 'reaper';
 
   return (
@@ -107,7 +107,7 @@ export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps)
               </span>
             </div>
             <span className="text-[10px] font-mono text-r-500 shrink-0 ml-2">
-              {formatTimecode(clip.durationFrames, fps)}
+              {formatTimecode((clip.duration || 0) * fps, fps)}
             </span>
           </div>
         ))}

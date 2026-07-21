@@ -10,6 +10,11 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { store } = require('../../state');
 const { createLogger } = require('../../logger');
+const { validate } = require('../../middleware/validation');
+const {
+  LinkClipRequestSchema,
+  ImportBackRequestSchema,
+} = require('@resolvelink/shared');
 const {
   generateJSXPayload,
   generateExtendScript,
@@ -50,12 +55,8 @@ const aeIntegration = {
     const tempDir = path.resolve(process.env.TEMP_DIR || config.paths.tempDir);
 
     // POST /api/link-clip — Create a new AE link
-    router.post('/link-clip', (req, res) => {
+    router.post('/link-clip', validate(LinkClipRequestSchema), (req, res) => {
       const { clipData, settings } = req.body;
-
-      if (!clipData || !Array.isArray(clipData) || clipData.length === 0) {
-        return res.status(400).json({ error: 'clipData array is required' });
-      }
 
       const linkId = uuidv4();
       const link = {
@@ -96,14 +97,19 @@ const aeIntegration = {
       res.json({ linkId, status: 'created', jsxPath, payloadPath });
     });
 
-    // POST /api/links/:id/render — Trigger aerender
-    router.post('/links/:id/render', (req, res) => {
+    // POST /api/links/:id/render — Trigger aerender (non-blocking)
+    router.post('/links/:id/render', (req, res, next) => {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid link ID format' });
+      }
+      next();
+    }, (req, res) => {
       const { id } = req.params;
       const link = store.activeLinks.get(id);
 
       if (!link) return res.status(404).json({ error: 'Link not found' });
 
-      const { execSync } = require('child_process');
+      const { spawn } = require('child_process');
       const aerenderPath = getAERenderPath();
 
       if (!aerenderPath) {
@@ -113,15 +119,35 @@ const aeIntegration = {
       link.status = 'rendering';
       store.broadcast('link:updated', link);
 
+      const compName = `Resolve_Link_${id.slice(0, 8)}`;
       try {
-        const compName = `Resolve_Link_${id.slice(0, 8)}`;
-        execSync(
-          `"${aerenderPath}" -project "${link.jsxPath}" -comp "${compName}" -output "${exportDir}"`,
-          { timeout: 300000 }
-        );
-        link.status = 'rendered';
-        store.broadcast('link:updated', link);
-        res.json({ status: 'rendered' });
+        const child = spawn(aerenderPath, [
+          '-project', link.jsxPath,
+          '-comp', compName,
+          '-output', exportDir,
+        ], { stdio: 'pipe', timeout: 300000 });
+
+        let stderr = '';
+        child.stderr.on('data', (data) => { stderr += data.toString(); });
+
+        child.on('close', (code) => {
+          if (code === 0) {
+            link.status = 'rendered';
+            store.broadcast('link:updated', link);
+          } else {
+            link.status = 'error';
+            link.error = stderr || `aerender exited with code ${code}`;
+            store.broadcast('link:updated', link);
+          }
+        });
+
+        child.on('error', (err) => {
+          link.status = 'error';
+          link.error = err.message;
+          store.broadcast('link:updated', link);
+        });
+
+        res.json({ status: 'rendering' });
       } catch (err) {
         link.status = 'error';
         store.broadcast('link:updated', link);
@@ -130,7 +156,12 @@ const aeIntegration = {
     });
 
     // POST /api/links/:id/auto — Auto-workflow: queue or launch AE
-    router.post('/links/:id/auto', async (req, res) => {
+    router.post('/links/:id/auto', (req, res, next) => {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) {
+        return res.status(400).json({ error: 'Invalid link ID format' });
+      }
+      next();
+    }, async (req, res) => {
       const { id } = req.params;
       const link = store.activeLinks.get(id);
 
@@ -235,10 +266,8 @@ const aeIntegration = {
     });
 
     // POST /api/import-back — Import rendered file back into Resolve
-    router.post('/import-back', async (req, res) => {
+    router.post('/import-back', validate(ImportBackRequestSchema), async (req, res) => {
       const { renderedPath } = req.body;
-
-      if (!renderedPath) return res.status(400).json({ error: 'renderedPath is required' });
 
       const resolveBridge = require('../../services/resolve-service');
       try {

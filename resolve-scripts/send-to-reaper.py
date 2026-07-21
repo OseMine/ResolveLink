@@ -87,7 +87,6 @@ def get_audio_timeline_data(resolve):
                 "sourcePath": source_path,
                 "trackIndex": track_idx,
                 "trackName": f"Audio {track_idx}",
-                "_mpi": mpi,
             })
 
     meta = {
@@ -101,56 +100,6 @@ def get_audio_timeline_data(resolve):
     return clips, meta, None
 
 
-def get_all_timeline_data(resolve):
-    """Get both audio and video clips for reference."""
-    pm = resolve.GetProjectManager()
-    project = pm.GetCurrentProject()
-    if not project:
-        return None, None, "No project open"
-
-    timeline = project.GetCurrentTimeline()
-    if not timeline:
-        return None, None, "No timeline open"
-
-    fps = float(project.GetSetting("timelineFrameRate") or 24)
-    sample_rate = int(project.GetSetting("timelineSampleRate") or 48000)
-
-    clips = []
-
-    # Audio tracks
-    for track_idx in range(1, timeline.GetTrackCount("audio") + 1):
-        items = timeline.GetItemListInTrack("audio", track_idx)
-        if not items:
-            continue
-        for item in items:
-            mpi = item.GetMediaPoolItem()
-            source_path = ""
-            if mpi:
-                props = mpi.GetClipProperty()
-                if props:
-                    source_path = props.get("File Path", "")
-
-            clips.append({
-                "name": item.GetName() or os.path.basename(source_path) or "Untitled",
-                "start": item.GetStart(),
-                "end": item.GetEnd(),
-                "duration": item.GetDuration(),
-                "sourceIn": item.GetLeftOffset() or 0,
-                "sourcePath": source_path,
-                "trackIndex": track_idx,
-                "trackName": f"Audio {track_idx}",
-                "_mpi": mpi,
-                "_type": "audio",
-            })
-
-    meta = {
-        "fps": fps,
-        "sampleRate": sample_rate,
-        "timelineName": timeline.GetName(),
-        "projectName": project.GetName(),
-    }
-
-    return clips, meta, None
 
 
 # ── Server Communication ─────────────────────────────────────

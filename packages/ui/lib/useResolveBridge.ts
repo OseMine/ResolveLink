@@ -39,8 +39,15 @@ export function useResolveBridge() {
     }).catch(() => {});
   }, []);
 
-  // WebSocket connection
+  // WebSocket connection — guard against duplicate instances
+  const wsRef = useRef<WebSocket | null>(null);
   useEffect(() => {
+    // Close any existing connection before creating a new one
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
     const ws = createWebSocket((type, payload) => {
       switch (type) {
         case 'init':
@@ -92,7 +99,11 @@ export function useResolveBridge() {
       }
     });
 
-    return () => ws.close();
+    wsRef.current = ws;
+    return () => {
+      ws.close();
+      wsRef.current = null;
+    };
   }, []);
 
   // Poll Resolve status when bridge is connected
@@ -162,11 +173,12 @@ export function useResolveBridge() {
       trackIndex: clip.trackIndex,
     }));
 
-    // Use first clip's resolution/fps for settings if not provided
+    // Use selection-level resolution if available, then clip-level, then defaults
     const firstClip = clips[0];
+    const selectionData = state.selection;
     const resolvedSettings = {
-      width: settings?.width || firstClip?.resolution?.width || 1920,
-      height: settings?.height || firstClip?.resolution?.height || 1080,
+      width: settings?.width || selectionData?.width || firstClip?.resolution?.width || 1920,
+      height: settings?.height || selectionData?.height || firstClip?.resolution?.height || 1080,
       fps: settings?.fps || firstClip?.fps || 24,
       duration: settings?.duration || Math.ceil(
         clips.reduce((sum, c) => sum + c.duration, 0) / (firstClip?.fps || 24)

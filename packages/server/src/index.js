@@ -113,9 +113,13 @@ app.use('/api/presets', require('./routes/presets'));
 app.get('/api/perf', getPerfStats);
 app.get('/api/perf/slow', getSlowEndpoints);
 
-// --- Catch-all: serve React app ---
+// --- Catch-all: serve React app for non-API, non-file routes ---
 
-app.get('*', (_req, res) => {
+app.get('*', (req, res) => {
+  // Don't serve index.html for API routes or file requests
+  if (req.path.startsWith('/api/') || req.path.includes('.')) {
+    return res.status(404).json({ error: 'Not found' });
+  }
   const indexPath = path.join(DIST_DIR, 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);

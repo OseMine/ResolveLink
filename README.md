@@ -17,11 +17,14 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" alt="Platform" />
   <img src="https://img.shields.io/badge/Resolve-Studio%2021+-orange" alt="DaVinci Resolve" />
+  <img src="https://img.shields.io/badge/Node-18+-339933?logo=node.js&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/Electron-28-47848F?logo=electron&logoColor=white" alt="Electron" />
   <a href="https://github.com/OseMine/ResolveLink/actions"><img src="https://github.com/OseMine/ResolveLink/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
 </p>
 <br>
 <p align="center">
-  <img src="https://img.shields.io/badge/bugs-44-red" alt="44 bugs" />
+  <img src="https://img.shields.io/badge/bugs-23-red" alt="23 bugs" />
   <img src="https://img.shields.io/badge/features-54-blueviolet" alt="54 features" />
 </p>
 
@@ -202,10 +205,11 @@ See `.env.example` for all options.
 |-------|-----------|
 | **Frontend UI** | React 18, TypeScript, Tailwind CSS, Lucide Icons |
 | **Desktop Shell** | Electron 28 |
-| **Backend Server** | Node.js, Express, Chokidar, WebSocket (ws), dotenv |
-| **Resolve Bridge** | Python (DaVinciResolveScript API), Node.js child_process wrapper |
-| **Adobe Automation** | CEP Extension (HTML/JS panel), ExtendScript (.jsx) |
+| **Backend Server** | Node.js, Express, Chokidar, WebSocket (ws), Zod, dotenv |
+| **Resolve Bridge** | Python 3.10+ (DaVinciResolveScript API), Node.js child_process wrapper |
+| **Adobe Automation** | CEP Extension (HTML/JS panel), ExtendScript (.jsx), base64-encoded payloads |
 | **REAPER Automation** | Pure GFX panel, Lua scripts, file-based IPC |
+| **Validation** | Zod schema validation on all POST/PUT endpoints |
 | **Testing** | Vitest (unit + integration) |
 
 ## Project Structure
@@ -220,16 +224,30 @@ resolvelink/
 │   ├── status.ps1 / status.sh # Check status
 │   └── deploy-*.ps1           # Deploy extensions
 │
-├── server/                     # Backend
-│   ├── index.js               # Express + WebSocket + Chokidar + Job queue
-│   ├── config.json            # Default config
-│   ├── resolve-service.js     # Node.js wrapper for Python bridge
-│   ├── resolve-bridge.py      # Python DaVinci Resolve scripting bridge
-│   └── reaper-service.js      # REAPER CLI, Lua generation, file IPC
-│
-├── src/                        # Frontend (React + Vite + TypeScript)
-│   ├── components/            # React components
-│   └── lib/                   # API client, hooks, utilities
+├── packages/                   # Monorepo packages
+│   ├── server/                 # Backend
+│   │   ├── src/
+│   │   │   ├── index.js               # Express + WebSocket + Chokidar + Job queue
+│   │   │   ├── config.json            # Default config
+│   │   │   ├── logger.js              # Structured logger
+│   │   │   ├── perf.js                # Request performance middleware
+│   │   │   ├── middleware/            # Zod validation middleware
+│   │   │   ├── routes/                # REST API route handlers
+│   │   │   ├── integrations/          # External tool integrations
+│   │   │   │   ├── ae/                # After Effects (spawn, JSX generators)
+│   │   │   │   └── reaper/            # REAPER service
+│   │   │   └── services/              # Core services
+│   │   ├── resolve-bridge.py          # Python DaVinci Resolve scripting bridge
+│   │   └── package.json
+│   │
+│   ├── ui/                     # Frontend (React + Vite + TypeScript)
+│   │   ├── src/
+│   │   │   ├── components/            # React components
+│   │   │   └── lib/                   # API client, hooks, utilities
+│   │   └── package.json
+│   │
+│   └── shared/                 # Shared types and utilities
+│       └── package.json
 │
 ├── extension/                  # CEP Extension (inside After Effects)
 │   ├── CSXS/manifest.xml
@@ -299,6 +317,7 @@ resolvelink/
 | `npm start` | Start the Electron app |
 | `npm test` | Run all tests (vitest) |
 | `npm run test:watch` | Run tests in watch mode |
+| `npm run install:all` | Install all workspace dependencies |
 
 ---
 

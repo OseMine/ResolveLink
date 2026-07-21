@@ -86,7 +86,6 @@ def get_timeline_data(resolve):
                 "sourceIn": item.GetLeftOffset() or 0,
                 "sourcePath": source_path,
                 "trackIndex": track_idx,
-                "_mpi": mpi,
             })
 
     meta = {

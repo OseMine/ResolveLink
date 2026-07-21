@@ -4,11 +4,32 @@
 -- @repository https://github.com/OseMine/ResolveLink
 
 local SERVER_URL = "http://127.0.0.1:3030"
-local TEMP_DIR = "X:/coding/AE-Link/temp"
-local EXPORTS_JOBS_DIR = "X:/coding/AE-Link/exports/reaper-jobs"
-local EXPORTS_RESULTS_DIR = "X:/coding/AE-Link/exports/reaper-results"
-local PROJECTS_DIR = "X:/coding/AE-Link/exports/reaper-projects"
+local TEMP_DIR = ""
+local EXPORTS_JOBS_DIR = ""
+local EXPORTS_RESULTS_DIR = ""
+local PROJECTS_DIR = ""
 local POLL_INTERVAL = 2.0
+
+-- Query server for actual paths on startup
+local function fetchConfig()
+    local handle = io.popen('curl -sf "' .. SERVER_URL .. '/api/config" 2>NUL')
+    if handle then
+        local raw = handle:read("*a")
+        handle:close()
+        if raw and raw ~= "" then
+            -- Minimal JSON field extraction
+            local temp = raw:match('"tempDir"%s*:%s*"([^"]*)"')
+            local export = raw:match('"exportDir"%s*:%s*"([^"]*)"')
+            if temp then TEMP_DIR = temp:gsub("\\", "/") end
+            if export then
+                EXPORTS_JOBS_DIR = export:gsub("\\", "/") .. "/reaper-jobs"
+                EXPORTS_RESULTS_DIR = export:gsub("\\", "/") .. "/reaper-results"
+                PROJECTS_DIR = export:gsub("\\", "/") .. "/reaper-projects"
+            end
+        end
+    end
+end
+fetchConfig()
 
 -- ── State ──────────────────────────────────────────────────
 local callbackActive = false
