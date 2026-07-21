@@ -9,6 +9,7 @@
 }
 
 html {
+  overflow-x: hidden;
   scroll-behavior: smooth;
 }
 
@@ -17,12 +18,12 @@ body {
   color: #e0e0e0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
+  width: 100%;
   overflow-x: hidden;
 }
 
