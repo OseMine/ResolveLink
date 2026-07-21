@@ -109,11 +109,39 @@ const aeIntegration = {
 
       if (!link) return res.status(404).json({ error: 'Link not found' });
 
+      if (!link.jsxPath || !fs.existsSync(link.jsxPath)) {
+        link.status = 'error';
+        store.broadcast('link:updated', link);
+        return res.status(500).json({ error: 'JSX file not found' });
+      }
+
       const { spawn } = require('child_process');
       const aerenderPath = getAERenderPath();
 
       if (!aerenderPath) {
-        return res.status(500).json({ error: 'After Effects not found' });
+        // aerender not available — fall back to CEP panel execution
+        log.info('aerender not found, falling back to CEP panel render');
+        const jobId = uuidv4();
+        const job = {
+          type: 'execute-jsx',
+          linkId: id,
+          jsxPath: link.jsxPath,
+          compName: `Resolve_Link_${id.slice(0, 8)}`,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        };
+
+        store.jobQueue.set(jobId, job);
+        link.status = 'rendering';
+        store.broadcast('link:updated', link);
+
+        res.json({
+          status: 'rendering',
+          method: 'cep',
+          jobId,
+          message: 'aerender not found. Job queued for CEP panel execution.',
+        });
+        return;
       }
 
       link.status = 'rendering';

@@ -58,9 +58,30 @@ export interface ProjectStats {
 const API_BASE = '/api';
 const WS_BASE = `ws://${window.location.hostname}:${window.location.port}`;
 
+// Auth token — fetched from server on startup when auth is enabled
+let authToken: string | null = null;
+
+export async function fetchAuthToken(): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/auth`);
+    const data = await res.json();
+    authToken = data.enabled ? data.token : null;
+    return authToken;
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token: string | null) {
+  authToken = token;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options,
   });
   if (!res.ok) {

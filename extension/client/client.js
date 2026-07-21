@@ -7,6 +7,7 @@ var currentSelection = null;
 var renderedFilePath = null;
 var exportDir = "X:\\coding\\AE-Link\\exports";
 var activeLinkId = null;
+var authToken = null;
 
 // ── Persistence ──
 
@@ -68,6 +69,7 @@ document.addEventListener("DOMContentLoaded", function () {
 function api(method, path, body) {
   var url = SERVER + path;
   var opts = { method: method, headers: { "Content-Type": "application/json" } };
+  if (authToken) opts.headers["Authorization"] = "Bearer " + authToken;
   if (body) opts.body = JSON.stringify(body);
   return fetch(url, opts).then(function (r) { return r.json(); });
 }
@@ -84,6 +86,10 @@ function checkServerStatus() {
     .then(function () { return api("GET", "/api/config"); })
     .then(function (cfg) {
       if (cfg && cfg.exportDir) exportDir = cfg.exportDir;
+      return api("GET", "/api/auth");
+    })
+    .then(function (auth) {
+      if (auth && auth.enabled && auth.token) authToken = auth.token;
       return api("GET", "/api/resolve/status");
     })
     .then(function (status) {

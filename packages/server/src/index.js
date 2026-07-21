@@ -17,6 +17,7 @@ const config = require('./config.json');
 const { store, initStore, sendInitState } = require('./state');
 const { createLogger } = require('./logger');
 const { perfMiddleware, getPerfStats, getSlowEndpoints } = require('./middleware/perf');
+const { initAuth, requireAuth } = require('./middleware/auth');
 const registry = require('./integrations/registry');
 
 const log = createLogger('Server');
@@ -44,6 +45,16 @@ const wss = new WebSocketServer({ server });
 app.use(cors());
 app.use(express.json());
 app.use(perfMiddleware);
+
+// --- Auth ---
+const configPath = path.join(__dirname, 'config.json');
+const authState = initAuth(configPath);
+if (authState.enabled) {
+  log.info('API authentication enabled');
+} else {
+  log.info('API authentication disabled (set auth.enabled=true in config.json to enable)');
+}
+app.use(requireAuth(authState));
 
 // Serve built React frontend
 const DIST_DIR = path.join(__dirname, '..', '..', 'packages', 'ui', 'dist');
@@ -112,6 +123,64 @@ app.use('/api/presets', require('./routes/presets'));
 // Performance routes
 app.get('/api/perf', getPerfStats);
 app.get('/api/perf/slow', getSlowEndpoints);
+
+// Auth management endpoints
+const { generateToken } = require('./middleware/auth');
+
+app.get('/api/auth', (_req, res) => {
+  res.json({
+    enabled: authState.enabled,
+    // Only expose token when auth is enabled (so user can share it)
+    token: authState.enabled ? authState.token : null,
+  });
+});
+
+app.post('/api/auth/toggle', (req, res) => {
+  const { enabled } = req.body;
+  if (typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: 'enabled must be boolean' });
+  }
+
+  authState.enabled = enabled;
+
+  // Persist to config.json
+  try {
+    const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    if (!cfg.auth) cfg.auth = { enabled: false, token: '' };
+    cfg.auth.enabled = enabled;
+    if (enabled && !cfg.auth.token) {
+      cfg.auth.token = generateToken();
+      authState.token = cfg.auth.token;
+    }
+    if (!enabled) {
+      cfg.auth.token = '';
+      authState.token = '';
+    }
+    fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf8');
+  } catch (e) {
+    log.error(`Failed to persist auth config: ${e.message}`);
+  }
+
+  log.info(`API authentication ${enabled ? 'enabled' : 'disabled'}`);
+  res.json({ enabled: authState.enabled });
+});
+
+app.post('/api/auth/regenerate', (_req, res) => {
+  const newToken = generateToken();
+  authState.token = newToken;
+
+  try {
+    const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    if (!cfg.auth) cfg.auth = { enabled: false, token: '' };
+    cfg.auth.token = newToken;
+    fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf8');
+  } catch (e) {
+    log.error(`Failed to persist auth config: ${e.message}`);
+  }
+
+  log.info('API auth token regenerated');
+  res.json({ token: newToken });
+});
 
 // --- Catch-all: serve React app for non-API, non-file routes ---
 
