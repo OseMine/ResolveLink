@@ -9,6 +9,12 @@ const log = createLogger('REAPER');
 function detectReaperPath() {
   const platform = process.platform;
 
+  // .env overrides (set by setup scripts)
+  const envPath = platform === 'win32'
+    ? process.env.REAPER_PATH_WIN
+    : process.env.REAPER_PATH_MAC;
+  if (envPath && fs.existsSync(envPath)) return envPath;
+
   if (platform === 'win32') {
     const candidates = [
       config.reaper?.installPath?.win32,

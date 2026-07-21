@@ -95,6 +95,42 @@ if ! $has_env || [ "$1" == "--force" ]; then
         done
     fi
 
+    # Detect REAPER
+    REAPER_PATH=""
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        REAPER_CANDIDATES=(
+            "/Applications/REAPER.app/Contents/MacOS"
+            "$HOME/Applications/REAPER.app/Contents/MacOS"
+        )
+    else
+        REAPER_CANDIDATES=(
+            "/usr/bin"
+            "/usr/local/bin"
+            "/opt/reaper"
+        )
+    fi
+    for candidate in "${REAPER_CANDIDATES[@]}"; do
+        if [ -f "$candidate/reaper" ]; then
+            REAPER_PATH="$candidate"
+            echo "    Found REAPER: $REAPER_PATH"
+            break
+        fi
+    done
+
+    # Detect Resolve Scripting Modules
+    RESOLVE_SCRIPTING_PATH=""
+    SCRIPTING_CANDIDATES=(
+        "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/Modules"
+        "$HOME/.local/share/DaVinci Resolve/Support/Developer/Scripting/Modules"
+    )
+    for candidate in "${SCRIPTING_CANDIDATES[@]}"; do
+        if [ -d "$candidate" ]; then
+            RESOLVE_SCRIPTING_PATH="$candidate"
+            echo "    Found Resolve Scripting: $RESOLVE_SCRIPTING_PATH"
+            break
+        fi
+    done
+
     echo ""
     read -rp "    Server port [3030] " port
     port=${port:-3030}
@@ -113,6 +149,8 @@ if ! $has_env || [ "$1" == "--force" ]; then
         echo ""
         [ -n "$PYTHON_PATH" ] && echo "PYTHON_PATH=$PYTHON_PATH"
         [ -n "$AE_PATH" ] && echo "AE_PATH_MAC=$AE_PATH"
+        [ -n "$REAPER_PATH" ] && echo "REAPER_PATH_MAC=$REAPER_PATH"
+        [ -n "$RESOLVE_SCRIPTING_PATH" ] && echo "RESOLVE_SCRIPTING_PATH=$RESOLVE_SCRIPTING_PATH"
         [ -n "$extra_watch" ] && echo "WATCH_FOLDERS=$extra_watch"
         echo ""
     } > "$ROOT/.env"

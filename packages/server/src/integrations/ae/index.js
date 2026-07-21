@@ -327,6 +327,13 @@ const aeIntegration = {
 
 function detectAEPath() {
   const platform = process.platform;
+
+  // .env overrides (set by setup scripts)
+  const envPath = platform === 'win32'
+    ? process.env.AE_PATH_WIN
+    : process.env.AE_PATH_MAC;
+  if (envPath && fs.existsSync(envPath)) return envPath;
+
   const configPaths = config.paths.aeInstallPath[platform];
   if (configPaths && fs.existsSync(configPaths)) return configPaths;
 

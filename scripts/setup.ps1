@@ -132,6 +132,35 @@ if (-not $hasEnv -or $Force) {
         Write-Host "  No After Effects found in C:\Program Files\Adobe" -ForegroundColor DarkGray
     }
 
+    # Detect REAPER
+    $reaperPath = ""
+    $reaperCandidates = @(
+        "C:\Program Files\REAPER",
+        "C:\Program Files (x86)\REAPER",
+        "$env:LOCALAPPDATA\REAPER"
+    )
+    foreach ($candidate in $reaperCandidates) {
+        $exePath = Join-Path $candidate "reaper.exe"
+        if (Test-Path $exePath) {
+            $reaperPath = $candidate
+            Write-Host "  Found REAPER: $reaperPath" -ForegroundColor Green
+            break
+        }
+    }
+
+    # Detect Resolve Scripting Modules
+    $resolveScriptingPath = ""
+    $scriptingCandidates = @(
+        "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\Scripting\Modules"
+    )
+    foreach ($candidate in $scriptingCandidates) {
+        if (Test-Path $candidate) {
+            $resolveScriptingPath = $candidate
+            Write-Host "  Found Resolve Scripting: $resolveScriptingPath" -ForegroundColor Green
+            break
+        }
+    }
+
     Write-Host ""
     $port = Read-Host "  Server port [3030]"
     if (-not $port) { $port = "3030" }
@@ -149,9 +178,11 @@ if (-not $hasEnv -or $Force) {
         "TEMP_DIR=./temp"
         ""
     )
-    if ($pythonPath) { $envLines += "PYTHON_PATH=$pythonPath" }
-    if ($aePath)     { $envLines += "AE_PATH_WIN=$aePath" }
-    if ($extraWatch) { $envLines += "WATCH_FOLDERS=$extraWatch" }
+    if ($pythonPath)        { $envLines += "PYTHON_PATH=$pythonPath" }
+    if ($aePath)            { $envLines += "AE_PATH_WIN=$aePath" }
+    if ($reaperPath)        { $envLines += "REAPER_PATH_WIN=$reaperPath" }
+    if ($resolveScriptingPath) { $envLines += "RESOLVE_SCRIPTING_PATH=$resolveScriptingPath" }
+    if ($extraWatch)        { $envLines += "WATCH_FOLDERS=$extraWatch" }
     $envLines += ""
 
     Set-Content -Path "$root\.env" -Value ($envLines -join "`n")

@@ -1,57 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="ResolveLink" commit="a7722606048f8f918ff44b3be9d53f5ffec20a78">
+<index version="1" name="ResolveLink" commit="bc1f11ebff5498ee49040692e130b9de85073203">
   <category name="ResolveLink">
-    <reapack name="ResolveLink Callback.lua" type="script" desc="Polls ResolveLink server for pending REAPER import jobs">
-      <metadata>
-        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Callback\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 A polling script that monitors the ResolveLink server for pending REAPER import jobs. When a job arrives, it automatically creates a REAPER project with audio clips from DaVinci Resolve.\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Run from Actions > Show action list > Load, or assign to a toolbar button. Press the button again to stop polling.\\par}
-}]]></description>
-      </metadata>
-      <version name="1.3.0" author="Oskar" time="2026-07-21T12:00:00Z">
-        <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/reaper-callback.lua</source>
-      </version>
-    </reapack>
-    <reapack name="ResolveLink Send to Resolve.lua" type="script" desc="Renders REAPER project and imports audio into DaVinci Resolve">
-      <metadata>
-        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Send to Resolve\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Renders the current REAPER project to WAV, then imports the rendered audio into DaVinci Resolve via the ResolveLink server. Creates a new audio track in the active timeline.\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - DaVinci Resolve open with a timeline\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Assign to a toolbar button. Click to render and send audio to DaVinci Resolve.\\par}
-}]]></description>
-      </metadata>
-      <version name="1.4.0" author="Oskar" time="2026-07-21T12:00:00Z">
-        <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/send-to-resolve.lua</source>
-      </version>
-    </reapack>
-    <reapack name="ResolveLink Update Project.lua" type="script" desc="Syncs REAPER items to match DaVinci Resolve timeline cuts">
-      <metadata>
-        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Update Project\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Syncs REAPER items to match the current DaVinci Resolve timeline. When video cuts change in DaVinci, press this to update REAPER item positions and durations. Your REAPER effects, volume, and pan settings are preserved.\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - DaVinci Resolve open with a timeline\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Workspace > Scripts > ResolveLink > Update Project\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Or assign to a toolbar button.\\par}
-}]]></description>
-      </metadata>
-      <version name="1.0.0" author="Oskar" time="2026-07-20T13:00:00Z">
-        <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/update-project.lua</source>
-      </version>
-    </reapack>
     <reapack name="ResolveLink Panel.lua" type="script" desc="Unified control panel for all ResolveLink functions (Pure GFX)">
       <metadata>
         <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
@@ -64,13 +13,96 @@
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - json.lua and render-lib.lua in REAPER Scripts folder\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Actions > Show action list > Load > select this file\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Or assign to a toolbar button.\\par}
 }]]></description>
       </metadata>
-      <version name="2.2.0" author="Oskar" time="2026-07-21T12:00:00Z">
-        <source main="main">https://github.com/OseMine/ResolveLink/raw/feature/reaper-integration/reaper-scripts/resolve-link-panel.lua</source>
+      <version name="2.3.0" author="Oskar" time="2026-07-21T21:00:00Z">
+        <source main="main">https://github.com/OseMine/ResolveLink/raw/main/reaper-scripts/resolve-link-panel.lua</source>
+      </version>
+    </reapack>
+    <reapack name="ResolveLink Callback.lua" type="script" desc="Polls ResolveLink server for pending REAPER import jobs">
+      <metadata>
+        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Callback\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 A polling script that monitors the ResolveLink server for pending REAPER import jobs. When a job arrives, it automatically creates a REAPER project with audio clips from DaVinci Resolve.\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - json.lua in REAPER Scripts folder\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Run from Actions > Show action list > Load, or assign to a toolbar button. Press the button again to stop polling.\\par}
+}]]></description>
+      </metadata>
+      <version name="1.4.0" author="Oskar" time="2026-07-21T21:00:00Z">
+        <source main="main">https://github.com/OseMine/ResolveLink/raw/main/reaper-scripts/reaper-callback.lua</source>
+      </version>
+    </reapack>
+    <reapack name="ResolveLink Send to Resolve.lua" type="script" desc="Renders REAPER project and imports audio into DaVinci Resolve">
+      <metadata>
+        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Send to Resolve\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Renders the current REAPER project to WAV, then imports the rendered audio into DaVinci Resolve via the ResolveLink server. Creates a new audio track in the active timeline.\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - DaVinci Resolve open with a timeline\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - render-lib.lua and json.lua in REAPER Scripts folder\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Assign to a toolbar button. Click to render and send audio to DaVinci Resolve.\\par}
+}]]></description>
+      </metadata>
+      <version name="1.5.0" author="Oskar" time="2026-07-21T21:00:00Z">
+        <source main="main">https://github.com/OseMine/ResolveLink/raw/main/reaper-scripts/send-to-resolve.lua</source>
+      </version>
+    </reapack>
+    <reapack name="ResolveLink Update Project.lua" type="script" desc="Syncs REAPER items to match DaVinci Resolve timeline cuts">
+      <metadata>
+        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Update Project\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Syncs REAPER items to match the current DaVinci Resolve timeline. When video cuts change in DaVinci, press this to update REAPER item positions and durations. Your REAPER effects, volume, and pan settings are preserved.\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - DaVinci Resolve open with a timeline\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - json.lua in REAPER Scripts folder\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Workspace > Scripts > ResolveLink > Update Project\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Or assign to a toolbar button.\\par}
+}]]></description>
+      </metadata>
+      <version name="1.1.0" author="Oskar" time="2026-07-21T21:00:00Z">
+        <source main="main">https://github.com/OseMine/ResolveLink/raw/main/reaper-scripts/update-project.lua</source>
+      </version>
+    </reapack>
+    <reapack name="ResolveLink JSON.lua" type="script" desc="Shared JSON decoder module for ResolveLink REAPER scripts">
+      <metadata>
+        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink JSON Decoder\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Shared JSON decoder module used by the ResolveLink panel, callback, and update-project scripts.\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 This is a dependency — install it alongside the other ResolveLink scripts.\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Must be placed in REAPER Scripts folder as json.lua\\par}
+}]]></description>
+      </metadata>
+      <version name="1.0.0" author="Oskar" time="2026-07-21T21:00:00Z">
+        <source main="main">https://github.com/OseMine/ResolveLink/raw/main/reaper-scripts/json.lua</source>
+      </version>
+    </reapack>
+    <reapack name="ResolveLink Render Lib.lua" type="script" desc="Shared render config and import logic for ResolveLink REAPER scripts">
+      <metadata>
+        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Render Library\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Shared render configuration and import logic used by the ResolveLink panel and send-to-resolve scripts. Provides sendFileToResolve, ensureDir, and applyRenderConfig functions.\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 This is a dependency — install it alongside the other ResolveLink scripts.\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Must be placed in REAPER Scripts folder as render-lib.lua\\par}
+}]]></description>
+      </metadata>
+      <version name="1.0.0" author="Oskar" time="2026-07-21T21:00:00Z">
+        <source main="main">https://github.com/OseMine/ResolveLink/raw/main/reaper-scripts/render-lib.lua</source>
       </version>
     </reapack>
   </category>
