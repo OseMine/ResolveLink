@@ -95,6 +95,9 @@ end
 
 -- ── JSON decoder (shared module) ──────────────────────────
 local scriptDir = debug.getinfo(1, "S").source:match("@?(.*/)")
+if not scriptDir then
+    scriptDir = reaper.GetResourcePath() .. "/Scripts/ResolveLink/"
+end
 local json_decode = dofile(scriptDir .. "json.lua").decode
 local renderLib = dofile(scriptDir .. "render-lib.lua")
 

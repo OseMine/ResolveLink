@@ -70,11 +70,11 @@ router.post('/link-clip', validate(ReaperLinkClipRequestSchema), (req, res) => {
   const payloadPath = path.join(TEMP_DIR, `${linkId}_reaper.json`);
   fs.writeFileSync(payloadPath, JSON.stringify(reaperPayload, null, 2));
 
-  const reaperScript = generateReaperImportScript(link);
+  const reaperScript = generateReaperImportScript(link, TEMP_DIR);
   const scriptPath = path.join(TEMP_DIR, `${linkId}_reaper.lua`);
   fs.writeFileSync(scriptPath, reaperScript);
 
-  const renderScript = generateReaperRenderScript(link);
+  const renderScript = generateReaperRenderScript(link, TEMP_DIR);
   const renderPath = path.join(TEMP_DIR, `render_${linkId}_reaper.lua`);
   fs.writeFileSync(renderPath, renderScript);
 
@@ -183,7 +183,7 @@ router.get('/:id/reaper-render-script', (req, res) => {
   if (!link) return res.status(404).json({ error: 'Link not found' });
 
   const { generateReaperRenderScript } = require('../integrations/reaper/generators');
-  const renderScript = generateReaperRenderScript(link);
+  const renderScript = generateReaperRenderScript(link, TEMP_DIR);
   const scriptPath = path.join(TEMP_DIR, `render_${id}_reaper.lua`);
   fs.writeFileSync(scriptPath, renderScript);
 

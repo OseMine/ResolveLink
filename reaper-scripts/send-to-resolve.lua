@@ -17,6 +17,9 @@ local TEMP_DIR = ""
 local AUTO_RENDER = true
 
 local scriptDir = debug.getinfo(1, "S").source:match("@?(.*/)")
+if not scriptDir then
+    scriptDir = reaper.GetResourcePath() .. "/Scripts/ResolveLink/"
+end
 local renderLib = dofile(scriptDir .. "render-lib.lua")
 
 -- Query server for actual paths on startup
@@ -35,10 +38,11 @@ local function fetchConfig()
 end
 fetchConfig()
 
--- ── Helpers ────────────────────────────────────────────────
-local function log(msg)
-    reaper.ShowConsoleMsg("[ResolveLink] " .. os.date("%H:%M:%S") .. "  " .. msg .. "\n")
-end
+-- ── Logger ──────────────────────────────────────────────────
+local logger = dofile(scriptDir .. "resolve-link-logger.lua")
+local function log(msg) logger.info(msg, "SendResolve") end
+local function logwarn(msg) logger.warn(msg, "SendResolve") end
+local function logerr(msg) logger.error(msg, "SendResolve") end
 
 local function readFile(path)
     local f = io.open(path, "r")

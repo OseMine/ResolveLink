@@ -316,7 +316,7 @@ def main():
 
     # trigger auto-workflow
     try:
-        auto = server_post(f"/api/links/{link_id}/reaper-auto", {})
+        auto = server_post(f"/api/reaper/{link_id}/reaper-auto", {})
         status = auto.get("status", "unknown")
         print(f"Status: {status}")
         if status == "queued":

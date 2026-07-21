@@ -110,6 +110,7 @@ def get_timeline_data(resolve):
                 "trackIndex": track_idx,
                 "sourceFps": source_fps,
                 "transform": transform,
+                "mpi": mpi,
             })
 
     meta = {
@@ -157,7 +158,7 @@ def create_ae_timeline(resolve, selected_clips, meta):
     new_tl = media_pool.CreateEmptyTimeline(tl_name)
     if not new_tl:
         media_pool.SetCurrentFolder(prev_folder)
-        return None, "Failed to create timeline"
+        return None, "Failed to create timeline", orig_timeline
 
     project.SetCurrentTimeline(new_tl)
 
@@ -252,7 +253,7 @@ def create_ae_timeline(resolve, selected_clips, meta):
         result = media_pool.AppendToTimeline(append_list)
         if not result:
             media_pool.SetCurrentFolder(prev_folder)
-            return None, "Failed to populate new timeline"
+            return None, "Failed to populate new timeline", orig_timeline
 
     # ── copy basic properties from originals (index-based) ──
     PROP_KEYS = [
@@ -313,7 +314,7 @@ def create_ae_timeline(resolve, selected_clips, meta):
 
     if not new_tl_mpi:
         print(f"  WARNING: Timeline not found. Skipping nesting.")
-        return tl_name, None
+        return tl_name, None, orig_timeline
 
     # ── calculate total span BEFORE deleting originals ──
     first_start = min(c["start"] for c in selected_clips)
@@ -363,9 +364,9 @@ def create_ae_timeline(resolve, selected_clips, meta):
     print(f"  Nested insert result: {nested}")
     if not nested:
         print("  WARNING: Nested insertion failed. Originals were deleted — manual recovery may be needed.")
-        return tl_name, None
+        return tl_name, None, orig_timeline
 
-    return tl_name, None
+    return tl_name, None, orig_timeline
 
 
 # ── Server Communication ─────────────────────────────────────
@@ -518,9 +519,18 @@ def main():
 
     sel = [clips[i] for i in indices]
 
+    # filter out clips without a valid source path (can't be imported into AE)
+    valid_sel = [c for c in sel if c.get("sourcePath")]
+    if not valid_sel:
+        print("ERROR: No clips with valid file paths found. All selected clips lack source files.")
+        sys.exit(1)
+    if len(valid_sel) < len(sel):
+        print(f"Warning: Skipping {len(sel) - len(valid_sel)} clip(s) without file paths.")
+    sel = valid_sel
+
     # create timeline in "AE Timelines" bin + replace originals with compound
     print("Creating AE timeline...")
-    tl_name, tl_err = create_ae_timeline(resolve, sel, meta)
+    tl_name, tl_err, orig_timeline = create_ae_timeline(resolve, sel, meta)
     if tl_err:
         print(f"WARNING: Could not create timeline: {tl_err}")
     else:
@@ -590,6 +600,16 @@ def main():
     try:
         print("Sending to ResolveLink server...")
         resp = server_post("/api/link-clip", payload)
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8")
+        except Exception:
+            pass
+        print(f"ERROR: Server returned HTTP {e.code}: {e.reason}")
+        if body:
+            print(f"  Response: {body}")
+        sys.exit(1)
     except Exception as e:
         print(f"ERROR: Cannot reach server at {SERVER}")
         print(f"  {e}")

@@ -13,13 +13,13 @@
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - json.lua and render-lib.lua in REAPER Scripts folder\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - json.lua, render-lib.lua, and resolve-link-logger.lua in REAPER Scripts folder\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Actions > Show action list > Load > select this file\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Or assign to a toolbar button.\\par}
 }]]></description>
       </metadata>
-      <version name="2.3.0" author="Oskar" time="2026-07-21T21:00:00Z">
+      <version name="2.4.0" author="Oskar" time="2026-07-22T10:00:00Z">
         <source main="main">https://github.com/OseMine/ResolveLink/raw/main/reaper-scripts/resolve-link-panel.lua</source>
       </version>
     </reapack>
@@ -36,7 +36,7 @@
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Run from Actions > Show action list > Load, or assign to a toolbar button. Press the button again to stop polling.\\par}
 }]]></description>
       </metadata>
-      <version name="1.4.0" author="Oskar" time="2026-07-21T21:00:00Z">
+      <version name="1.5.0" author="Oskar" time="2026-07-22T10:00:00Z">
         <source main="main">https://github.com/OseMine/ResolveLink/raw/main/reaper-scripts/reaper-callback.lua</source>
       </version>
     </reapack>
@@ -49,12 +49,12 @@
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - DaVinci Resolve open with a timeline\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - render-lib.lua and json.lua in REAPER Scripts folder\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - render-lib.lua, json.lua, and resolve-link-logger.lua in REAPER Scripts folder\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Assign to a toolbar button. Click to render and send audio to DaVinci Resolve.\\par}
 }]]></description>
       </metadata>
-      <version name="1.5.0" author="Oskar" time="2026-07-21T21:00:00Z">
+      <version name="1.6.0" author="Oskar" time="2026-07-22T10:00:00Z">
         <source main="main">https://github.com/OseMine/ResolveLink/raw/main/reaper-scripts/send-to-resolve.lua</source>
       </version>
     </reapack>
@@ -67,14 +67,30 @@
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - ResolveLink server running at http://127.0.0.1:3030\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - DaVinci Resolve open with a timeline\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - curl available in PATH\\par}
-{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - json.lua in REAPER Scripts folder\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - json.lua and resolve-link-logger.lua in REAPER Scripts folder\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Usage:\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Workspace > Scripts > ResolveLink > Update Project\\par}
 {\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Or assign to a toolbar button.\\par}
 }]]></description>
       </metadata>
-      <version name="1.1.0" author="Oskar" time="2026-07-21T21:00:00Z">
+      <version name="1.2.0" author="Oskar" time="2026-07-22T10:00:00Z">
         <source main="main">https://github.com/OseMine/ResolveLink/raw/main/reaper-scripts/update-project.lua</source>
+      </version>
+    </reapack>
+    <reapack name="ResolveLink Logger.lua" type="script" desc="Toggleable console logger for ResolveLink REAPER scripts">
+      <metadata>
+        <description><![CDATA[{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 \\fswiss Helvetica;}}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b ResolveLink Logger\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Toggleable logger for all ResolveLink scripts. Logs are displayed in the REAPER console (View > Open console).\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - Enable/disable via: Scripts > ResolveLink > Toggle Logger\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - State persists across REAPER sessions\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 - Used internally by Panel, Send to Resolve, and Update Project scripts\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 \\b Requirements:\\par}
+{\\pard \\ql \\f0 \\sa180 \\li0 \\fi0 Must be placed in REAPER Scripts folder as resolve-link-logger.lua\\par}
+}]]></description>
+      </metadata>
+      <version name="1.0.0" author="Oskar" time="2026-07-22T10:00:00Z">
+        <source main="main">https://github.com/OseMine/ResolveLink/raw/main/reaper-scripts/resolve-link-logger.lua</source>
       </version>
     </reapack>
     <reapack name="ResolveLink JSON.lua" type="script" desc="Shared JSON decoder module for ResolveLink REAPER scripts">

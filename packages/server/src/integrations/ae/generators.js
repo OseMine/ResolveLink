@@ -68,17 +68,20 @@ function generateExtendScript(link, exportDir) {
     // Decode base64 payload to prevent injection via clip names
     var b64 = "${clipsB64}";
     var jsonStr = (function() {
-        var bins = util.binOrString;
-        var b = new bins(b64).toString();
-        var s = new bins();
-        s.encoding = "binary";
-        var bytes = [];
-        for (var i = 0; i < b.length; i += 2) {
-            bytes.push(parseInt(b.substr(i, 2), 16));
-        }
-        var str = "";
-        for (var i = 0; i < bytes.length; i++) {
-            str += String.fromCharCode(bytes[i]);
+        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+        var str = "", o1, o2, o3, h1, h2, h3, h4, i = 0;
+        var inp = b64.replace(/[^A-Za-z0-9+/=]/g, "");
+        while (i < inp.length) {
+            h1 = chars.indexOf(inp.charAt(i++));
+            h2 = chars.indexOf(inp.charAt(i++));
+            h3 = chars.indexOf(inp.charAt(i++));
+            h4 = chars.indexOf(inp.charAt(i++));
+            o1 = (h1 << 2) | (h2 >> 4);
+            o2 = ((h2 & 15) << 4) | (h3 >> 2);
+            o3 = ((h3 & 3) << 6) | h4;
+            str += String.fromCharCode(o1);
+            if (h3 != 64) str += String.fromCharCode(o2);
+            if (h4 != 64) str += String.fromCharCode(o3);
         }
         return str;
     })();

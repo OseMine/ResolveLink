@@ -32,10 +32,11 @@ local function fetchConfig()
 end
 fetchConfig()
 
--- ── Helpers ────────────────────────────────────────────────
-local function log(msg)
-    reaper.ShowConsoleMsg("[ResolveLink] " .. os.date("%H:%M:%S") .. "  " .. msg .. "\n")
-end
+-- ── Logger ──────────────────────────────────────────────────
+local logger = dofile(scriptDir .. "resolve-link-logger.lua")
+local function log(msg) logger.info(msg, "UpdateProj") end
+local function logwarn(msg) logger.warn(msg, "UpdateProj") end
+local function logerr(msg) logger.error(msg, "UpdateProj") end
 
 local function readFile(path)
     local f = io.open(path, "r")
@@ -47,6 +48,9 @@ end
 
 -- ── JSON decoder (shared module) ──────────────────────────
 local scriptDir = debug.getinfo(1, "S").source:match("@?(.*/)")
+if not scriptDir then
+    scriptDir = reaper.GetResourcePath() .. "/Scripts/ResolveLink/"
+end
 local json_decode = dofile(scriptDir .. "json.lua").decode
 
 -- ── HTTP via curl ──────────────────────────────────────────
