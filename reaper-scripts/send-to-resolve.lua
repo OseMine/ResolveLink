@@ -185,8 +185,8 @@ local function main()
         reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", fileName, true)
         reaper.GetSetProjectInfo_String(0, "RENDER_SRATE", "48000", true)
 
-        log("Auto-render: triggering render (41824)...")
-        reaper.Main_OnCommand(41824, 0)
+        log("Auto-render: triggering render (40015)...")
+        reaper.Main_OnCommand(40015, 0) -- File: Render to file
         log("Auto-render: render command returned.")
 
         reaper.defer(function() end)

@@ -37,7 +37,7 @@ The installer will:
 3. Go to **ReaPack > Edit repositories**
 4. Add this URL:
    ```
-   https://raw.githubusercontent.com/OseMine/ResolveLink/feature/reaper-integration/index.xml
+   https://raw.githubusercontent.com/OseMine/ResolveLink/main/index.xml
    ```
 5. Click **OK**, then **ReaPack > Synchronize packages**
 6. Go to **ReaPack > Browse packages**
@@ -51,6 +51,7 @@ The installer will:
 | **ResolveLink Callback** | Background worker for auto-import |
 | **ResolveLink Send to Resolve** | Render and import audio to DaVinci |
 | **ResolveLink Update Project** | Sync REAPER items to match DaVinci timeline |
+| **ResolveLink Logger** | Toggleable console logger for debugging |
 
 ### Using the Panel
 
@@ -76,6 +77,7 @@ copy reaper-scripts\resolve-link-panel.lua "%APPDATA%\REAPER\Scripts\ResolveLink
 copy reaper-scripts\reaper-callback.lua "%APPDATA%\REAPER\Scripts\ResolveLink-reaper-callback.lua"
 copy reaper-scripts\send-to-resolve.lua "%APPDATA%\REAPER\Scripts\ResolveLink-send-to-resolve.lua"
 copy reaper-scripts\update-project.lua "%APPDATA%\REAPER\Scripts\ResolveLink-update-project.lua"
+copy reaper-scripts\resolve-link-logger.lua "%APPDATA%\REAPER\Scripts\ResolveLink\resolve-link-logger.lua"
 copy reaper-scripts\json.lua "%APPDATA%\REAPER\Scripts\json.lua"
 copy reaper-scripts\render-lib.lua "%APPDATA%\REAPER\Scripts\render-lib.lua"
 ```
@@ -86,6 +88,8 @@ cp reaper-scripts/resolve-link-panel.lua ~/Library/Application\ Support/REAPER/S
 cp reaper-scripts/reaper-callback.lua ~/Library/Application\ Support/REAPER/Scripts/
 cp reaper-scripts/send-to-resolve.lua ~/Library/Application\ Support/REAPER/Scripts/
 cp reaper-scripts/update-project.lua ~/Library/Application\ Support/REAPER/Scripts/
+mkdir -p ~/Library/Application\ Support/REAPER/Scripts/ResolveLink
+cp reaper-scripts/resolve-link-logger.lua ~/Library/Application\ Support/REAPER/Scripts/ResolveLink/
 cp reaper-scripts/json.lua ~/Library/Application\ Support/REAPER/Scripts/
 cp reaper-scripts/render-lib.lua ~/Library/Application\ Support/REAPER/Scripts/
 ```

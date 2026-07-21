@@ -980,7 +980,7 @@ The server converts frame-based clip data to seconds-based for REAPER (`seconds 
 ### REAPER Auto-Workflow
 
 ```
-POST /api/links/:id/reaper-auto
+POST /api/reaper/:id/reaper-auto
 ```
 
 Triggers the REAPER auto-workflow: if REAPER is running, queues a `reaper-create` job for the Lua callback script; if not, launches REAPER with the generated import script.

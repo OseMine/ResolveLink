@@ -376,6 +376,7 @@ exports/ directory receives new .mov/.mp4
 
 - **`reaper-scripts/json.lua`** — Shared JSON decoder used by panel, callback, and update-project scripts
 - **`reaper-scripts/render-lib.lua`** — Shared render config + import logic (`sendFileToResolve`, `ensureDir`, `applyRenderConfig`). Used by both `send-to-resolve.lua` and `resolve-link-panel.lua`
+- **`reaper-scripts/resolve-link-logger.lua`** — Toggleable console logger shared by panel, send-to-resolve, and update-project. Supports `info`/`warn`/`error`/`debug`/`http`/`file` levels. Toggle state persists via REAPER extstate. Loaded via `dofile(scriptDir .. "resolve-link-logger.lua")`
 
 ### CEP Extension (`extension/`)
 

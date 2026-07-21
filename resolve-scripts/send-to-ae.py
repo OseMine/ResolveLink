@@ -572,6 +572,8 @@ def main():
                     a_key = (item.GetStart(), item.GetDuration())
                     if a_key not in seen_audio:
                         seen_audio.add(a_key)
+                        if not source_path:
+                            continue
                         server_clips.append({
                             "name": item.GetName() or "Audio",
                             "sourcePath": source_path,

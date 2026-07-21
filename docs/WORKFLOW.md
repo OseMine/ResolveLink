@@ -481,9 +481,18 @@ When a job is detected:
 This button:
 1. Reads the render config from the latest render script in `temp/`
 2. Sets REAPER's render settings (output dir, filename, sample rate)
-3. Opens the render dialog (command 40009)
+3. Opens the render dialog (command 40015 — File: Render to file)
 4. After you render, finds the rendered audio file
 5. Sends it to the server via PUT `/api/reaper/import-to-resolve`
+
+### Logger
+
+The panel includes a built-in console logger for debugging:
+
+- Toggle via **Ctrl+L** or the Logger button in the panel
+- Log levels: `info`, `warn`, `error`, `debug`, `http`, `file`
+- State persists between sessions via REAPER extstate
+- All log methods accept format strings: `log:info("Processing %d clips", clipCount)`
 
 ### Update Project from Resolve
 

@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Version" />
+  <img src="https://img.shields.io/badge/version-1.1.0-blue" alt="Version" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" alt="Platform" />
   <img src="https://img.shields.io/badge/Resolve-Studio%2021+-orange" alt="DaVinci Resolve" />
@@ -24,7 +24,7 @@
 </p>
 <br>
 <p align="center">
-  <img src="https://img.shields.io/badge/bugs-3-red" alt="3 bugs" />
+  <img src="https://img.shields.io/badge/bugs-0-red" alt="0 bugs" />
   <img src="https://img.shields.io/badge/features-54-blueviolet" alt="54 features" />
 </p>
 
@@ -145,7 +145,7 @@ That's it. The script will:
 2. Open `Scripts/ReaPack/Packages/`
 3. Add this URL in **ReaPack > Edit repositories**:
    ```
-   https://raw.githubusercontent.com/OseMine/ResolveLink/feature/reaper-integration/index.xml
+   https://raw.githubusercontent.com/OseMine/ResolveLink/main/index.xml
    ```
 4. Click **OK**, then **ReaPack > Synchronize packages**
 5. Install from **ReaPack > Browse packages > ResolveLink**
@@ -158,6 +158,7 @@ That's it. The script will:
 | **ResolveLink Callback** | Background worker for auto-import |
 | **ResolveLink Send to Resolve** | Render and import to DaVinci |
 | **ResolveLink Update Project** | Sync REAPER to DaVinci timeline |
+| **ResolveLink Logger** | Toggleable console logger for debugging |
 
 ### Install Locations
 
@@ -259,13 +260,14 @@ resolvelink/
 │   ├── send-to-ae.py          # Clip send dialog (tkinter)
 │   └── send-to-reaper.py      # Audio clip send dialog (tkinter)
 │
-├── reaper-scripts/             # REAPER scripts
-│   ├── resolve-link-panel.lua  # Unified GFX control panel (v2.2.0)
-│   ├── render-lib.lua          # Shared render config + import logic
-│   ├── json.lua                # Shared JSON decoder module
-│   ├── reaper-callback.lua     # Background worker (file-based IPC)
-│   ├── send-to-resolve.lua     # Render and import to DaVinci
-│   └── update-project.lua      # Sync REAPER to DaVinci timeline
+├── reaper-scripts/                 # REAPER scripts
+│   ├── resolve-link-panel.lua      # Unified GFX control panel (v2.2.0)
+│   ├── resolve-link-logger.lua     # Toggleable console logger (shared)
+│   ├── render-lib.lua              # Shared render config + import logic
+│   ├── json.lua                    # Shared JSON decoder module
+│   ├── reaper-callback.lua         # Background worker (file-based IPC)
+│   ├── send-to-resolve.lua         # Render and import to DaVinci
+│   └── update-project.lua          # Sync REAPER to DaVinci timeline
 │
 ├── adobe/                      # ExtendScript library
 │   └── import_pipeline.jsx    # Standalone AE composition importer

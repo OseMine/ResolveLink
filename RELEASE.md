@@ -1,8 +1,31 @@
-# ResolveLink v1.0.0
+# ResolveLink v1.1.0
 
 **Dynamic Link for DaVinci Resolve — to After Effects and REAPER**
 
 ResolveLink bridges DaVinci Resolve with After Effects and REAPER, enabling a full round-trip VFX and audio workflow without leaving your NLE.
+
+---
+
+## Changelog (v1.1.0)
+
+### Bug Fixes
+- **AE workflow**: Fixed JSX base64 decode (was treating base64 as hex) — no comp was created
+- **AE workflow**: Fixed `mpi` (MediaPoolItem) missing from clip data — `AppendToTimeline` failed
+- **AE workflow**: Fixed audio clips with empty `sourcePath` sent to server causing validation errors
+- **AE workflow**: Fixed `orig_timeline` not returned from `create_ae_timeline()` — `set_current_timeline()` failed
+- **REAPER workflow**: Fixed render command IDs — both scripts now use `40015` (File: Render to file)
+- **REAPER workflow**: Fixed `generateReaperRenderScript` called with missing `TEMP_DIR` arg — crashed on `.replace()`
+- **REAPER workflow**: Fixed `send-to-reaper.py` auto-workflow URL (`/api/links/:id/reaper-auto` → `/api/reaper/:id/reaper-auto`)
+- **REAPER scripts**: Fixed `scriptDir` nil when loaded from ReaPack — added fallback to `GetResourcePath()`
+- **Setup**: Fixed `REAPER_PATH_WIN`/`REAPER_PATH_MAC` detection in setup scripts
+- **Setup**: Fixed `RESOLVE_SCRIPTING_PATH` detection in setup scripts
+
+### Improvements
+- **Shared logger**: New `resolve-link-logger.lua` toggleable console logger (`info`/`warn`/`error`/`debug`/`http`/`file`)
+- **REAPER Lua scripts**: All 3 main scripts now use shared logger with colored output
+- **Panel**: Logger toggle via `Ctrl+L` or button — saves state between sessions
+- **All scripts**: `scriptDir` falls back to `GetResourcePath() .. "/Scripts/ResolveLink/"` when loaded from ReaPack
+- **HTTP error handling**: `send-to-ae.py` now shows actual server response body on errors
 
 ---
 
@@ -65,6 +88,7 @@ Available scripts:
 - **ResolveLink Send to Resolve** — render and import to DaVinci
 - **ResolveLink Update Project** — sync REAPER to DaVinci timeline
 - **ResolveLink Panel** — unified control panel (all-in-one)
+- **ResolveLink Logger** — toggleable console logger for debugging
 
 ---
 

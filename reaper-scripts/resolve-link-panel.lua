@@ -384,7 +384,7 @@ local function doSendToResolve()
 
     setStatus("Rendering...", C_AMBER)
 
-    reaper.Main_OnCommand(40009, 0)
+    reaper.Main_OnCommand(40015, 0) -- File: Render to file
 
     local wavPath = config.exportDir .. "/" .. fileName .. ".wav"
     local renderPath = fileExists(wavPath) and wavPath or findLatestAudio(config.exportDir)
