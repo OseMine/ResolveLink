@@ -73,10 +73,32 @@ def get_timeline_data(resolve):
         for item in items:
             mpi = item.GetMediaPoolItem()
             source_path = ""
+            source_fps = fps
+            props = {}
             if mpi:
-                props = mpi.GetClipProperty()
-                if props:
-                    source_path = props.get("File Path", "")
+                props = mpi.GetClipProperty() or {}
+                source_path = props.get("File Path", "")
+                try:
+                    source_fps = float(props.get("FPS") or fps)
+                except (ValueError, TypeError):
+                    source_fps = fps
+
+            transform = {}
+            for key, prop in [
+                ("zoomX", "ZoomX"), ("zoomY", "ZoomY"),
+                ("pan", "Pan"), ("tilt", "Tilt"),
+                ("rotationAngle", "RotationAngle"),
+                ("anchorPointX", "AnchorPointX"), ("anchorPointY", "AnchorPointY"),
+                ("cropLeft", "CropLeft"), ("cropRight", "CropRight"),
+                ("cropTop", "CropTop"), ("cropBottom", "CropBottom"),
+                ("opacity", "Opacity"),
+            ]:
+                try:
+                    val = item.GetProperty(prop)
+                    if val is not None:
+                        transform[key] = val
+                except Exception:
+                    pass
 
             clips.append({
                 "name": item.GetName() or os.path.basename(source_path) or "Untitled",
@@ -86,6 +108,8 @@ def get_timeline_data(resolve):
                 "sourceIn": item.GetLeftOffset() or 0,
                 "sourcePath": source_path,
                 "trackIndex": track_idx,
+                "sourceFps": source_fps,
+                "transform": transform,
             })
 
     meta = {
@@ -169,20 +193,18 @@ def create_ae_timeline(resolve, selected_clips, meta):
     # collect (clip, orig_item) pairs
     pairs = []
     for c in selected_clips:
-        mpi = c.get("_mpi")
-        if mpi:
-            orig_item = None
-            for track_idx in range(1, orig_timeline.GetTrackCount("video") + 1):
-                items = orig_timeline.GetItemListInTrack("video", track_idx)
-                if not items:
-                    continue
-                for item in items:
-                    if item.GetStart() == c["start"] and item.GetDuration() == c["duration"]:
-                        orig_item = item
-                        break
-                if orig_item:
+        orig_item = None
+        for track_idx in range(1, orig_timeline.GetTrackCount("video") + 1):
+            items = orig_timeline.GetItemListInTrack("video", track_idx)
+            if not items:
+                continue
+            for item in items:
+                if item.GetStart() == c["start"] and item.GetDuration() == c["duration"]:
+                    orig_item = item
                     break
-            pairs.append((c, orig_item))
+            if orig_item:
+                break
+        pairs.append((c, orig_item))
 
     # sort by original position to preserve adjacency
     pairs.sort(key=lambda p: (p[0]["trackIndex"], p[0]["start"]))
@@ -194,11 +216,10 @@ def create_ae_timeline(resolve, selected_clips, meta):
 
     append_list = []
     for c in video_entries:
-        mpi = c.get("_mpi")
         source_in = c.get("sourceIn", 0)
         source_out = source_in + c.get("duration", 0)
         entry = {
-            "mediaPoolItem": mpi,
+            "mediaPoolItem": c.get("mpi"),
             "startFrame": source_in,
             "endFrame": source_out,
             "trackIndex": v_track_map[c["trackIndex"]],
@@ -505,13 +526,47 @@ def main():
     first_start = min(c["start"] for c in sel)
     server_clips = []
     for c in sel:
-        server_clips.append({
+        clip_data = {
             "name": c["name"],
             "sourcePath": c["sourcePath"],
             "start": c["start"] - first_start,
             "duration": c["duration"],
             "sourceIn": c["sourceIn"],
-        })
+            "trackIndex": c["trackIndex"],
+            "mediaType": "video",
+            "sourceFps": c.get("sourceFps", fps),
+        }
+        if c.get("transform"):
+            clip_data["transform"] = c["transform"]
+        server_clips.append(clip_data)
+
+    # gather audio clips from the original timeline
+    seen_audio = set()
+    for a_idx in range(1, orig_timeline.GetTrackCount("audio") + 1):
+        items = orig_timeline.GetItemListInTrack("audio", a_idx) or []
+        for item in items:
+            item_start = item.GetStart()
+            for c in sel:
+                if c["start"] <= item_start < c["start"] + c["duration"]:
+                    mpi = item.GetMediaPoolItem()
+                    source_path = ""
+                    if mpi:
+                        props = mpi.GetClipProperty()
+                        if props:
+                            source_path = props.get("File Path", "")
+                    a_key = (item.GetStart(), item.GetDuration())
+                    if a_key not in seen_audio:
+                        seen_audio.add(a_key)
+                        server_clips.append({
+                            "name": item.GetName() or "Audio",
+                            "sourcePath": source_path,
+                            "start": item.GetStart() - first_start,
+                            "duration": item.GetDuration(),
+                            "sourceIn": item.GetLeftOffset() or 0,
+                            "trackIndex": a_idx,
+                            "mediaType": "audio",
+                        })
+                    break
 
     max_end = max(c["start"] + c["duration"] for c in sel)
     comp_dur = (max_end - first_start) / fps if fps else 10

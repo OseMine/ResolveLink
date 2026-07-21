@@ -41,6 +41,10 @@ function generateJSXPayload(link) {
       compStartFrames: (clip.start || 0) - firstClipStart,
       durationFrames: clip.duration || 0,
       sourceIn: clip.sourceIn || 0,
+      trackIndex: clip.trackIndex || 1,
+      mediaType: clip.mediaType || 'video',
+      sourceFps: clip.sourceFps || fps,
+      transform: clip.transform || null,
     })),
   };
 }
@@ -90,6 +94,14 @@ function generateExtendScript(link, exportDir) {
 
     var fps = linkData.fps;
 
+    // --- Sort clips by track index (desc) so higher tracks end up on top ---
+    var sorted = linkData.clips.slice().sort(function(a, b) {
+        var ta = a.trackIndex || 1;
+        var tb = b.trackIndex || 1;
+        if (ta !== tb) return tb - ta;
+        return (a.compStartFrames || 0) - (b.compStartFrames || 0);
+    });
+
     // --- Create comp ---
     var comp = app.project.items.addComp(
         linkData.compName,
@@ -100,8 +112,8 @@ function generateExtendScript(link, exportDir) {
         fps
     );
 
-    for (var i = 0; i < linkData.clips.length; i++) {
-        var clip = linkData.clips[i];
+    for (var i = 0; i < sorted.length; i++) {
+        var clip = sorted[i];
 
         try {
             var file = new File(clip.filePath);
@@ -112,17 +124,62 @@ function generateExtendScript(link, exportDir) {
 
             var importOptions = new ImportOptions(file);
             var footage = app.project.importFile(importOptions);
-            var layer = comp.layers.add(footage);
-
-            layer.name = clip.name;
 
             var compStartSec = clip.compStartFrames / fps;
             var durationSec = clip.durationFrames / fps;
-            var sourceInSec = clip.sourceIn / fps;
+            var srcFps = clip.sourceFps || fps;
+            var sourceInSec = clip.sourceIn / srcFps;
 
-            layer.startTime = Math.max(0, compStartSec - sourceInSec);
-            layer.inPoint = compStartSec;
-            layer.outPoint = compStartSec + durationSec;
+            if (clip.mediaType === "audio") {
+                var audioLayer = comp.layers.addAudio(footage);
+                audioLayer.name = clip.name;
+                audioLayer.startTime = Math.max(0, compStartSec - sourceInSec);
+                audioLayer.inPoint = compStartSec;
+                audioLayer.outPoint = compStartSec + durationSec;
+            } else {
+                var layer = comp.layers.add(footage);
+                layer.name = clip.name;
+                layer.startTime = Math.max(0, compStartSec - sourceInSec);
+                layer.inPoint = compStartSec;
+                layer.outPoint = compStartSec + durationSec;
+
+                if (clip.transform) {
+                    var t = clip.transform;
+                    var w = linkData.width;
+                    var h = linkData.height;
+                    try {
+                        if (t.zoomX !== undefined || t.zoomY !== undefined) {
+                            var sx = (t.zoomX !== undefined ? t.zoomX : 1) * 100;
+                            var sy = (t.zoomY !== undefined ? t.zoomY : 1) * 100;
+                            layer.transform.scale.setValue([sx, sy]);
+                        }
+                        if (t.pan !== undefined || t.tilt !== undefined) {
+                            var px = (t.pan !== undefined ? t.pan : 0) + w / 2;
+                            var py = (t.tilt !== undefined ? t.tilt : 0) + h / 2;
+                            layer.transform.position.setValue([px, py]);
+                        }
+                        if (t.rotationAngle !== undefined) {
+                            layer.transform.rotation.setValue(t.rotationAngle);
+                        }
+                        if (t.opacity !== undefined) {
+                            layer.transform.opacity.setValue(t.opacity);
+                        }
+                        if (t.anchorPointX !== undefined || t.anchorPointY !== undefined) {
+                            var ax = t.anchorPointX !== undefined ? t.anchorPointX : 0;
+                            var ay = t.anchorPointY !== undefined ? t.anchorPointY : 0;
+                            layer.transform.anchorPoint.setValue([ax, ay]);
+                        }
+                        if (t.cropLeft !== undefined || t.cropRight !== undefined ||
+                            t.cropTop !== undefined || t.cropBottom !== undefined) {
+                            var cl = (t.cropLeft || 0) / w * 100;
+                            var cr = (t.cropRight || 0) / w * 100;
+                            var ct = (t.cropTop || 0) / h * 100;
+                            var cb = (t.cropBottom || 0) / h * 100;
+                            layer.setCrop([cl, ct, cr, cb]);
+                        }
+                    } catch(ex) {}
+                }
+            }
 
         } catch (e) {
             alert("ResolveLink: Failed to import " + clip.filePath + "\\n" + e.toString());
@@ -144,6 +201,7 @@ function generateRenderScript(link, exportDir) {
   const payload = generateJSXPayload(link);
   const exportDirNorm = exportDir.replace(/\\/g, '\\\\');
   const exportPath = path.join(exportDir, payload.compName).replace(/\\/g, '\\\\');
+  const template = (link.settings && link.settings.renderQueue) || 'Best Settings';
 
   return `// ResolveLink Render Script
 // Link ID: ${link.id}
@@ -186,7 +244,7 @@ function generateRenderScript(link, exportDir) {
     var om = renderItem.outputModule(1);
 
     try {
-        om.applyTemplate("Best Settings");
+        om.applyTemplate("${template}");
     } catch(e) {}
 
     om.file = new File(exportPath + ".mov");
@@ -202,8 +260,9 @@ function generateRenderScript(link, exportDir) {
  * @param {string} exportDir
  * @returns {string}
  */
-function generateActiveCompRenderScript(exportDir) {
+function generateActiveCompRenderScript(exportDir, template) {
   const exportDirNorm = exportDir.replace(/\\/g, '/');
+  const renderTemplate = template || 'Best Settings';
 
   return `// ResolveLink Active Comp Render
 (function() {
@@ -223,7 +282,7 @@ function generateActiveCompRenderScript(exportDir) {
 
     var renderItem = rq.items.add(comp);
     var om = renderItem.outputModule(1);
-    try { om.applyTemplate("Best Settings"); } catch(e) {}
+    try { om.applyTemplate("${renderTemplate}"); } catch(e) {}
 
     var safeName = comp.name.replace(/[\\\\/:*?"<>|]/g, "_");
     var p = "${exportDirNorm}/" + safeName + ".mov";

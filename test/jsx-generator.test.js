@@ -27,6 +27,8 @@ function generateJSXPayload(link) {
       compStartFrames: (clip.start || 0) - firstClipStart,
       durationFrames: clip.duration || 0,
       sourceIn: clip.sourceIn || 0,
+      trackIndex: clip.trackIndex || 1,
+      mediaType: clip.mediaType || 'video',
     })),
   };
 }
@@ -83,6 +85,8 @@ describe('generateJSXPayload', () => {
     });
     expect(payload.clips[0].sourceIn).toBe(0);
     expect(payload.clips[0].compStartFrames).toBe(0);
+    expect(payload.clips[0].trackIndex).toBe(1);
+    expect(payload.clips[0].mediaType).toBe('video');
   });
 
   it('uses 24fps as default', () => {
@@ -93,6 +97,21 @@ describe('generateJSXPayload', () => {
     });
     expect(payload.fps).toBe(24);
     expect(payload.duration).toBe(1);
+  });
+
+  it('preserves trackIndex and mediaType', () => {
+    const payload = generateJSXPayload({
+      ...baseLink,
+      clips: [
+        { name: 'v1', start: 0, duration: 50, sourcePath: '/a', sourceIn: 0, trackIndex: 1, mediaType: 'video' },
+        { name: 'v3', start: 0, duration: 50, sourcePath: '/b', sourceIn: 0, trackIndex: 3, mediaType: 'video' },
+        { name: 'a1', start: 0, duration: 50, sourcePath: '/c', sourceIn: 0, trackIndex: 1, mediaType: 'audio' },
+      ],
+    });
+    expect(payload.clips[0].trackIndex).toBe(1);
+    expect(payload.clips[0].mediaType).toBe('video');
+    expect(payload.clips[1].trackIndex).toBe(3);
+    expect(payload.clips[2].mediaType).toBe('audio');
   });
 });
 

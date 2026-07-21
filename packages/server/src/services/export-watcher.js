@@ -52,7 +52,8 @@ function startWatcher(exportDir, config) {
       let matchedLink = null;
 
       for (const [, link] of store.activeLinks) {
-        if (fileName.includes(link.id) || fileName.includes('Resolve_Link')) {
+        const idPrefix = link.id.slice(0, 8);
+        if (fileName.startsWith('Resolve_Link_' + idPrefix) || fileName.includes(idPrefix)) {
           matchedLink = link;
           break;
         }

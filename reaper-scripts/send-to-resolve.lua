@@ -19,13 +19,15 @@ local AUTO_RENDER = true
 -- Query server for actual paths on startup
 local function fetchConfig()
     local handle = io.popen('curl -sf "' .. SERVER_URL .. '/api/config" 2>NUL')
-    if handle then
-        local raw = handle:read("*a")
-        handle:close()
-        if raw and raw ~= "" then
-            local temp = raw:match('"tempDir"%s*:%s*"([^"]*)"')
-            if temp then TEMP_DIR = temp:gsub("\\", "/") end
-        end
+    if not handle then
+        reaper.ShowConsoleMsg("[ResolveLink] ERROR: curl not found. Install curl and ensure it is in your PATH.\n")
+        return
+    end
+    local raw = handle:read("*a")
+    handle:close()
+    if raw and raw ~= "" then
+        local temp = raw:match('"tempDir"%s*:%s*"([^"]*)"')
+        if temp then TEMP_DIR = temp:gsub("\\", "/") end
     end
 end
 fetchConfig()
@@ -108,6 +110,7 @@ end
 local function findLatestAudio(dir)
     local latestFile = nil
     local latestTime = 0
+    local latestSize = 0
     local idx = 0
 
     while true do
@@ -119,13 +122,15 @@ local function findLatestAudio(dir)
             local fullPath = dir .. "/" .. fn
             local f = io.open(fullPath, "r")
             if f then
+                local size = f:seek("end") or 0
                 f:close()
                 local modTime = 0
                 if reaper.GetFileModTime then
                     modTime = reaper.GetFileModTime(fullPath) or 0
                 end
-                if modTime >= latestTime then
+                if modTime > latestTime or (modTime == latestTime and size >= latestSize) then
                     latestTime = modTime
+                    latestSize = size
                     latestFile = fullPath
                 end
             end
@@ -133,7 +138,7 @@ local function findLatestAudio(dir)
         idx = idx + 1
     end
 
-    return latestFile, latestTime
+    return latestFile, latestTime, latestSize
 end
 
 -- ── HTTP via curl ──────────────────────────────────────────
@@ -199,7 +204,7 @@ local function main()
 
     local wavPath = config.exportDir .. "/" .. (config.exportPath:match("([^/\\]+)$") or "output") .. ".wav"
 
-    local preRenderPath, preRenderTime = findLatestAudio(config.exportDir)
+    local preRenderPath, preRenderTime, preRenderSize = findLatestAudio(config.exportDir)
 
     if AUTO_RENDER then
         local fileName = config.exportPath:match("([^/\\]+)$") or config.exportPath
@@ -217,7 +222,7 @@ local function main()
         reaper.defer(function() end)
     end
 
-    local renderPath, renderTime = findLatestAudio(config.exportDir)
+    local renderPath, renderTime, renderSize = findLatestAudio(config.exportDir)
 
     if not renderPath then
         log("No rendered audio found in " .. config.exportDir)
@@ -228,8 +233,8 @@ local function main()
         return
     end
 
-    if AUTO_RENDER and preRenderPath and renderPath == preRenderPath and renderTime <= preRenderTime then
-        log("WARNING: File unchanged after render. Sending latest anyway.")
+    if AUTO_RENDER and preRenderPath and renderPath == preRenderPath and renderTime <= preRenderTime and renderSize == preRenderSize then
+        log("WARNING: File unchanged after render (same path, time, and size). Sending latest anyway.")
     end
 
     log("Found render: " .. renderPath)

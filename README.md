@@ -24,7 +24,7 @@
 </p>
 <br>
 <p align="center">
-  <img src="https://img.shields.io/badge/bugs-23-red" alt="23 bugs" />
+  <img src="https://img.shields.io/badge/bugs-8-red" alt="8 bugs" />
   <img src="https://img.shields.io/badge/features-54-blueviolet" alt="54 features" />
 </p>
 

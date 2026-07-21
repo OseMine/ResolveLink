@@ -14,7 +14,9 @@ New-Item -ItemType Directory -Force -Path $cepDir | Out-Null
 Copy-Item -Recurse -Force "$srcDir\client" "$cepDir\client"
 Copy-Item -Recurse -Force "$srcDir\CSXS"  "$cepDir\CSXS"
 Copy-Item -Recurse -Force "$srcDir\host"  "$cepDir\host"
-reg add "HKCU\Software\Adobe\CSXS.11" /v PlayerDebugMode /t REG_SZ /d 1 /f 2>$null | Out-Null
+foreach ($v in 9..12) {
+    reg add "HKCU\Software\Adobe\CSXS.$v" /v PlayerDebugMode /t REG_SZ /d 1 /f 2>$null | Out-Null
+}
 
 $count = (Get-ChildItem $cepDir -Recurse -File).Count
 Write-Host "AE extension deployed ($count files) -> $cepDir" -ForegroundColor Green

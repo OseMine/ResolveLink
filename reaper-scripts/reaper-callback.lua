@@ -24,16 +24,18 @@ local PROJECTS_DIR        = ""
 -- Query server for actual paths on startup
 local function fetchConfig()
     local handle = io.popen('curl -sf "' .. SERVER_URL .. '/api/config" 2>NUL')
-    if handle then
-        local raw = handle:read("*a")
-        handle:close()
-        if raw and raw ~= "" then
-            local export = raw:match('"exportDir"%s*:%s*"([^"]*)"')
-            if export then
-                EXPORTS_JOBS_DIR = export:gsub("\\", "/") .. "/reaper-jobs"
-                EXPORTS_RESULTS_DIR = export:gsub("\\", "/") .. "/reaper-results"
-                PROJECTS_DIR = export:gsub("\\", "/") .. "/reaper-projects"
-            end
+    if not handle then
+        reaper.ShowConsoleMsg("[ResolveLink] ERROR: curl not found. Install curl and ensure it is in your PATH.\n")
+        return
+    end
+    local raw = handle:read("*a")
+    handle:close()
+    if raw and raw ~= "" then
+        local export = raw:match('"exportDir"%s*:%s*"([^"]*)"')
+        if export then
+            EXPORTS_JOBS_DIR = export:gsub("\\", "/") .. "/reaper-jobs"
+            EXPORTS_RESULTS_DIR = export:gsub("\\", "/") .. "/reaper-results"
+            PROJECTS_DIR = export:gsub("\\", "/") .. "/reaper-projects"
         end
     end
 end

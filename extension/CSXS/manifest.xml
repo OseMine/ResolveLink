@@ -26,6 +26,8 @@
           <CEFCommandLine>
             <Parameter>--allow-file-access-from-files</Parameter>
             <Parameter>--allow-file-access</Parameter>
+            <Parameter>--disable-gpu</Parameter>
+            <Parameter>--disable-gpu-compositing</Parameter>
           </CEFCommandLine>
         </Resources>
         <Lifecycle>

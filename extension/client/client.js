@@ -5,8 +5,9 @@ var csInterface = null;
 var SERVER = "http://localhost:3030";
 var currentSelection = null;
 var renderedFilePath = null;
-var exportDir = "X:\\coding\\AE-Link\\exports";
+var exportDir = "";
 var activeLinkId = null;
+var activeRenderTemplate = "Best Settings";
 var authToken = null;
 
 // ── Persistence ──
@@ -16,6 +17,7 @@ function saveState() {
     renderedFilePath: renderedFilePath,
     exportDir: exportDir,
     activeLinkId: activeLinkId,
+    activeRenderTemplate: activeRenderTemplate,
     compName: document.getElementById("compName").textContent,
     compVisible: document.getElementById("compStrip").style.display !== "none"
   };
@@ -30,6 +32,7 @@ function loadState() {
     renderedFilePath = state.renderedFilePath || null;
     exportDir = state.exportDir || exportDir;
     activeLinkId = state.activeLinkId || null;
+    activeRenderTemplate = state.activeRenderTemplate || "Best Settings";
     if (state.compVisible && state.compName) {
       document.getElementById("compStrip").style.display = "flex";
       document.getElementById("compName").textContent = state.compName;
@@ -307,7 +310,7 @@ function renderComp() {
         '  while (rq.numItems > 0) rq.item(1).remove();' +
         '  var ri = rq.items.add(comp);' +
         '  var om = ri.outputModule(1);' +
-        '  try { om.applyTemplate("Best Settings"); } catch(e) {}' +
+        '  try { om.applyTemplate("' + activeRenderTemplate + '"); } catch(e) {}' +
         '  om.file = new File("' + exportPath + '");' +
         '  ri.status = 1;' +
         '  rq.render();' +
@@ -626,6 +629,15 @@ function executeJob(job) {
 
     activeLinkId = job.linkId;
     saveState();
+
+    api("GET", "/api/links/" + job.linkId)
+      .then(function (link) {
+        if (link && link.settings && link.settings.renderQueue) {
+          activeRenderTemplate = link.settings.renderQueue;
+          saveState();
+        }
+      })
+      .catch(function () {});
 
     api("PUT", "/api/jobs/" + job.jobId + "/status", {
       status: "completed",

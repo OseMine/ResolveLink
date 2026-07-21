@@ -105,13 +105,23 @@
     );
 
     // ---------------------------------------------------------------------------
+    // Sort clips by track index (desc) so higher tracks end up on top in AE
+    // ---------------------------------------------------------------------------
+    var sorted = payloadData.clips.slice().sort(function(a, b) {
+        var ta = a.trackIndex || 1;
+        var tb = b.trackIndex || 1;
+        if (ta !== tb) return tb - ta;
+        return (a.compStartFrames || 0) - (b.compStartFrames || 0);
+    });
+
+    // ---------------------------------------------------------------------------
     // Import and place each clip
     // ---------------------------------------------------------------------------
     var imported = 0;
     var failed = 0;
 
-    for (var i = 0; i < payloadData.clips.length; i++) {
-        var clip = payloadData.clips[i];
+    for (var i = 0; i < sorted.length; i++) {
+        var clip = sorted[i];
 
         try {
             var file = new File(clip.filePath);
@@ -123,17 +133,24 @@
 
             var importOptions = new ImportOptions(file);
             var footage = app.project.importFile(importOptions);
-            var layer = comp.layers.add(footage);
-
-            layer.name = clip.name || ("Clip_" + (i + 1));
 
             var compStartSec = (clip.compStartFrames || 0) / fps;
             var durationSec = (clip.durationFrames || 0) / fps;
             var sourceInSec = (clip.sourceIn || 0) / fps;
 
-            layer.startTime = compStartSec - sourceInSec;
-            layer.inPoint = compStartSec;
-            layer.outPoint = compStartSec + durationSec;
+            if (clip.mediaType === "audio") {
+                var audioLayer = comp.layers.addAudio(footage);
+                audioLayer.name = clip.name || ("Audio_" + (i + 1));
+                audioLayer.startTime = compStartSec - sourceInSec;
+                audioLayer.inPoint = compStartSec;
+                audioLayer.outPoint = compStartSec + durationSec;
+            } else {
+                var layer = comp.layers.add(footage);
+                layer.name = clip.name || ("Clip_" + (i + 1));
+                layer.startTime = compStartSec - sourceInSec;
+                layer.inPoint = compStartSec;
+                layer.outPoint = compStartSec + durationSec;
+            }
 
             imported++;
         } catch (e) {

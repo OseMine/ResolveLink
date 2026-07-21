@@ -287,7 +287,8 @@ const aeIntegration = {
 
     // POST /api/render-active-comp — Render the active comp
     router.post('/render-active-comp', (req, res) => {
-      const renderScript = generateActiveCompRenderScript(exportDir);
+      const template = (req.body && req.body.template) || 'Best Settings';
+      const renderScript = generateActiveCompRenderScript(exportDir, template);
       const scriptPath = path.join(tempDir, `render_active_${Date.now()}.jsx`);
       fs.writeFileSync(scriptPath, renderScript);
       res.json({ scriptPath });
