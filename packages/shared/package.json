@@ -1,0 +1,13 @@
+{
+  "name": "@resolvelink/shared",
+  "version": "1.0.0",
+  "description": "Shared types, schemas, and constants for ResolveLink",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  }
+}

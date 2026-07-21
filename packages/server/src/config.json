@@ -1,0 +1,36 @@
+{
+  "server": {
+    "port": 3030,
+    "host": "127.0.0.1"
+  },
+  "paths": {
+    "vfxExportDir": "./exports",
+    "tempDir": "./temp",
+    "aeInstallPath": {
+      "win32": "",
+      "darwin": ""
+    }
+  },
+  "watcher": {
+    "enabled": true,
+    "extensions": [".mov", ".mp4", ".exr", ".png", ".tif", ".jpg", ".wav", ".flac", ".aiff", ".ogg", ".mp3"],
+    "debounceMs": 1000
+  },
+  "ae": {
+    "renderCommand": "aerender",
+    "projectExtension": ".aep"
+  },
+  "resolve": {
+    "pythonPath": "python",
+    "pollIntervalMs": 5000,
+    "bridgeScript": "./resolve-bridge.py"
+  },
+  "reaper": {
+    "installPath": {
+      "win32": "C:\\Program Files\\REAPER",
+      "darwin": "/Applications/REAPER.app/Contents/MacOS"
+    },
+    "pollIntervalMs": 5000,
+    "renderFormat": "wav"
+  }
+}

@@ -26,12 +26,12 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    mainWindow.loadFile(path.join(__dirname, 'src', 'dist', 'index.html'));
+    mainWindow.loadFile(path.join(__dirname, 'packages', 'ui', 'dist', 'index.html'));
   }
 }
 
 function startBackendServer() {
-  const serverPath = path.join(__dirname, 'server', 'index.js');
+  const serverPath = path.join(__dirname, 'packages', 'server', 'src', 'index.js');
   const server = spawn(process.execPath, [serverPath], {
     stdio: 'inherit',
     env: { ...process.env, PORT: SERVER_PORT },
