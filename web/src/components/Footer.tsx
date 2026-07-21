@@ -1,8 +1,8 @@
 export function Footer() {
   return (
-    <footer className="py-8 border-t border-[#2a2a2a] text-center text-[#444444] text-[0.75rem] font-mono tracking-[0.05em] relative z-10">
-      <div className="max-w-[1100px] mx-auto px-8">
-        <div className="flex justify-center gap-8 mb-3">
+    <footer className="py-6 md:py-8 border-t border-[#2a2a2a] text-center text-[#444444] text-[0.75rem] font-mono tracking-[0.05em] relative z-10">
+      <div className="max-w-[1100px] mx-auto px-5 md:px-8">
+        <div className="flex justify-center gap-4 sm:gap-8 mb-3 flex-wrap">
           {[
             { label: 'GitHub', href: 'https://github.com/OseMine/ResolveLink' },
             { label: 'Docs', href: 'https://github.com/OseMine/ResolveLink/blob/main/docs/ARCHITECTURE.md' },

@@ -42,7 +42,7 @@ function FeatureCard({ feature, index }: { feature: (typeof features)[number]; i
     <div
       ref={ref}
       className={cn(
-        'site-card p-5 transition-all duration-500',
+        'site-card p-4 md:p-5 transition-all duration-500',
         'hover:border-[#383838] hover:-translate-y-0.5',
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10',
       )}
@@ -61,25 +61,25 @@ export function Features() {
   const { ref: headerRef, visible: headerVisible } = useScrollReveal();
 
   return (
-    <section id="features" className="py-24 relative z-10">
-      <div className="max-w-[1100px] mx-auto px-8">
+    <section id="features" className="py-16 md:py-24 relative z-10">
+      <div className="max-w-[1100px] mx-auto px-5 md:px-8">
         <div
           ref={headerRef}
           className={cn(
-            'text-center mb-14 transition-all duration-700',
+            'text-center mb-10 md:mb-14 transition-all duration-700',
             headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10',
           )}
         >
           <span className="site-label mb-4 inline-block">Features</span>
-          <h2 className="text-[clamp(1.8rem,4vw,2.5rem)] font-bold tracking-tight text-[#e0e0e0] mb-3">
+          <h2 className="text-[clamp(1.5rem,4vw,2.5rem)] font-bold tracking-tight text-[#e0e0e0] mb-3">
             Everything you need for a seamless round-trip
           </h2>
-          <p className="text-[#888888] max-w-[440px] mx-auto text-[0.95rem]">
+          <p className="text-[#888888] max-w-[440px] mx-auto text-[0.9rem] md:text-[0.95rem]">
             No more manual exports. Select, send, and let ResolveLink handle the rest.
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 max-lg:grid-cols-2 max-md:grid-cols-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {features.map((feature, i) => (
             <FeatureCard key={feature.title} feature={feature} index={i} />
           ))}

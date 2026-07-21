@@ -52,28 +52,28 @@ export function Install() {
   };
 
   return (
-    <section id="install" className="py-24 relative z-10">
+    <section id="install" className="py-16 md:py-24 relative z-10">
       <div
         ref={ref}
         className={cn(
-          'max-w-[700px] mx-auto px-8 text-center transition-all duration-700',
+          'max-w-[700px] mx-auto px-5 md:px-8 text-center transition-all duration-700',
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10',
         )}
       >
-        <h2 ref={titleRef} className="text-[clamp(1.8rem,4vw,2.5rem)] font-bold tracking-tight mb-3 text-[#e0e0e0]">
+        <h2 ref={titleRef} className="text-[clamp(1.5rem,4vw,2.5rem)] font-bold tracking-tight mb-3 text-[#e0e0e0]">
           Get started
         </h2>
-        <p className="text-[#888888] mb-10 text-[0.95rem]">
+        <p className="text-[#888888] mb-8 md:mb-10 text-[0.9rem] md:text-[0.95rem]">
           One command to install &mdash; auto-detects your OS and sets everything up.
         </p>
 
-        <div className="flex justify-center gap-2 mb-6">
+        <div className="flex justify-center gap-1.5 sm:gap-2 mb-5 md:mb-6">
           {(Object.keys(installCmds) as OS[]).map((key) => (
             <button
               key={key}
               onClick={() => { setOs(key); setCopied(false); }}
               className={cn(
-                'px-4 py-2 rounded-lg text-[0.8rem] font-medium transition-all border',
+                'px-3 sm:px-4 py-2 rounded-lg text-[0.75rem] sm:text-[0.8rem] font-medium transition-all border',
                 os === key
                   ? 'bg-accent/[0.08] text-accent border-accent/20'
                   : 'text-[#666666] border-transparent hover:text-[#888888] hover:bg-white/[0.02]',
@@ -85,7 +85,7 @@ export function Install() {
         </div>
 
         <div className="site-card overflow-hidden text-left">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-[#2a2a2a] bg-[#1a1a1a]/50">
+          <div className="flex items-center justify-between px-3 md:px-4 py-2 border-b border-[#2a2a2a] bg-[#1a1a1a]/50">
             <span className="text-[0.75rem] font-medium text-[#888888]">{osLabels[os]}</span>
             <button
               onClick={copy}
@@ -100,7 +100,7 @@ export function Install() {
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
-          <pre className="p-4 font-mono text-[0.78rem] leading-6 text-[#cccccc] overflow-x-auto whitespace-pre">
+          <pre className="p-3 md:p-4 font-mono text-[0.7rem] md:text-[0.78rem] leading-5 md:leading-6 text-[#cccccc] overflow-x-auto whitespace-pre">
             {installCmds[os]}
           </pre>
         </div>

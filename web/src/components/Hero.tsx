@@ -58,21 +58,21 @@ export function Hero() {
   }, []);
 
   return (
-    <section className="min-h-screen flex items-center justify-center text-center px-8 pt-28 pb-20 relative z-10">
+    <section className="min-h-screen flex items-center justify-center text-center px-5 md:px-8 pt-24 pb-16 md:pt-28 md:pb-20 relative z-10">
       <div className="max-w-[800px]">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full bg-accent/[0.08] border border-accent/20 text-accent text-[0.75rem] font-medium opacity-0 translate-y-5 animate-fade-up [animation-delay:0.2s] [animation-fill-mode:forwards]">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 md:mb-8 rounded-full bg-accent/[0.08] border border-accent/20 text-accent text-[0.75rem] font-medium opacity-0 translate-y-5 animate-fade-up [animation-delay:0.2s] [animation-fill-mode:forwards]">
           <span className="w-[7px] h-[7px] rounded-full bg-success animate-pulse-dot" />
           v1.0.0 &mdash; Now Available
         </div>
 
-        <h1 className="font-extrabold leading-[1.05] tracking-tight mb-6 opacity-0 translate-y-7 animate-fade-up [animation-delay:0.4s] [animation-fill-mode:forwards]">
-          <span id="hero-line-1" className="block text-[clamp(2.8rem,7vw,5rem)] text-[#e0e0e0]">Dynamic Link for</span>
-          <span id="hero-line-2" className="block text-[clamp(2.8rem,7vw,5rem)] text-accent">
+        <h1 className="font-extrabold leading-[1.05] tracking-tight mb-5 md:mb-6 opacity-0 translate-y-7 animate-fade-up [animation-delay:0.4s] [animation-fill-mode:forwards]">
+          <span id="hero-line-1" className="block text-[clamp(2rem,7vw,5rem)] text-[#e0e0e0]">Dynamic Link for</span>
+          <span id="hero-line-2" className="block text-[clamp(2rem,7vw,5rem)] text-accent">
             DaVinci Resolve
           </span>
         </h1>
 
-        <p id="hero-desc" className="text-[1.1rem] text-[#888888] max-w-[520px] mx-auto mb-10 opacity-0 translate-y-7 animate-fade-up [animation-delay:0.6s] [animation-fill-mode:forwards]">
+        <p id="hero-desc" className="text-[1rem] md:text-[1.1rem] text-[#888888] max-w-[520px] mx-auto mb-8 md:mb-10 opacity-0 translate-y-7 animate-fade-up [animation-delay:0.6s] [animation-fill-mode:forwards]">
           Bridge Resolve with After Effects and REAPER. One click to send, auto round-trip sync back.
         </p>
 
@@ -93,8 +93,8 @@ export function Hero() {
         </div>
 
         {cmd && (
-          <div className="site-card overflow-hidden text-left mt-10 opacity-0 translate-y-7 animate-fade-up [animation-delay:1s] [animation-fill-mode:forwards]">
-            <pre className="p-4 font-mono text-[0.78rem] leading-6 text-[#cccccc] overflow-x-auto whitespace-pre">
+          <div className="site-card overflow-hidden text-left mt-8 md:mt-10 opacity-0 translate-y-7 animate-fade-up [animation-delay:1s] [animation-fill-mode:forwards]">
+            <pre className="p-3 md:p-4 font-mono text-[0.7rem] md:text-[0.78rem] leading-5 md:leading-6 text-[#cccccc] overflow-x-auto whitespace-pre">
               {cmd}
             </pre>
           </div>
