@@ -1,0 +1,90 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the information below.
+
+  - type: input
+    id: version
+    attributes:
+      label: ResolveLink Version
+      description: What version of ResolveLink are you using?
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: host-app
+    attributes:
+      label: Host Application
+      description: Which host application is the bug in?
+      options:
+        - DaVinci Resolve
+        - After Effects
+        - REAPER
+        - ResolveLink Bridge Server
+        - Electron App
+    validations:
+      required: true
+
+  - type: input
+    id: host-version
+    attributes:
+      label: Host Application Version
+      description: Version of the host application (e.g. Resolve Studio 19.1)
+      placeholder: "Resolve Studio 19.1"
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: If applicable, paste any relevant log output or error messages.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context, screenshots, or files that help explain the problem.
