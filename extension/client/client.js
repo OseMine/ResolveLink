@@ -21,12 +21,20 @@ function saveState() {
     compName: document.getElementById("compName").textContent,
     compVisible: document.getElementById("compStrip").style.display !== "none"
   };
-  try { localStorage.setItem("resolvelink", JSON.stringify(state)); } catch (e) {}
+  try { localStorage.setItem("resolvelink_v2", JSON.stringify(state)); } catch (e) {}
 }
 
 function loadState() {
   try {
-    var raw = localStorage.getItem("resolvelink");
+    var raw = localStorage.getItem("resolvelink_v2");
+    if (!raw) {
+      // Migrate from un-namespaced key
+      raw = localStorage.getItem("resolvelink");
+      if (raw) {
+        localStorage.setItem("resolvelink_v2", raw);
+        localStorage.removeItem("resolvelink");
+      }
+    }
     if (!raw) return;
     var state = JSON.parse(raw);
     renderedFilePath = state.renderedFilePath || null;

@@ -16,6 +16,9 @@ local SERVER_URL = "http://127.0.0.1:3030"
 local TEMP_DIR = ""
 local AUTO_RENDER = true
 
+local scriptDir = debug.getinfo(1, "S").source:match("@?(.*/)")
+local renderLib = dofile(scriptDir .. "render-lib.lua")
+
 -- Query server for actual paths on startup
 local function fetchConfig()
     local handle = io.popen('curl -sf "' .. SERVER_URL .. '/api/config" 2>NUL')
@@ -35,12 +38,6 @@ fetchConfig()
 -- ── Helpers ────────────────────────────────────────────────
 local function log(msg)
     reaper.ShowConsoleMsg("[ResolveLink] " .. os.date("%H:%M:%S") .. "  " .. msg .. "\n")
-end
-
-local function ensureDir(dir)
-    if reaper.RecursiveCreateDirectory then
-        pcall(reaper.RecursiveCreateDirectory, dir, 0)
-    end
 end
 
 local function readFile(path)
@@ -143,44 +140,13 @@ end
 
 -- ── HTTP via curl ──────────────────────────────────────────
 local function sendToResolve(filePath)
-    local resultFile = TEMP_DIR .. "/_import_result.json"
-    local tmpFile = TEMP_DIR .. "/_import_request.json"
-
-    local normalizedPath = filePath:gsub("\\", "/")
-    local json = '{"filePath":"' .. normalizedPath .. '"}'
-    local f = io.open(tmpFile, "w")
-    if not f then
-        log("ERROR: Could not write temp file")
-        return nil
-    end
-    f:write(json)
-    f:close()
-
-    local curlCmd = 'curl -sf -X PUT "' .. SERVER_URL .. '/api/reaper/import-to-resolve" '
-        .. '-H "Content-Type: application/json" '
-        .. '-d @"' .. tmpFile .. '" '
-        .. '-o "' .. resultFile .. '" 2>&1'
-
     log("Sending to Resolve: " .. filePath)
-    local handle = io.popen(curlCmd)
-    if not handle then
-        log("ERROR: Failed to run curl")
-        os.remove(tmpFile)
+    local resp, err = renderLib.sendFileToResolve(SERVER_URL, filePath, TEMP_DIR)
+    if not resp then
+        log("ERROR: " .. (err or "Failed to run curl"))
         return nil
     end
-    local result = handle:read("*a")
-    handle:close()
-    os.remove(tmpFile)
-
-    local rf = io.open(resultFile, "r")
-    if rf then
-        local json = rf:read("*a")
-        rf:close()
-        os.remove(resultFile)
-        return json
-    end
-
-    return result
+    return resp
 end
 
 -- ── Main ───────────────────────────────────────────────────
@@ -200,7 +166,7 @@ local function main()
     log("Export dir: " .. config.exportDir)
     log("Export path: " .. config.exportPath)
 
-    ensureDir(config.exportDir)
+    renderLib.ensureDir(config.exportDir)
 
     local wavPath = config.exportDir .. "/" .. (config.exportPath:match("([^/\\]+)$") or "output") .. ".wav"
 

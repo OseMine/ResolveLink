@@ -96,6 +96,7 @@ end
 -- ── JSON decoder (shared module) ──────────────────────────
 local scriptDir = debug.getinfo(1, "S").source:match("@?(.*/)")
 local json_decode = dofile(scriptDir .. "json.lua").decode
+local renderLib = dofile(scriptDir .. "render-lib.lua")
 
 -- ── HTTP via Curl ──────────────────────────────────────────
 local function httpGet(url)
@@ -394,36 +395,15 @@ local function doSendToResolve()
     log("Sending: " .. renderPath)
     setStatus("Sending to Resolve...", C_BTN_ACTIVE)
 
-    local resultFile = TEMP_DIR .. "/_import_result.json"
-    local tmpFile = TEMP_DIR .. "/_import_request.json"
-    local normalizedPath = renderPath:gsub("\\", "/")
-    local f = io.open(tmpFile, "w")
-    if not f then setStatus("Write error", C_RED); return end
-    f:write('{"filePath":"' .. normalizedPath .. '"}')
-    f:close()
-
-    local curlCmd = 'curl -sf -X PUT "' .. SERVER_URL .. '/api/reaper/import-to-resolve" '
-        .. '-H "Content-Type: application/json" '
-        .. '-d @"' .. tmpFile .. '" '
-        .. '-o "' .. resultFile .. '" 2>&1'
-    local handle = io.popen(curlCmd)
-    if handle then handle:read("*a"); handle:close() end
-    os.remove(tmpFile)
-
-    local rf = io.open(resultFile, "r")
-    if rf then
-        local json = rf:read("*a")
-        rf:close()
-        os.remove(resultFile)
-        if json and json:find('"success":true') then
-            log("Import complete!")
-            setStatus("Sent to Resolve", C_GREEN)
-        else
-            log("Import may have failed")
-            setStatus("Import failed", C_RED)
-        end
+    local resp, err = renderLib.sendFileToResolve(SERVER_URL, renderPath, TEMP_DIR)
+    if resp and resp:find('"success":true') then
+        log("Import complete!")
+        setStatus("Sent to Resolve", C_GREEN)
+    elseif resp then
+        log("Import may have failed")
+        setStatus("Import failed", C_RED)
     else
-        log("No response from server")
+        log("No response from server: " .. (err or "unknown"))
         setStatus("Server unreachable", C_RED)
     end
 end

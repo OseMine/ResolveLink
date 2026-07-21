@@ -24,7 +24,7 @@
 </p>
 <br>
 <p align="center">
-  <img src="https://img.shields.io/badge/bugs-8-red" alt="8 bugs" />
+  <img src="https://img.shields.io/badge/bugs-3-red" alt="3 bugs" />
   <img src="https://img.shields.io/badge/features-54-blueviolet" alt="54 features" />
 </p>
 
@@ -261,6 +261,8 @@ resolvelink/
 │
 ├── reaper-scripts/             # REAPER scripts
 │   ├── resolve-link-panel.lua  # Unified GFX control panel (v2.2.0)
+│   ├── render-lib.lua          # Shared render config + import logic
+│   ├── json.lua                # Shared JSON decoder module
 │   ├── reaper-callback.lua     # Background worker (file-based IPC)
 │   ├── send-to-resolve.lua     # Render and import to DaVinci
 │   └── update-project.lua      # Sync REAPER to DaVinci timeline

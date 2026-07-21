@@ -315,9 +315,14 @@ def create_ae_timeline(resolve, selected_clips, meta):
         print(f"  WARNING: Timeline not found. Skipping nesting.")
         return tl_name, None
 
+    # ── calculate total span BEFORE deleting originals ──
+    first_start = min(c["start"] for c in selected_clips)
+    last_end = max(c["start"] + c["duration"] for c in selected_clips)
+    total_duration = last_end - first_start
+    target_track = min(c["trackIndex"] for c in selected_clips)
+
     # ── delete originals from original timeline ──
     items_to_delete = []
-    first_start = None
     for track_idx in range(1, orig_timeline.GetTrackCount("video") + 1):
         items = orig_timeline.GetItemListInTrack("video", track_idx)
         if not items:
@@ -326,8 +331,6 @@ def create_ae_timeline(resolve, selected_clips, meta):
             for c in selected_clips:
                 if c["start"] == item.GetStart() and c["duration"] == item.GetDuration():
                     items_to_delete.append(item)
-                    if first_start is None or c["start"] < first_start:
-                        first_start = c["start"]
                     break
 
     for track_idx in range(1, orig_timeline.GetTrackCount("audio") + 1):
@@ -347,18 +350,20 @@ def create_ae_timeline(resolve, selected_clips, meta):
         delete_result = orig_timeline.DeleteClips(items_to_delete)
         print(f"  Delete result: {delete_result}")
 
-    # ── insert nested timeline via media_pool (NOT orig_timeline) ──
-    print(f"Inserting nested timeline at frame {first_start}...")
+    # ── insert nested timeline trimmed to original span ──
+    print(f"Inserting nested timeline at frame {first_start}, duration {total_duration}...")
     nested = media_pool.AppendToTimeline([{
         "mediaPoolItem": new_tl_mpi,
         "startFrame": 0,
+        "endFrame": total_duration,
         "recordFrame": first_start,
-        "trackIndex": 1,
+        "trackIndex": target_track,
     }])
 
     print(f"  Nested insert result: {nested}")
     if not nested:
-        print("  WARNING: Nested insertion failed.")
+        print("  WARNING: Nested insertion failed. Originals were deleted — manual recovery may be needed.")
+        return tl_name, None
 
     return tl_name, None
 

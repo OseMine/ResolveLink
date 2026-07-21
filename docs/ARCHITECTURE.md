@@ -372,6 +372,11 @@ exports/ directory receives new .mov/.mp4
 - **Auto-Save** — Saves REAPER project to `exports/reaper-projects/`
 - **Scrollable Log** — Shows recent activity with timestamps
 
+### Shared REAPER Modules
+
+- **`reaper-scripts/json.lua`** — Shared JSON decoder used by panel, callback, and update-project scripts
+- **`reaper-scripts/render-lib.lua`** — Shared render config + import logic (`sendFileToResolve`, `ensureDir`, `applyRenderConfig`). Used by both `send-to-resolve.lua` and `resolve-link-panel.lua`
+
 ### CEP Extension (`extension/`)
 
 - **client.js** - CEP panel logic running inside After Effects

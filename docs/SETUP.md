@@ -76,6 +76,8 @@ copy reaper-scripts\resolve-link-panel.lua "%APPDATA%\REAPER\Scripts\ResolveLink
 copy reaper-scripts\reaper-callback.lua "%APPDATA%\REAPER\Scripts\ResolveLink-reaper-callback.lua"
 copy reaper-scripts\send-to-resolve.lua "%APPDATA%\REAPER\Scripts\ResolveLink-send-to-resolve.lua"
 copy reaper-scripts\update-project.lua "%APPDATA%\REAPER\Scripts\ResolveLink-update-project.lua"
+copy reaper-scripts\json.lua "%APPDATA%\REAPER\Scripts\json.lua"
+copy reaper-scripts\render-lib.lua "%APPDATA%\REAPER\Scripts\render-lib.lua"
 ```
 
 **macOS/Linux:**
@@ -84,6 +86,8 @@ cp reaper-scripts/resolve-link-panel.lua ~/Library/Application\ Support/REAPER/S
 cp reaper-scripts/reaper-callback.lua ~/Library/Application\ Support/REAPER/Scripts/
 cp reaper-scripts/send-to-resolve.lua ~/Library/Application\ Support/REAPER/Scripts/
 cp reaper-scripts/update-project.lua ~/Library/Application\ Support/REAPER/Scripts/
+cp reaper-scripts/json.lua ~/Library/Application\ Support/REAPER/Scripts/
+cp reaper-scripts/render-lib.lua ~/Library/Application\ Support/REAPER/Scripts/
 ```
 
 ---
