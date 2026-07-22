@@ -1,0 +1,114 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "shell": "pwsh",
+  "logLevel": "INFO",
+  "autoupdate": "notify",
+  "snapshot": true,
+  "instructions": ["AGENTS.md"],
+  "references": {
+    "docs": {
+      "path": "docs",
+      "description": "Project documentation: ARCHITECTURE.md, API.md, SETUP.md, WORKFLOW.md"
+    },
+    "shared-types": {
+      "path": "packages/shared/src",
+      "description": "Shared TypeScript type definitions, Zod schemas, and constants"
+    }
+  },
+  "watcher": {
+    "ignore": [
+      "node_modules",
+      "dist",
+      "temp",
+      "exports",
+      "__pycache__",
+      ".env",
+      "*.log",
+      ".server.pid"
+    ]
+  },
+  "permission": {
+    "read": "allow",
+    "edit": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "list": "allow",
+    "todowrite": "allow",
+    "question": "allow",
+    "webfetch": "allow",
+    "websearch": "allow",
+    "task": "allow",
+    "skill": "allow",
+    "bash": {
+      "npm *": "allow",
+      "npx tsc *": "allow",
+      "node *": "allow",
+      "git status *": "allow",
+      "git diff *": "allow",
+      "git log *": "allow",
+      "git branch *": "allow",
+      "git add *": "ask",
+      "git commit *": "ask",
+      "git push *": "ask",
+      "git pull *": "ask",
+      "powershell *": "allow",
+      "pwsh *": "allow",
+      "ls *": "allow",
+      "dir *": "allow",
+      "cat *": "allow",
+      "type *": "allow",
+      "*": "ask"
+    },
+    "external_directory": {
+      "*": "allow"
+    }
+  },
+  "tool_output": {
+    "max_lines": 2000,
+    "max_bytes": 51200
+  },
+  "compaction": {
+    "auto": true,
+    "tail_turns": 5,
+    "prune": false
+  },
+  "formatter": false,
+  "lsp": false,
+  "customCommands": [
+    {
+      "name": "dev",
+      "command": "npm run dev",
+      "description": "Start development server + Vite dev server concurrently"
+    },
+    {
+      "name": "server",
+      "command": "npm run server",
+      "description": "Start backend server only (port 3030)"
+    },
+    {
+      "name": "ui",
+      "command": "npm run ui",
+      "description": "Start Vite dev server only (port 5173)"
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "description": "Build packages/ui (tsc + vite build)"
+    },
+    {
+      "name": "test",
+      "command": "npm test",
+      "description": "Run all Vitest tests"
+    },
+    {
+      "name": "typecheck",
+      "command": "npx tsc --noEmit --project packages/ui/ && npx tsc --noEmit --project src/ && npx tsc --noEmit --project web/",
+      "description": "Type-check all TypeScript projects"
+    },
+    {
+      "name": "start",
+      "command": "npm start",
+      "description": "Start Electron app"
+    }
+  ]
+}

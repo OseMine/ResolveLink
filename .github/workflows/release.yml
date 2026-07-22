@@ -25,6 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Get tag
         id: tag
@@ -36,50 +38,35 @@ jobs:
           sed "s|__RELEASE_TAG__|${VERSION}|g" install.lua > install-release.lua
           echo "Installer patched for ${VERSION}"
 
-      - name: Generate release notes from commits
-        id: notes
-        run: |
-          # Get commits since last tag (or all if first tag)
-          PREV_TAG=$(git tag --sort=-v:refname | head -1 | sed 's/^/^/' | sed 's/$/\$/' || true)
-          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "^$" ]; then
-            COMMITS=$(git log --oneline --no-decorate "${PREV_TAG}..HEAD" -- . ':!.github' || git log --oneline -20)
-          else
-            COMMITS=$(git log --oneline -20)
-          fi
+      - name: Generate release notes with OpenCode
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        with:
+          model: opencode/big-pickle
+          prompt: |
+            Generate a changelog for ResolveLink ${{ steps.tag.outputs.version }}.
+            Look at the git log since the previous tag to understand what changed.
+            Write ONLY the changelog to CHANGELOG.md.
 
-          # Build notes file
-          {
-            echo "## What's New"
-            echo ""
-            echo "$COMMITS" | while IFS= read -r line; do
-              # Skip merge commits and CI commits
-              echo "$line" | grep -qE "(Merge|ci:|chore:)" && continue
-              echo "- $line"
-            done
-            echo ""
-            echo "## Installation"
-            echo ""
-            echo "### DaVinci Resolve (Recommended)"
-            echo "1. Download \`install.lua\` below"
-            echo "2. Open DaVinci Resolve"
-            echo "3. Go to **Workspace > Console** (or press Alt+F9)"
-            echo "4. Paste the contents of \`install.lua\` and press Enter"
-            echo ""
-            echo "### REAPER (ReaPack)"
-            echo "Add this URL in ReaPack > Edit repositories:"
-            echo "\`https://raw.githubusercontent.com/OseMine/ResolveLink/feature/reaper-integration/index.xml\`"
-            echo ""
-            echo "## Requirements"
-            echo "- [Git](https://git-scm.com)"
-            echo "- [Node.js](https://nodejs.org) 18+"
-            echo "- [DaVinci Resolve Studio](https://www.blackmagicdesign.com/products/davinciresolve/) 18+"
-          } > RELEASE_NOTES.md
+            Style rules (match the existing release notes):
+            - Group under ### Bug Fixes and ### Improvements (add other ### sections if relevant)
+            - Each bullet: - **Area**: Short description of what changed
+            - Area examples: AE workflow, REAPER workflow, REAPER scripts, Setup, Panel, Server, Electron UI
+            - Concise, technical but user-facing, no fluff, no "we" language
+            - No code fences around the output
+
+      - name: Assemble release notes
+        run: |
+          cat CHANGELOG.md > RELEASE_BODY.md
+          echo "" >> RELEASE_BODY.md
+          cat RELEASE-BODY.md >> RELEASE_BODY.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "ResolveLink ${{ steps.tag.outputs.version }}"
-          body_path: RELEASE_NOTES.md
+          body_path: RELEASE_BODY.md
           files: install-release.lua
           draft: false
           prerelease: false
