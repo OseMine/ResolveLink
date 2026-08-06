@@ -34,5 +34,4 @@ jobs:
         with:
           model: opencode/deepseek-v4-flash-free
           use_github_token: true
-          auto_approve: true
-          args: "--prompt-allow-external-dir"
+          # Removed invalid inputs: auto_approve and args
