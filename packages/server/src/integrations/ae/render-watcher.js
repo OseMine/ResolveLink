@@ -37,7 +37,8 @@ function startRenderWatch(link, renderInfo, exportDir) {
       store.broadcast('link:updated', link);
 
       try {
-        const result = await resolveBridge.executeBridge('create-compound', [expectedFile]);
+        const args = link.aeTimelineName ? [expectedFile, link.aeTimelineName] : [expectedFile];
+        const result = await resolveBridge.executeBridge('create-compound', args);
         if (result.error) {
           log.error(`Import failed: ${result.error}`);
           link.status = 'error';

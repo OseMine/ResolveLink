@@ -62,7 +62,7 @@ export function Hero() {
       <div className="max-w-[800px]">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 md:mb-8 rounded-full bg-accent/[0.08] border border-accent/20 text-accent text-[0.75rem] font-medium opacity-0 translate-y-5 animate-fade-up [animation-delay:0.2s] [animation-fill-mode:forwards]">
           <span className="w-[7px] h-[7px] rounded-full bg-success animate-pulse-dot" />
-          v1.0.0 &mdash; Now Available
+          v1.1.0 &mdash; Now Available
         </div>
 
         <h1 className="font-extrabold leading-[1.05] tracking-tight mb-5 md:mb-6 opacity-0 translate-y-7 animate-fade-up [animation-delay:0.4s] [animation-fill-mode:forwards]">

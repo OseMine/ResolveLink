@@ -72,5 +72,27 @@ app.on('before-quit', () => {
 ipcMain.on('window:minimize', () => mainWindow?.minimize());
 ipcMain.on('window:close', () => mainWindow?.close());
 
-// Open external links
-ipcMain.on('open:external', (_event, url) => shell.openExternal(url));
+app.on('webContents-created', (_event, contents) => {
+  contents.on('will-navigate', (event, url) => {
+    const u = new URL(url);
+    if (u.protocol !== 'file:' && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') {
+      event.preventDefault();
+    }
+  });
+  contents.setWindowOpenHandler(({ url }) => {
+    const u = new URL(url);
+    if (u.protocol === 'https:') {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
+    return { action: 'deny' };
+  });
+});
+
+// Open external links — only validated HTTPS
+ipcMain.on('open:external', (_event, url) => {
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'https:') shell.openExternal(url);
+  } catch {}
+});

@@ -82,7 +82,7 @@ def get_audio_timeline_data(resolve):
                 "name": item.GetName() or os.path.basename(source_path) or "Untitled",
                 "start": item.GetStart(),
                 "end": item.GetEnd(),
-                "duration": item.GetDuration(),
+                "duration": item.GetEnd() - item.GetStart(),
                 "sourceIn": item.GetLeftOffset() or 0,
                 "sourcePath": source_path,
                 "trackIndex": track_idx,

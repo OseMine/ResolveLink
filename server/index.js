@@ -597,6 +597,21 @@ app.get('/api/links/:id', (req, res) => {
   res.json(link);
 });
 
+// Serve JSX file content for direct evalScript (avoids ExtendScript file-read + eval)
+app.get('/api/links/:id/jsx', (req, res) => {
+  const link = activeLinks.get(req.params.id);
+  if (!link) return res.status(404).json({ error: 'Link not found' });
+  if (!link.jsxPath || !fs.existsSync(link.jsxPath)) {
+    return res.status(404).json({ error: 'JSX file not found' });
+  }
+  try {
+    const content = fs.readFileSync(link.jsxPath, 'utf8');
+    res.json({ content });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read JSX: ' + err.message });
+  }
+});
+
 // Create a new link: Resolve sends clip data, we generate AE project
 app.post('/api/link-clip', (req, res) => {
   const { clipData, settings } = req.body;
@@ -1165,21 +1180,41 @@ function generateJSXPayload(link) {
 
 function generateExtendScript(link) {
   const payload = generateJSXPayload(link);
-  const clipsJSON = JSON.stringify(payload.clips);
-  const exportPath = path.join(EXPORT_DIR, payload.compName).replace(/\\/g, '\\\\');
+  const clipsBase64 = Buffer.from(JSON.stringify(payload.clips)).toString('base64');
 
   return `// ResolveLink Auto-Generated ExtendScript
 // Link ID: ${link.id}
 // Generated: ${new Date().toISOString()}
 
 (function() {
+    // Decode base64 payload to prevent injection via clip names
+    var b64 = "${clipsBase64}";
+    var jsonStr = (function() {
+        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+        var str = "", o1, o2, o3, h1, h2, h3, h4, i = 0;
+        var inp = b64.replace(/[^A-Za-z0-9+/=]/g, "");
+        while (i < inp.length) {
+            h1 = chars.indexOf(inp.charAt(i++));
+            h2 = chars.indexOf(inp.charAt(i++));
+            h3 = chars.indexOf(inp.charAt(i++));
+            h4 = chars.indexOf(inp.charAt(i++));
+            o1 = (h1 << 2) | (h2 >> 4);
+            o2 = ((h2 & 15) << 4) | (h3 >> 2);
+            o3 = ((h3 & 3) << 6) | h4;
+            str += String.fromCharCode(o1);
+            if (h3 != 64) str += String.fromCharCode(o2);
+            if (h4 != 64) str += String.fromCharCode(o3);
+        }
+        return str;
+    })();
+
     var linkData = {
         compName: "${payload.compName}",
         width: ${payload.width},
         height: ${payload.height},
         fps: ${payload.fps},
         duration: ${payload.duration},
-        clips: ${clipsJSON}
+        clips: (typeof JSON !== "undefined" && JSON.parse) ? JSON.parse(jsonStr) : eval("(" + jsonStr + ")")
     };
 
     var fps = linkData.fps;
@@ -1223,13 +1258,13 @@ function generateExtendScript(link) {
             if (clip.mediaType === "audio") {
                 var audioLayer = comp.layers.addAudio(footage);
                 audioLayer.name = clip.name;
-                audioLayer.startTime = Math.max(0, compStartSec - sourceInSec);
+                audioLayer.startTime = compStartSec - sourceInSec;
                 audioLayer.inPoint = compStartSec;
                 audioLayer.outPoint = compStartSec + durationSec;
             } else {
                 var layer = comp.layers.add(footage);
                 layer.name = clip.name;
-                layer.startTime = Math.max(0, compStartSec - sourceInSec);
+                layer.startTime = compStartSec - sourceInSec;
                 layer.inPoint = compStartSec;
                 layer.outPoint = compStartSec + durationSec;
 
@@ -1387,7 +1422,7 @@ function generateReaperPayload(link) {
       filePath: (clip.sourcePath || '').replace(/\\/g, '/'),
       positionSeconds: ((clip.start || 0) - firstClipStart) / fps,
       durationSeconds: (clip.duration || 0) / fps,
-      sourceOffsetSeconds: (clip.sourceIn || 0) / fps,
+      sourceOffsetSeconds: (clip.sourceIn || 0) / (clip.sourceFps || fps),
       volume: clip.volume != null ? clip.volume : 1.0,
       muted: clip.muted || false,
     });

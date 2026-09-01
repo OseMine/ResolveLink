@@ -19,6 +19,7 @@ import sys
 import os
 import json
 import platform
+import time
 
 
 # ---------------------------------------------------------------------------
@@ -201,7 +202,7 @@ def cmd_timeline(resolve):
                         "name": item.GetName(),
                         "start": item.GetStart(),
                         "end": item.GetEnd(),
-                        "duration": item.GetDuration(),
+                        "duration": (item.GetEnd() - item.GetStart()) or 0,
                         "sourceStart": item.GetLeftOffset(),
                         "sourceEnd": item.GetRightOffset(),
                         "mediaPoolItem": item.GetMediaPoolItem().GetClipProperty("File Path") if item.GetMediaPoolItem() else None,
@@ -275,7 +276,7 @@ def cmd_selection(resolve, track=None):
 
                 source_start = item.GetLeftOffset() or 0
                 source_end = item.GetRightOffset() or 0
-                duration = item.GetDuration() or 0
+                duration = (item.GetEnd() - item.GetStart()) or 0
 
                 item_start = item.GetStart() or 0
                 item_end = item.GetEnd() or 0
@@ -290,6 +291,7 @@ def cmd_selection(resolve, track=None):
                     "sourcePath": source_path,
                     "trackIndex": track_idx,
                     "mediaType": clip_props.get("Type", "") if clip_props else "",
+                    "sourceFps": float(clip_props.get("FPS") or fps) if clip_props else fps,
                     "fps": fps,
                     "resolution": {
                         "width": int(clip_props.get("Resolution Width", width) or width) if clip_props else width,
@@ -370,15 +372,16 @@ def cmd_import_rendered(resolve, args=None):
       6. Disable all original clips below
       7. Switch back to the original timeline
 
-    Usage: python resolve-bridge.py import-rendered <rendered_file>
+    Usage: python resolve-bridge.py import-rendered <rendered_file> [ae_timeline_name]
     """
     if resolve is None:
         return {"connected": False, "error": "DaVinci Resolve not running"}
 
     if not args or len(args) < 1:
-        return {"error": "Usage: import-rendered <rendered_file>"}
+        return {"error": "Usage: import-rendered <rendered_file> [ae_timeline_name]"}
 
     rendered_file = args[0]
+    target_timeline_name = args[1] if len(args) > 1 else None
 
     if not os.path.isfile(rendered_file):
         return {"error": f"File not found: {rendered_file}"}
@@ -413,17 +416,25 @@ def cmd_import_rendered(resolve, args=None):
         # Step 2: Import rendered file into the AE Renders folder
         # Normalize path for Resolve (forward slashes)
         render_path = rendered_file.replace("\\", "/")
-        previous_folder = media_pool.GetCurrentFolder()
-        media_pool.SetCurrentFolder(render_folder)
-        imported = media_pool.ImportMedia([render_path])
-        media_pool.SetCurrentFolder(previous_folder)
+
+        # Retry import up to 5 times with delays (file may still be locked by AE)
+        imported = None
+        for attempt in range(5):
+            if not os.path.isfile(rendered_file):
+                time.sleep(1)
+                continue
+            previous_folder = media_pool.GetCurrentFolder()
+            media_pool.SetCurrentFolder(render_folder)
+            try:
+                imported = media_pool.ImportMedia([render_path])
+            finally:
+                media_pool.SetCurrentFolder(previous_folder)
+            if imported and len(imported) > 0:
+                break
+            time.sleep(1.5)
 
         if not imported or len(imported) == 0:
-            # Retry: try importing directly without folder switch
-            imported2 = media_pool.ImportMedia([render_path])
-            if not imported2 or len(imported2) == 0:
-                return {"error": f"Failed to import '{render_path}' into media pool"}
-            imported = imported2
+            return {"error": f"Failed to import '{render_path}' into media pool after retries"}
 
         rendered_mpi = imported[0]
 
@@ -438,11 +449,16 @@ def cmd_import_rendered(resolve, args=None):
             if tl is None:
                 continue
             tl_name = tl.GetName()
-            if tl_name.startswith("AE_") and tl_name != master_name:
+            if target_timeline_name:
+                if tl_name == target_timeline_name:
+                    ae_timeline_obj = tl
+                    break
+            elif tl_name.startswith("AE_") and tl_name != master_name:
                 ae_timeline_obj = tl
 
         if ae_timeline_obj is None:
-            return {"error": "No AE_Timeline found"}
+            hint = f" (looking for '{target_timeline_name}')" if target_timeline_name else ""
+            return {"error": f"No AE_Timeline found{hint}"}
 
         # Switch to the AE timeline
         project.SetCurrentTimeline(ae_timeline_obj)
@@ -455,7 +471,7 @@ def cmd_import_rendered(resolve, args=None):
                 items = ae_timeline_obj.GetItemListInTrack(track_type, t) or []
                 for item in items:
                     s = item.GetStart()
-                    e = s + item.GetDuration()
+                    e = item.GetEnd()
                     if earliest_start is None or s < earliest_start:
                         earliest_start = s
                     if latest_end is None or e > latest_end:
@@ -489,14 +505,14 @@ def cmd_import_rendered(resolve, args=None):
         append_result = media_pool.AppendToTimeline([{
             "mediaPoolItem": rendered_mpi,
             "startFrame": 0,
-            "endFrame": total_duration,
+            "endFrame": total_duration - 1,
             "trackIndex": new_video_track,
             "recordFrame": earliest_start,
             "mediaType": 1,
         }, {
             "mediaPoolItem": rendered_mpi,
             "startFrame": 0,
-            "endFrame": total_duration,
+            "endFrame": total_duration - 1,
             "trackIndex": new_audio_track,
             "recordFrame": earliest_start,
             "mediaType": 2,
@@ -558,7 +574,7 @@ def cmd_timeline_at(resolve, name=None):
                         "name": item.GetName(),
                         "start": item.GetStart(),
                         "end": item.GetEnd(),
-                        "duration": item.GetDuration(),
+                        "duration": (item.GetEnd() - item.GetStart()) or 0,
                         "sourceStart": item.GetLeftOffset(),
                         "sourceEnd": item.GetRightOffset(),
                         "mediaPoolItem": item.GetMediaPoolItem().GetClipProperty("File Path") if item.GetMediaPoolItem() else None,
@@ -752,7 +768,7 @@ def cmd_import_audio(resolve, args=None):
             item_info = {
                 "name": last_item.GetName(),
                 "start": last_item.GetStart(),
-                "duration": last_item.GetDuration(),
+                "duration": (last_item.GetEnd() - last_item.GetStart()) or 0,
             }
 
         return {

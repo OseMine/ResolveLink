@@ -205,15 +205,37 @@ function refreshSelection() {
         item.className = "clip-item";
 
         var dur = clip.duration ? Math.round(clip.duration / (data.fps || 24)) + "s" : "";
-        item.innerHTML =
-          '<div class="clip-item-left">' +
-            '<span class="clip-num">' + (i + 1) + '</span>' +
-            '<span class="clip-name">' + clip.name + '</span>' +
-          '</div>' +
-          '<div class="clip-item-right">' +
-            '<span class="clip-tag">T' + clip.trackIndex + '</span>' +
-            '<span class="clip-dur">' + dur + '</span>' +
-          '</div>';
+
+        var left = document.createElement("div");
+        left.className = "clip-item-left";
+
+        var num = document.createElement("span");
+        num.className = "clip-num";
+        num.textContent = (i + 1);
+
+        var name = document.createElement("span");
+        name.className = "clip-name";
+        name.textContent = clip.name;
+
+        left.appendChild(num);
+        left.appendChild(name);
+
+        var right = document.createElement("div");
+        right.className = "clip-item-right";
+
+        var tag = document.createElement("span");
+        tag.className = "clip-tag";
+        tag.textContent = "T" + clip.trackIndex;
+
+        var durSpan = document.createElement("span");
+        durSpan.className = "clip-dur";
+        durSpan.textContent = dur;
+
+        right.appendChild(tag);
+        right.appendChild(durSpan);
+
+        item.appendChild(left);
+        item.appendChild(right);
         list.appendChild(item);
       });
 
@@ -235,12 +257,24 @@ function sendToAE() {
   var width = currentSelection.width || 1920;
   var height = currentSelection.height || 1080;
 
+  var maxEnd = 0;
+  var firstStart = Infinity;
+  for (var i = 0; i < clips.length; i++) {
+    var c = clips[i];
+    var s = c.start || 0;
+    var e = s + (c.duration || 0);
+    if (s < firstStart) firstStart = s;
+    if (e > maxEnd) maxEnd = e;
+  }
+  if (firstStart === Infinity) firstStart = 0;
+  var duration = (maxEnd - firstStart) / fps;
+
   var btn = document.getElementById("btnSend");
   btn.disabled = true;
 
   api("POST", "/api/link-clip", {
     clipData: clips,
-    settings: { width: width, height: height, fps: fps, duration: 10 }
+    settings: { width: width, height: height, fps: fps, duration: duration }
   }).then(function (result) {
     if (result.error) {
       showError(result.error);
@@ -302,65 +336,29 @@ function renderComp() {
         return;
       }
 
-      fill.style.width = "20%";
-      text.textContent = "Setting up render queue...";
+      fill.style.width = "30%";
+      text.textContent = "Starting render in After Effects...";
 
       var safeName = compName.replace(/[\\/:*?"<>|]/g, "_");
       var exportPath = exportDir.replace(/\\/g, "/") + "/" + safeName + ".mov";
 
-      // Build render script with progress reporting
       var script =
         '(function() {' +
         '  var comp = app.project.activeItem;' +
         '  if (!comp || !(comp instanceof CompItem)) return "NO_COMP";' +
         '  if (app.project.file) app.project.save(app.project.file);' +
         '  var rq = app.project.renderQueue;' +
-        '  while (rq.numItems > 0) rq.item(1).remove();' +
+        '  var existing = rq.numItems;' +
         '  var ri = rq.items.add(comp);' +
         '  var om = ri.outputModule(1);' +
         '  try { om.applyTemplate("' + activeRenderTemplate + '"); } catch(e) {}' +
         '  om.file = new File("' + exportPath + '");' +
-        '  ri.status = 1;' +
         '  rq.render();' +
         '  return "DONE";' +
         '})()';
 
-      // Start progress polling while render runs
-      var progressInterval = setInterval(function () {
-        var checkScript =
-          '(function() {' +
-          '  var rq = app.project.renderQueue;' +
-          '  if (rq.numItems === 0) return "DONE";' +
-          '  var item = rq.item(1);' +
-          '  if (item.status === 3) return "DONE";' +
-          '  if (item.status === 5) return "ERROR";' +
-          '  var total = 0, done = 0;' +
-          '  try {' +
-          '    var numTasks = item.numOutputTasks;' +
-          '    for (var i = 1; i <= numTasks; i++) {' +
-          '      var ot = item.outputTask(i);' +
-          '      for (var j = 1; j <= ot.numItems; j++) {' +
-          '        total++;' +
-          '        if (ot.item(j).status >= 3) done++;' +
-          '      }' +
-          '    }' +
-          '  } catch(e) {}' +
-          '  if (total === 0) return "RENDERING:10";' +
-          '  return "RENDERING:" + Math.round((done / total) * 100);' +
-          '})()';
-
-        evalScript(checkScript, function (result) {
-          if (result && result.indexOf("RENDERING:") === 0) {
-            var pct = parseInt(result.split(":")[1]) || 50;
-            fill.style.width = (20 + pct * 0.7) + "%";
-            text.textContent = "Rendering... " + Math.round(20 + pct * 0.7) + "%";
-          }
-        });
-      }, 1000);
-
       evalScript(script, function (result) {
-        clearInterval(progressInterval);
-        fill.style.width = "100%";
+        fill.style.width = "90%";
         text.textContent = "Render complete!";
 
         if (result === "NO_COMP") {
@@ -379,7 +377,7 @@ function renderComp() {
         setTimeout(function () {
           statusEl.style.display = "none";
           fill.style.width = "0%";
-        }, 2000);
+        }, 3000);
       });
     }
   );
@@ -564,10 +562,22 @@ function showImportModal(job) {
         var dur = c.duration ? (c.duration / fps).toFixed(1) + "s" : "";
         var div = document.createElement("div");
         div.className = "modal-clip";
-        div.innerHTML =
-          '<span class="modal-clip-num">' + (i + 1) + '</span>' +
-          '<span class="modal-clip-name">' + (c.name || "Clip") + '</span>' +
-          '<span class="modal-clip-dur">' + dur + '</span>';
+
+        var num = document.createElement("span");
+        num.className = "modal-clip-num";
+        num.textContent = (i + 1);
+
+        var nameSpan = document.createElement("span");
+        nameSpan.className = "modal-clip-name";
+        nameSpan.textContent = c.name || "Clip";
+
+        var durSpan = document.createElement("span");
+        durSpan.className = "modal-clip-dur";
+        durSpan.textContent = dur;
+
+        div.appendChild(num);
+        div.appendChild(nameSpan);
+        div.appendChild(durSpan);
         list.appendChild(div);
       });
     })
@@ -606,57 +616,75 @@ function executeJob(job) {
     status: "executing"
   }).catch(function () {});
 
-  var jsxPath = job.jsxPath.replace(/\\/g, "\\\\");
-  var readAndExecScript =
-    '(function() {' +
-    '  var f = new File("' + jsxPath + '");' +
-    '  if (!f.exists) return "ERROR: Script not found: " + f.fsName;' +
-    '  f.open("r");' +
-    '  var content = f.read();' +
-    '  f.close();' +
-    '  eval(content);' +
-    '  return "OK";' +
-    '})()';
+  console.log("[ResolveLink] Executing job:", job.jobId, "link:", job.linkId);
 
-  evalScript(readAndExecScript, function (result) {
-    if (result && result.indexOf && result.indexOf("ERROR") > -1) {
+  api("GET", "/api/links/" + job.linkId + "/jsx")
+    .then(function (result) {
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      console.log("[ResolveLink] JSX content received, length:", result.content.length);
+      fill.style.width = "50%";
+      text.textContent = "Running JSX in After Effects...";
+
+      evalScript(result.content, function (evalResult) {
+        console.log("[ResolveLink] evalScript result:", evalResult);
+
+        if (evalResult && evalResult.indexOf && evalResult.indexOf("ERROR") > -1) {
+          var errMsg = evalResult;
+          fill.style.width = "0%";
+          text.textContent = "Script error: " + errMsg;
+
+          console.error("[ResolveLink] Script error:", errMsg);
+
+          api("PUT", "/api/jobs/" + job.jobId + "/status", {
+            status: "error",
+            error: errMsg
+          }).catch(function () {});
+
+          setTimeout(function () { statusEl.style.display = "none"; }, 3000);
+          return;
+        }
+
+        fill.style.width = "100%";
+        text.textContent = "Comp created!";
+
+        activeLinkId = job.linkId;
+        saveState();
+
+        api("GET", "/api/links/" + job.linkId)
+          .then(function (link) {
+            if (link && link.settings && link.settings.renderQueue) {
+              activeRenderTemplate = link.settings.renderQueue;
+              saveState();
+            }
+          })
+          .catch(function () {});
+
+        api("PUT", "/api/jobs/" + job.jobId + "/status", {
+          status: "completed",
+          result: { compName: job.compName }
+        }).catch(function () {});
+
+        refreshCompInfo();
+
+        setTimeout(function () {
+          statusEl.style.display = "none";
+          fill.style.width = "0%";
+        }, 2000);
+      });
+    })
+    .catch(function (e) {
+      console.error("[ResolveLink] Job execution failed:", e);
       fill.style.width = "0%";
-      text.textContent = "Script error: " + result;
+      text.textContent = "Error: " + (e.message || "Failed to load JSX");
 
       api("PUT", "/api/jobs/" + job.jobId + "/status", {
         status: "error",
-        error: result
+        error: e.message
       }).catch(function () {});
 
       setTimeout(function () { statusEl.style.display = "none"; }, 3000);
-      return;
-    }
-
-    fill.style.width = "100%";
-    text.textContent = "Comp created!";
-
-    activeLinkId = job.linkId;
-    saveState();
-
-    api("GET", "/api/links/" + job.linkId)
-      .then(function (link) {
-        if (link && link.settings && link.settings.renderQueue) {
-          activeRenderTemplate = link.settings.renderQueue;
-          saveState();
-        }
-      })
-      .catch(function () {});
-
-    api("PUT", "/api/jobs/" + job.jobId + "/status", {
-      status: "completed",
-      result: { compName: job.compName }
-    }).catch(function () {});
-
-    refreshCompInfo();
-
-    setTimeout(function () {
-      statusEl.style.display = "none";
-      fill.style.width = "0%";
-    }, 2000);
-  });
+    });
 }

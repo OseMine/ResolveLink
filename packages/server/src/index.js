@@ -7,7 +7,6 @@
  */
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -42,8 +41,25 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-app.use(cors());
-app.use(express.json());
+// Loopback-only CORS: no Access-Control-Allow-Origin for non-loopback origins
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    try {
+      const url = new URL(origin);
+      const h = url.hostname;
+      if (h === '127.0.0.1' || h === 'localhost' || h === '::1') {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        if (req.method === 'OPTIONS') return res.sendStatus(204);
+      }
+    } catch {}
+  }
+  next();
+});
+
+app.use(express.json({ limit: '2mb' }));
 app.use(perfMiddleware);
 
 // --- Auth ---
@@ -57,7 +73,7 @@ if (authState.enabled) {
 app.use(requireAuth(authState));
 
 // Serve built React frontend
-const DIST_DIR = path.join(__dirname, '..', '..', 'packages', 'ui', 'dist');
+const DIST_DIR = path.join(__dirname, '..', '..', '..', 'ui', 'dist');
 if (fs.existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR));
 }
@@ -127,15 +143,14 @@ app.get('/api/perf/slow', getSlowEndpoints);
 // Auth management endpoints
 const { generateToken } = require('./middleware/auth');
 
-app.get('/api/auth', (_req, res) => {
+app.get('/api/auth', (req, res) => {
   res.json({
     enabled: authState.enabled,
-    // Only expose token when auth is enabled (so user can share it)
-    token: authState.enabled ? authState.token : null,
+    token: null,
   });
 });
 
-app.post('/api/auth/toggle', (req, res) => {
+app.post('/api/auth/toggle', requireAuth(authState), (req, res) => {
   const { enabled } = req.body;
   if (typeof enabled !== 'boolean') {
     return res.status(400).json({ error: 'enabled must be boolean' });
@@ -165,7 +180,7 @@ app.post('/api/auth/toggle', (req, res) => {
   res.json({ enabled: authState.enabled });
 });
 
-app.post('/api/auth/regenerate', (_req, res) => {
+app.post('/api/auth/regenerate', requireAuth(authState), (_req, res) => {
   const newToken = generateToken();
   authState.token = newToken;
 
@@ -179,7 +194,7 @@ app.post('/api/auth/regenerate', (_req, res) => {
   }
 
   log.info('API auth token regenerated');
-  res.json({ token: newToken });
+  res.json({ success: true });
 });
 
 // --- Catch-all: serve React app for non-API, non-file routes ---
@@ -195,6 +210,13 @@ app.get('*', (req, res) => {
   } else {
     res.status(404).json({ error: 'Frontend not built. Run: cd packages/ui && npm run build' });
   }
+});
+
+// Centralized error handler
+app.use((err, _req, res, _next) => {
+  log.error('Unhandled error:', err.message);
+  if (res.headersSent) return;
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // --- WebSocket ---
@@ -220,15 +242,32 @@ process.on('unhandledRejection', (reason) => {
 
 process.on('uncaughtException', (err) => {
   log.error('Uncaught exception:', err);
+  gracefulShutdown(1);
 });
+
+let fileWatcherHandle = null;
+let reaperWatcherHandle = null;
+
+function gracefulShutdown(exitCode = 0) {
+  log.info('Shutting down gracefully...');
+  if (fileWatcherHandle) fileWatcherHandle.close();
+  if (reaperWatcherHandle) reaperWatcherHandle.close();
+  wss.clients.forEach((ws) => ws.close());
+  wss.close();
+  server.close(() => {
+    log.info('Server closed');
+    process.exit(exitCode);
+  });
+  setTimeout(() => process.exit(exitCode), 5000).unref();
+}
 
 if (require.main === module) {
   server.listen(PORT, HOST, async () => {
     log.info(`Server running on http://${HOST}:${PORT}`);
 
     // Start file watchers
-    startWatcher(EXPORT_DIR, config);
-    startReaperResultsWatcher(REAPER_RESULTS_DIR, EXPORT_DIR);
+    fileWatcherHandle = startWatcher(EXPORT_DIR, config);
+    reaperWatcherHandle = startReaperResultsWatcher(REAPER_RESULTS_DIR, EXPORT_DIR);
 
     // Initialize integrations
     await registry.initAll(store);
@@ -245,8 +284,8 @@ if (require.main === module) {
       }
     });
 
-    process.on('SIGTERM', stopPolling);
-    process.on('SIGINT', stopPolling);
+    process.on('SIGTERM', () => { stopPolling(); gracefulShutdown(0); });
+    process.on('SIGINT', () => { stopPolling(); gracefulShutdown(0); });
   });
 }
 

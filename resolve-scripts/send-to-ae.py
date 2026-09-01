@@ -104,7 +104,7 @@ def get_timeline_data(resolve):
                 "name": item.GetName() or os.path.basename(source_path) or "Untitled",
                 "start": item.GetStart(),
                 "end": item.GetEnd(),
-                "duration": item.GetDuration(),
+                "duration": item.GetEnd() - item.GetStart(),
                 "sourceIn": item.GetLeftOffset() or 0,
                 "sourcePath": source_path,
                 "trackIndex": track_idx,
@@ -200,7 +200,7 @@ def create_ae_timeline(resolve, selected_clips, meta):
             if not items:
                 continue
             for item in items:
-                if item.GetStart() == c["start"] and item.GetDuration() == c["duration"]:
+                if item.GetStart() == c["start"] and (item.GetEnd() - item.GetStart()) == c["duration"]:
                     orig_item = item
                     break
             if orig_item:
@@ -218,7 +218,11 @@ def create_ae_timeline(resolve, selected_clips, meta):
     append_list = []
     for c in video_entries:
         source_in = c.get("sourceIn", 0)
-        source_out = source_in + c.get("duration", 0)
+        fps = float(timeline.GetSetting("timelineFrameRate"))  # or whatever your script uses
+        src_fps = float(c.get("sourceFps", fps))
+        dur_tl = c.get("duration", 0)
+        dur_src = int(dur_tl * src_fps / fps) if fps > 0 else dur_tl
+        source_out = source_in + dur_src
         entry = {
             "mediaPoolItem": c.get("mpi"),
             "startFrame": source_in,
@@ -236,8 +240,12 @@ def create_ae_timeline(resolve, selected_clips, meta):
         a_mpi = a_item.GetMediaPoolItem()
         if not a_mpi:
             continue
+        a_props = a_mpi.GetClipProperty() or {}
+        a_src_fps = float(a_props.get("FPS", fps))
         a_source_in = a_item.GetLeftOffset() or 0
-        a_source_out = a_source_in + a_item.GetDuration()
+        a_dur_tl = a_item.GetEnd() - a_item.GetStart()
+        a_dur_src = int(a_dur_tl * a_src_fps / fps) if fps > 0 else a_dur_tl
+        a_source_out = a_source_in + a_dur_src
         a_entry = {
             "mediaPoolItem": a_mpi,
             "startFrame": a_source_in,
@@ -330,7 +338,7 @@ def create_ae_timeline(resolve, selected_clips, meta):
             continue
         for item in items:
             for c in selected_clips:
-                if c["start"] == item.GetStart() and c["duration"] == item.GetDuration():
+                if c["start"] == item.GetStart() and c["duration"] == (item.GetEnd() - item.GetStart()):
                     items_to_delete.append(item)
                     break
 
@@ -569,19 +577,21 @@ def main():
                         props = mpi.GetClipProperty()
                         if props:
                             source_path = props.get("File Path", "")
-                    a_key = (item.GetStart(), item.GetDuration())
+                    a_key = (item.GetStart(), (item.GetEnd() - item.GetStart()))
                     if a_key not in seen_audio:
                         seen_audio.add(a_key)
                         if not source_path:
                             continue
+                        audio_src_fps = float(props.get("FPS") or fps) if props else fps
                         server_clips.append({
                             "name": item.GetName() or "Audio",
                             "sourcePath": source_path,
                             "start": item.GetStart() - first_start,
-                            "duration": item.GetDuration(),
+                            "duration": item.GetEnd() - item.GetStart(),
                             "sourceIn": item.GetLeftOffset() or 0,
                             "trackIndex": a_idx,
                             "mediaType": "audio",
+                            "sourceFps": audio_src_fps,
                         })
                     break
 
@@ -597,6 +607,8 @@ def main():
             "duration": comp_dur,
         },
     }
+    if tl_name and not tl_err:
+        payload["aeTimelineName"] = tl_name
 
     # send to server
     try:

@@ -56,7 +56,7 @@ const aeIntegration = {
 
     // POST /api/link-clip — Create a new AE link
     router.post('/link-clip', validate(LinkClipRequestSchema), (req, res) => {
-      const { clipData, settings } = req.body;
+      const { clipData, settings, aeTimelineName } = req.body;
 
       const linkId = uuidv4();
       const link = {
@@ -73,6 +73,7 @@ const aeIntegration = {
           duration: settings?.duration || 10,
           renderQueue: settings?.renderQueue || 'Best Settings',
         },
+        aeTimelineName: aeTimelineName || null,
         createdAt: new Date().toISOString(),
         status: 'created',
         exportPath: null,
@@ -296,17 +297,33 @@ const aeIntegration = {
 
     // POST /api/import-back — Import rendered file back into Resolve
     router.post('/import-back', validate(ImportBackRequestSchema), async (req, res) => {
-      const { renderedPath } = req.body;
+      const { renderedPath, aeTimelineName } = req.body;
 
       const resolveBridge = require('../../services/resolve-service');
+      const args = aeTimelineName ? [renderedPath, aeTimelineName] : [renderedPath];
       try {
-        const result = await resolveBridge.executeBridge('create-compound', [renderedPath]);
+        const result = await resolveBridge.executeBridge('create-compound', args);
         if (result.error) {
           return res.status(500).json(result);
         }
         res.json(result);
       } catch (err) {
         res.status(500).json({ error: err.message });
+      }
+    });
+
+    // GET /api/links/:id/jsx — Serve JSX file content for direct evalScript
+    router.get('/links/:id/jsx', (req, res) => {
+      const link = store.activeLinks.get(req.params.id);
+      if (!link) return res.status(404).json({ error: 'Link not found' });
+      if (!link.jsxPath || !fs.existsSync(link.jsxPath)) {
+        return res.status(404).json({ error: 'JSX file not found' });
+      }
+      try {
+        const content = fs.readFileSync(link.jsxPath, 'utf8');
+        res.json({ content });
+      } catch (err) {
+        res.status(500).json({ error: 'Failed to read JSX: ' + err.message });
       }
     });
 

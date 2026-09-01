@@ -13,6 +13,7 @@ const ClipDataSchema = z.object({
   sourcePath: z.string().min(1),
   sourceIn: z.number().optional(),
   sourceOut: z.number().optional(),
+  sourceFps: z.number().positive().optional(),
   trackIndex: z.number().int().positive().optional(),
   trackName: z.string().optional(),
   volume: z.number().min(0).max(2).optional(),
@@ -36,6 +37,7 @@ const LinkStatusSchema = z.enum(['created', 'linked', 'sending', 'queued', 'rend
 const LinkClipRequestSchema = z.object({
   clipData: z.array(ClipDataSchema).min(1, 'At least one clip is required'),
   settings: LinkSettingsSchema.partial().optional(),
+  aeTimelineName: z.string().optional(),
 });
 
 const ReaperLinkClipRequestSchema = z.object({
@@ -95,6 +97,7 @@ const ClipPropertiesRequestSchema = z.object({
 
 const ImportBackRequestSchema = z.object({
   renderedPath: z.string().min(1, 'renderedPath is required'),
+  aeTimelineName: z.string().optional(),
 });
 
 const EditingRequestSchema = z.object({

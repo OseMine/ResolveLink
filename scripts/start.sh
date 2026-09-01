@@ -14,7 +14,7 @@ sleep 0.5
 
 echo "Starting ResolveLink server..."
 cd "$ROOT"
-nohup node server/index.js > /dev/null 2>&1 &
+nohup node packages/server/src/index.js > /dev/null 2>&1 &
 echo $! > "$ROOT/.server.pid"
 echo "Server PID: $(cat "$ROOT/.server.pid")"
 

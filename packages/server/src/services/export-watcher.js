@@ -68,7 +68,8 @@ function startWatcher(exportDir, config) {
 
         try {
           log.info(`Auto-importing to Resolve: ${filePath}`);
-          const result = await resolveBridge.executeBridge('create-compound', [filePath]);
+          const args = matchedLink.aeTimelineName ? [filePath, matchedLink.aeTimelineName] : [filePath];
+          const result = await resolveBridge.executeBridge('create-compound', args, 30000);
           if (result.error) {
             log.error(`Auto-import failed: ${result.error}`);
             matchedLink.status = 'error';

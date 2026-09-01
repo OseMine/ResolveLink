@@ -173,10 +173,6 @@ function renderActiveComp(outputPath, template) {
         }
 
         var rq = app.project.renderQueue;
-        while (rq.numItems > 0) {
-            rq.item(1).remove();
-        }
-
         var ri = rq.items.add(comp);
         var om = ri.outputModule(1);
         try { om.applyTemplate(template || "Best Settings"); } catch (e) {}

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
-import { server } from '../server/index.js';
+import { server } from '../packages/server/src/index.js';
 
 let BASE;
 

@@ -15,11 +15,11 @@
 
 /** @typedef {{ timeline: string; fps: number; width: number; height: number; clips: ResolveClipData[]; clipCount: number; error?: string }} ResolveSelection */
 
-/** @typedef {{ name: string; start: number; end: number; duration: number; sourceIn: number; sourceOut: number; sourcePath: string; trackIndex: number; mediaType: string; fps: number; resolution: { width: number; height: number } }} ResolveClipData */
+/** @typedef {{ name: string; start: number; end: number; duration: number; sourceIn: number; sourceOut: number; sourcePath: string; trackIndex: number; mediaType: string; fps: number; sourceFps?: number; resolution: { width: number; height: number } }} ResolveClipData */
 
 // --- Link Types ---
 
-/** @typedef {{ name: string; start: number; duration: number; sourcePath: string; sourceIn?: number; sourceOut?: number; trackIndex?: number; trackName?: string; volume?: number; muted?: boolean }} ClipData */
+/** @typedef {{ name: string; start: number; duration: number; sourcePath: string; sourceIn?: number; sourceOut?: number; sourceFps?: number; trackIndex?: number; trackName?: string; volume?: number; muted?: boolean }} ClipData */
 
 /** @typedef {'pending' | 'linked' | 'rendering' | 'rendered' | 'error'} LinkClipStatus */
 

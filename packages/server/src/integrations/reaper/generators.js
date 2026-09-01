@@ -40,7 +40,7 @@ function generateReaperPayload(link) {
       filePath: (clip.sourcePath || '').replace(/\\/g, '/'),
       positionSeconds: ((clip.start || 0) - firstClipStart) / fps,
       durationSeconds: (clip.duration || 0) / fps,
-      sourceOffsetSeconds: (clip.sourceIn || 0) / fps,
+      sourceOffsetSeconds: (clip.sourceIn || 0) / (clip.sourceFps || fps),
       volume: clip.volume != null ? clip.volume : 1.0,
       muted: clip.muted || false,
     });

@@ -1,37 +1,5 @@
 import { describe, it, expect } from 'vitest';
-
-// Reimplement the pure logic for testing (extracted from server/index.js)
-function generateJSXPayload(link) {
-  const fps = link.settings.fps || 24;
-
-  const firstClipStart = link.clips.reduce((min, clip) => {
-    const s = clip.start || 0;
-    return s < min ? s : min;
-  }, Infinity);
-
-  const maxEnd = link.clips.reduce((max, clip) => {
-    const end = (clip.start || 0) + (clip.duration || 0);
-    return end > max ? end : max;
-  }, 0);
-
-  return {
-    linkId: link.id,
-    compName: `Resolve_Link_${link.id.slice(0, 8)}`,
-    width: link.settings.width,
-    height: link.settings.height,
-    fps: fps,
-    duration: (maxEnd - firstClipStart) / fps,
-    clips: link.clips.map((clip) => ({
-      name: clip.name,
-      filePath: (clip.sourcePath || '').replace(/\\/g, '/'),
-      compStartFrames: (clip.start || 0) - firstClipStart,
-      durationFrames: clip.duration || 0,
-      sourceIn: clip.sourceIn || 0,
-      trackIndex: clip.trackIndex || 1,
-      mediaType: clip.mediaType || 'video',
-    })),
-  };
-}
+import { generateJSXPayload } from '../packages/server/src/integrations/ae/generators.js';
 
 describe('generateJSXPayload', () => {
   const baseLink = {

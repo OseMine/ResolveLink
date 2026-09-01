@@ -19,7 +19,7 @@ if ($portUsed) {
 
 Write-Host "Starting ResolveLink server..." -ForegroundColor Cyan
 
-$proc = Start-Process -FilePath "node" -ArgumentList "server\index.js" `
+$proc = Start-Process -FilePath "node" -ArgumentList "packages/server/src/index.js" `
     -WorkingDirectory $root `
     -PassThru `
     -WindowStyle Hidden

@@ -43,7 +43,7 @@ jobs:
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         with:
-          model: opencode/big-pickle
+          model: opencode/deepseek-v4-flash
           prompt: |
             Generate a changelog for ResolveLink ${{ steps.tag.outputs.version }}.
             Look at the git log since the previous tag to understand what changed.

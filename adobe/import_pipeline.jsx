@@ -136,7 +136,7 @@
 
             var compStartSec = (clip.compStartFrames || 0) / fps;
             var durationSec = (clip.durationFrames || 0) / fps;
-            var sourceInSec = (clip.sourceIn || 0) / fps;
+            var sourceInSec = (clip.sourceIn || 0) / (clip.sourceFps || fps);
 
             if (clip.mediaType === "audio") {
                 var audioLayer = comp.layers.addAudio(footage);

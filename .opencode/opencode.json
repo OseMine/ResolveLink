@@ -39,7 +39,15 @@
     "websearch": "allow",
     "task": "allow",
     "skill": "allow",
-    "bash": {
+    "bash": "allow",
+    "powershell": "allow",
+    "pwsh": "allow",
+    "node": "allow",
+    "npm": "allow",
+    "npx": "allow",
+    "git": "allow",
+    "external": "allow",
+    "command": {
       "npm *": "allow",
       "npx tsc *": "allow",
       "node *": "allow",
@@ -73,42 +81,5 @@
     "prune": false
   },
   "formatter": false,
-  "lsp": false,
-  "customCommands": [
-    {
-      "name": "dev",
-      "command": "npm run dev",
-      "description": "Start development server + Vite dev server concurrently"
-    },
-    {
-      "name": "server",
-      "command": "npm run server",
-      "description": "Start backend server only (port 3030)"
-    },
-    {
-      "name": "ui",
-      "command": "npm run ui",
-      "description": "Start Vite dev server only (port 5173)"
-    },
-    {
-      "name": "build",
-      "command": "npm run build",
-      "description": "Build packages/ui (tsc + vite build)"
-    },
-    {
-      "name": "test",
-      "command": "npm test",
-      "description": "Run all Vitest tests"
-    },
-    {
-      "name": "typecheck",
-      "command": "npx tsc --noEmit --project packages/ui/ && npx tsc --noEmit --project src/ && npx tsc --noEmit --project web/",
-      "description": "Type-check all TypeScript projects"
-    },
-    {
-      "name": "start",
-      "command": "npm start",
-      "description": "Start Electron app"
-    }
-  ]
+  "lsp": false
 }

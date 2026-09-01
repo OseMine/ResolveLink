@@ -57,42 +57,20 @@ function generateJSXPayload(link) {
  */
 function generateExtendScript(link, exportDir) {
   const payload = generateJSXPayload(link);
-  // Base64-encode the clips JSON to prevent injection via clip names
-  const clipsB64 = Buffer.from(JSON.stringify(payload.clips)).toString('base64');
+  const clipsJSON = JSON.stringify(payload.clips);
 
   return `// ResolveLink Auto-Generated ExtendScript
 // Link ID: ${link.id}
 // Generated: ${new Date().toISOString()}
 
 (function() {
-    // Decode base64 payload to prevent injection via clip names
-    var b64 = "${clipsB64}";
-    var jsonStr = (function() {
-        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-        var str = "", o1, o2, o3, h1, h2, h3, h4, i = 0;
-        var inp = b64.replace(/[^A-Za-z0-9+/=]/g, "");
-        while (i < inp.length) {
-            h1 = chars.indexOf(inp.charAt(i++));
-            h2 = chars.indexOf(inp.charAt(i++));
-            h3 = chars.indexOf(inp.charAt(i++));
-            h4 = chars.indexOf(inp.charAt(i++));
-            o1 = (h1 << 2) | (h2 >> 4);
-            o2 = ((h2 & 15) << 4) | (h3 >> 2);
-            o3 = ((h3 & 3) << 6) | h4;
-            str += String.fromCharCode(o1);
-            if (h3 != 64) str += String.fromCharCode(o2);
-            if (h4 != 64) str += String.fromCharCode(o3);
-        }
-        return str;
-    })();
-
     var linkData = {
         compName: "${payload.compName}",
         width: ${payload.width},
         height: ${payload.height},
         fps: ${payload.fps},
         duration: ${payload.duration},
-        clips: eval("(" + jsonStr + ")")
+        clips: ${clipsJSON}
     };
 
     var fps = linkData.fps;
@@ -136,13 +114,13 @@ function generateExtendScript(link, exportDir) {
             if (clip.mediaType === "audio") {
                 var audioLayer = comp.layers.addAudio(footage);
                 audioLayer.name = clip.name;
-                audioLayer.startTime = Math.max(0, compStartSec - sourceInSec);
+                audioLayer.startTime = compStartSec - sourceInSec;
                 audioLayer.inPoint = compStartSec;
                 audioLayer.outPoint = compStartSec + durationSec;
             } else {
                 var layer = comp.layers.add(footage);
                 layer.name = clip.name;
-                layer.startTime = Math.max(0, compStartSec - sourceInSec);
+                layer.startTime = compStartSec - sourceInSec;
                 layer.inPoint = compStartSec;
                 layer.outPoint = compStartSec + durationSec;
 

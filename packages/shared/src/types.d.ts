@@ -61,6 +61,7 @@ export interface ResolveClipData {
   trackIndex: number;
   mediaType: string;
   fps: number;
+  sourceFps?: number;
   resolution: { width: number; height: number };
 }
 
@@ -73,6 +74,7 @@ export interface ClipData {
   sourcePath: string;
   sourceIn?: number;
   sourceOut?: number;
+  sourceFps?: number;
   trackIndex?: number;
   trackName?: string;
   volume?: number;

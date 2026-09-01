@@ -55,8 +55,15 @@ export interface ProjectStats {
   featureLabels: string[];
 }
 
-const API_BASE = '/api';
-const WS_BASE = `ws://${window.location.hostname}:${window.location.port}`;
+const API_BASE = (typeof window !== 'undefined' && (window as any).electronAPI?.getServerOrigin)
+  ? (window as any).electronAPI.getServerOrigin() + '/api'
+  : '/api';
+const WS_BASE = (() => {
+  if (typeof window !== 'undefined' && (window as any).electronAPI?.getServerOrigin) {
+    return (window as any).electronAPI.getServerOrigin().replace('http', 'ws') + '';
+  }
+  return `ws://${window.location.hostname}:${window.location.port}`;
+})();
 
 // Auth token — fetched from server on startup when auth is enabled
 let authToken: string | null = null;
@@ -199,7 +206,10 @@ let wsRetryDelay = 3000;
 const WS_MAX_RETRY = 30000;
 
 export function createWebSocket(onMessage: WSHandler): WebSocket {
-  const ws = new WebSocket(WS_BASE);
+  const wsUrl = typeof window !== 'undefined' && (window as any).electronAPI?.getServerOrigin
+    ? (window as any).electronAPI.getServerOrigin().replace('http', 'ws') + ''
+    : WS_BASE;
+  const ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
     console.log('[WS] Connected to ResolveLink server');
