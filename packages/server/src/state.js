@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { createLogger } = require('./logger');
-const { DEFAULT_CONFIG } = require('@resolvelink/shared');
+const { DEFAULT_CONFIG } = require('@resolvelink/shared/src/constants.js');
 
 const log = createLogger('Store');
 const logWS = createLogger('WS');

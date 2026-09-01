@@ -67,13 +67,19 @@ function startReaperResultsWatcher(resultsDir, exportDir) {
     persistent: true,
     ignoreInitial: true,
     depth: 0,
+    awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 },
   });
 
   watcher.on('add', (filePath) => {
     if (!filePath.endsWith('.json')) return;
 
-    try {
-      const content = fs.readFileSync(filePath, 'utf8');
+  // Atomic result read (temp + rename by REAPER producer) before parsing
+  try {
+    const tempFile = filePath + '.tmp';
+    if (fs.existsSync(tempFile)) {
+      fs.renameSync(tempFile, filePath); // complete the write
+    }
+    const content = fs.readFileSync(filePath, 'utf8');
       const result = JSON.parse(content);
       const jobId = path.basename(filePath, '.json');
 
