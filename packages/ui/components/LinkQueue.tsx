@@ -12,7 +12,12 @@ interface LinkQueueProps {
 export function LinkQueue({ links, onDelete, onRender, editingLinks }: LinkQueueProps) {
   if (links.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
+      <div
+        className="flex flex-col items-center justify-center py-16 animate-fade-in"
+        role="status"
+        aria-live="polite"
+        aria-label="No active links"
+      >
         <div className="relative mb-4">
           <div className="w-16 h-16 rounded-2xl bg-r-750 border border-r-700/50 flex items-center justify-center">
             <Inbox size={24} className="text-r-500" />
@@ -30,7 +35,12 @@ export function LinkQueue({ links, onDelete, onRender, editingLinks }: LinkQueue
   }
 
   return (
-    <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-320px)] pr-1 -mr-1">
+    <div
+      className="space-y-2 overflow-y-auto max-h-[calc(100vh-320px)] pr-1 -mr-1"
+      role="list"
+      aria-label="Active links"
+      aria-live="polite"
+    >
       {links.map((link) => (
         <LinkCard
           key={link.id}

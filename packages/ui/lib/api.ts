@@ -157,10 +157,10 @@ export const api = {
 
   // Links
   getLinks: () => request<Link[]>('/links'),
-  linkClip: (clipData: ClipData[], settings?: Partial<Link['settings']>) =>
+  linkClip: (clipData: ClipData[], settings?: Partial<Link['settings']>, presetName?: string) =>
     request<{ linkId: string; status: string; jsxPath: string; payloadPath: string }>(
       '/link-clip',
-      { method: 'POST', body: JSON.stringify({ clipData, settings }) }
+      { method: 'POST', body: JSON.stringify({ clipData, settings, presetName }) }
     ),
   updateLinkStatus: (id: string, status: string, exportPath?: string) =>
     request<Link>(`/links/${id}/status`, {
@@ -204,12 +204,19 @@ type WSHandler = (type: string, payload: any) => void;
 
 let wsRetryDelay = 3000;
 const WS_MAX_RETRY = 30000;
+let activeSocket: WebSocket | null = null;
 
 export function createWebSocket(onMessage: WSHandler): WebSocket {
+  if (activeSocket && activeSocket.readyState !== WebSocket.CLOSED) {
+    activeSocket.onclose = null;
+    activeSocket.close();
+  }
+
   const wsUrl = typeof window !== 'undefined' && (window as any).electronAPI?.getServerOrigin
     ? (window as any).electronAPI.getServerOrigin().replace('http', 'ws') + ''
     : WS_BASE;
   const ws = new WebSocket(wsUrl);
+  activeSocket = ws;
 
   ws.onopen = () => {
     console.log('[WS] Connected to ResolveLink server');
@@ -226,6 +233,7 @@ export function createWebSocket(onMessage: WSHandler): WebSocket {
   };
 
   ws.onclose = () => {
+    if (activeSocket !== ws) return;
     console.log(`[WS] Disconnected. Reconnecting in ${wsRetryDelay / 1000}s...`);
     setTimeout(() => createWebSocket(onMessage), wsRetryDelay);
     wsRetryDelay = Math.min(wsRetryDelay * 1.5, WS_MAX_RETRY);

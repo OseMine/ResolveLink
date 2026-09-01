@@ -16,7 +16,8 @@ interface AppState {
   resolve: ResolveStatus;
   selection: ResolveSelection | null;
   selectionLoading: boolean;
-  editingLinks: Set<string>; // link IDs currently being edited in AE
+  editingLinks: Set<string>;
+  error: string | null;
 }
 
 export function useResolveBridge() {
@@ -28,6 +29,7 @@ export function useResolveBridge() {
     selection: null,
     selectionLoading: false,
     editingLinks: new Set(),
+    error: null,
   });
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -147,7 +149,9 @@ export function useResolveBridge() {
   }, []);
 
   // Send to AE - uses real selection data if available, otherwise falls back
-  const sendToAE = useCallback(async (clipData?: ResolveClipData[], settings?: any) => {
+  const sendToAE = useCallback(async (clipData?: ResolveClipData[], settings?: any, presetName?: string) => {
+    setState((s) => ({ ...s, error: null }));
+
     let clips = clipData;
 
     // If no clip data provided, try to fetch from Resolve
@@ -159,7 +163,9 @@ export function useResolveBridge() {
     }
 
     if (!clips || clips.length === 0) {
-      throw new Error('No clips selected in Resolve timeline');
+      const err = 'No clips selected in Resolve timeline';
+      setState((s) => ({ ...s, error: err }));
+      throw new Error(err);
     }
 
     // Convert ResolveClipData to ClipData format for the backend
@@ -186,17 +192,23 @@ export function useResolveBridge() {
       ...settings,
     };
 
-    const result = await api.linkClip(clipPayload, resolvedSettings);
-
-    // Trigger the auto-workflow: opens AE, renders, imports to Resolve
     try {
-      await api.autoWorkflow(result.linkId);
-    } catch {
-      // Auto-workflow might fail if AE isn't installed, that's ok
-    }
+      const result = await api.linkClip(clipPayload, resolvedSettings, presetName);
 
-    return result;
-  }, [fetchSelection]);
+      // Trigger the auto-workflow: opens AE, renders, imports to Resolve
+      try {
+        await api.autoWorkflow(result.linkId);
+      } catch (autoErr: any) {
+        setState((s) => ({ ...s, error: autoErr.message || 'Auto-workflow failed' }));
+        throw autoErr;
+      }
+
+      return result;
+    } catch (err: any) {
+      setState((s) => ({ ...s, error: err.message || 'Failed to send to AE' }));
+      throw err;
+    }
+  }, [fetchSelection, state.selection]);
 
   const deleteLink = useCallback(async (id: string) => {
     await api.deleteLink(id);

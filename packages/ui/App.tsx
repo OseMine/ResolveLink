@@ -36,8 +36,8 @@ export default function App() {
   // Keyboard shortcuts
   const handleSendShortcut = useCallback(async () => {
     if (!connected || !selection?.clips) return;
-    try { await sendToAE(); } catch {}
-  }, [connected, selection, sendToAE]);
+    try { await sendToAE(undefined, undefined, currentPreset); } catch {}
+  }, [connected, selection, sendToAE, currentPreset]);
 
   useKeyboardShortcuts({
     onRefresh: fetchSelection,
@@ -116,6 +116,7 @@ export default function App() {
           resolveConnected={resolve.connected}
           selection={selection}
           selectionLoading={selectionLoading}
+          currentPreset={currentPreset}
           onSend={sendToAE}
           onRefreshSelection={fetchSelection}
         />
@@ -173,7 +174,7 @@ export default function App() {
         <div className="pt-3 divider">
           <div className="flex items-center justify-center">
             <span className="text-[10px] text-r-500 font-mono tracking-wider">
-              ResolveLink v1.0.0
+              ResolveLink v1.1.0
             </span>
           </div>
         </div>

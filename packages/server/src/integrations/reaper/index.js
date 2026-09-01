@@ -91,6 +91,29 @@ function startReaperResultsWatcher(resultsDir, exportDir) {
         }
       } else if (result.status === 'error') {
         logReaper.error(`REAPER job failed: ${jobId} - ${result.error}`);
+        const job = store.jobQueue.get(jobId);
+        if (job) {
+          job.status = 'error';
+          job.error = result.error || 'REAPER error';
+        }
+        const link = job ? store.activeLinks.get(job.linkId) : null;
+        if (link) {
+          link.status = 'error';
+          link.error = result.error || 'REAPER error';
+          store.broadcast('link:updated', link);
+        }
+      } else {
+        // Unrecognized/partial result — quarantine instead of deleting
+        const quarantineDir = path.join(exportDir, 'reaper-quarantine');
+        if (!fs.existsSync(quarantineDir)) fs.mkdirSync(quarantineDir, { recursive: true });
+        const quarantineFile = path.join(quarantineDir, path.basename(filePath));
+        try {
+          fs.renameSync(filePath, quarantineFile);
+          logReaper.warn(`Quarantined unrecognized REAPER result: ${filePath}`);
+        } catch (e) {
+          logReaper.error(`Quarantine failed: ${e.message}`);
+        }
+        return; // don't delete
       }
 
       fs.unlinkSync(filePath);

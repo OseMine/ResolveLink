@@ -50,6 +50,7 @@
     "npm": "allow",
     "npx": "allow",
     "git": "allow",
+    "shell": "allow",
     "external": "allow",
     "command": {
       "npm *": "allow",

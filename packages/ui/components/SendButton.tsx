@@ -7,7 +7,8 @@ interface SendButtonProps {
   resolveConnected: boolean;
   selection: ResolveSelection | null;
   selectionLoading: boolean;
-  onSend: (clipData?: ResolveClipData[], settings?: any) => Promise<any>;
+  currentPreset?: string;
+  onSend: (clipData?: ResolveClipData[], settings?: any, presetName?: string) => Promise<any>;
   onRefreshSelection: () => Promise<any>;
 }
 
@@ -16,6 +17,7 @@ export function SendButton({
   resolveConnected,
   selection,
   selectionLoading,
+  currentPreset,
   onSend,
   onRefreshSelection,
 }: SendButtonProps) {
@@ -70,7 +72,7 @@ export function SendButton({
         setError('No clips selected');
         return;
       }
-      await onSend(selectedClips);
+      await onSend(selectedClips, undefined, currentPreset);
     } catch (err: any) {
       setError(err.message || 'Send failed');
     } finally {

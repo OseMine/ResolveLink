@@ -129,6 +129,11 @@ const aeIntegration = {
           jsxPath: link.jsxPath,
           compName: `Resolve_Link_${id.slice(0, 8)}`,
           status: 'pending',
+          attempts: 0,
+          maxAttempts: 3,
+          leasedAt: null,
+          leaseId: null,
+          expiresAt: null,
           createdAt: new Date().toISOString(),
         };
 
@@ -148,29 +153,39 @@ const aeIntegration = {
       link.status = 'rendering';
       store.broadcast('link:updated', link);
 
+      const aePath = getAEExePath();
       const compName = `Resolve_Link_${id.slice(0, 8)}`;
       try {
-        const child = spawn(aerenderPath, [
-          '-project', link.jsxPath,
-          '-comp', compName,
-          '-output', exportDir,
-        ], { stdio: 'pipe', timeout: 300000 });
+        const child = spawn(aePath || aerenderPath, aePath
+          ? ['-r', link.jsxPath]
+          : ['-project', link.jsxPath, '-comp', compName, '-output', exportDir],
+          { stdio: 'pipe' });
 
         let stderr = '';
+        let timedOut = false;
         child.stderr.on('data', (data) => { stderr += data.toString(); });
 
+        const killTimer = setTimeout(() => {
+          timedOut = true;
+          try { child.kill(); } catch {}
+        }, 300000);
+
         child.on('close', (code) => {
-          if (code === 0) {
+          clearTimeout(killTimer);
+          if (timedOut) {
+            link.status = 'error';
+            link.error = 'aerender timed out after 5 minutes';
+          } else if (code === 0) {
             link.status = 'rendered';
-            store.broadcast('link:updated', link);
           } else {
             link.status = 'error';
             link.error = stderr || `aerender exited with code ${code}`;
-            store.broadcast('link:updated', link);
           }
+          store.broadcast('link:updated', link);
         });
 
         child.on('error', (err) => {
+          clearTimeout(killTimer);
           link.status = 'error';
           link.error = err.message;
           store.broadcast('link:updated', link);

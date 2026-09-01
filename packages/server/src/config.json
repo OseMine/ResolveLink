@@ -36,5 +36,15 @@
     },
     "pollIntervalMs": 5000,
     "renderFormat": "wav"
+  },
+  "ableton": {
+    "oscQueryPort": 9000,
+    "oscResponsePort": 9001,
+    "installPath": {
+      "win32": "C:\\Program Files\\Ableton",
+      "darwin": "/Applications/Ableton"
+    },
+    "renderFormat": "wav",
+    "renderQuality": "high"
   }
 }

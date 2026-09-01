@@ -67,6 +67,27 @@ export interface ResolveClipData {
 
 // --- Link Types ---
 
+export interface AbletonClip {
+  name: string;
+  start: number;  // in beats
+  duration: number;
+  sourcePath: string;
+  color: string;
+}
+
+export interface AbletonTrack {
+  name: string;
+  clips: AbletonClip[];
+  color: string;
+}
+
+export interface AbletonStatus {
+  available: boolean;
+  running: boolean;
+  version: string | null;
+  installPath: string | null;
+}
+
 export interface ClipData {
   name: string;
   start: number;
@@ -111,7 +132,7 @@ export interface Link {
   exportPath: string | null;
   createdAt: string;
   updatedAt?: string;
-  target?: 'ae' | 'reaper';
+  target?: 'ae' | 'reaper' | 'ableton';
   jsxPath?: string;
   payloadPath?: string;
   reaperScriptPath?: string;
@@ -148,7 +169,7 @@ export interface JobHistoryEntry {
   clipCount?: number;
   error?: string;
   timestamp: string;
-  target?: 'ae' | 'reaper';
+  target?: 'ae' | 'reaper' | 'ableton';
   details?: any;
 }
 

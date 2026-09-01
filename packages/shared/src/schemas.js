@@ -111,6 +111,25 @@ const ReaperImportRequestSchema = z.object({
   positionFrames: z.number().optional(),
 });
 
+const AbletonLinkClipRequestSchema = z.object({
+  clipData: z.array(ClipDataSchema).min(1, 'At least one clip is required'),
+  settings: z.object({
+    sampleRate: z.number().int().positive().optional(),
+    duration: z.number().positive().optional(),
+    bpm: z.number().positive().optional(),
+    timeSignature: z.string().optional(),
+    width: z.number().int().positive().optional(),
+    height: z.number().int().positive().optional(),
+    fps: z.number().positive().optional(),
+  }).optional(),
+});
+
+const AbletonImportRequestSchema = z.object({
+  filePath: z.string().min(1, 'filePath is required'),
+  trackName: z.string().optional(),
+  positionBeats: z.number().optional(),
+});
+
 // --- Response Schemas ---
 
 const HealthResponseSchema = z.object({
@@ -140,6 +159,8 @@ module.exports = {
   ImportBackRequestSchema,
   EditingRequestSchema,
   ReaperImportRequestSchema,
+  AbletonLinkClipRequestSchema,
+  AbletonImportRequestSchema,
   HealthResponseSchema,
   SuccessResponseSchema,
 };

@@ -33,7 +33,7 @@ function formatDuration(frames: number, fps: number): string {
 
 export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps) {
   const fps = link.settings.fps;
-  const totalFrames = link.clips.reduce((sum, c) => sum + ((c.duration || 0) * fps), 0);
+  const totalFrames = link.clips.reduce((sum, c) => sum + (c.duration || 0), 0);
   const isReaper = link.target === 'reaper';
 
   return (
@@ -68,6 +68,7 @@ export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps)
               onClick={() => onRender(link.id)}
               className="p-1.5 rounded-md text-r-400 hover:text-success hover:bg-success/10 transition-all duration-150"
               title={isReaper ? "Open in REAPER" : "Open in After Effects"}
+              aria-label={isReaper ? "Open in REAPER" : "Send to After Effects"}
             >
               <Play size={11} fill="currentColor" />
             </button>
@@ -77,6 +78,7 @@ export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps)
               onClick={() => {}}
               className="p-1.5 rounded-md text-r-400 hover:text-accent hover:bg-accent/10 transition-all duration-150"
               title="Show in Explorer"
+              aria-label="Show export file in Explorer"
             >
               <ExternalLink size={11} />
             </button>
@@ -85,6 +87,7 @@ export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps)
             onClick={() => onDelete(link.id)}
             className="p-1.5 rounded-md text-r-400 hover:text-danger hover:bg-danger/10 transition-all duration-150"
             title="Remove link"
+            aria-label="Delete link"
           >
             <Trash2 size={11} />
           </button>
@@ -107,7 +110,7 @@ export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps)
               </span>
             </div>
             <span className="text-[10px] font-mono text-r-500 shrink-0 ml-2">
-              {formatTimecode((clip.duration || 0) * fps, fps)}
+              {formatTimecode(clip.duration || 0, fps)}
             </span>
           </div>
         ))}

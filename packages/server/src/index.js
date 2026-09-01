@@ -13,7 +13,7 @@ const http = require('http');
 const { WebSocketServer } = require('ws');
 
 const config = require('./config.json');
-const { store, initStore, sendInitState } = require('./state');
+const { store, initStore, loadState, sendInitState } = require('./state');
 const { createLogger } = require('./logger');
 const { perfMiddleware, getPerfStats, getSlowEndpoints } = require('./middleware/perf');
 const { initAuth, requireAuth } = require('./middleware/auth');
@@ -80,6 +80,7 @@ if (fs.existsSync(DIST_DIR)) {
 
 // --- Initialize State ---
 
+loadState();
 initStore(wss);
 
 // --- Initialize Integrations ---
@@ -126,6 +127,12 @@ app.use('/api/reaper', reaperRoutes);
 const aeIntegration = registry.get('ae');
 if (aeIntegration) {
   app.use('/api', aeIntegration.getRoutes());
+}
+
+// Ableton integration routes
+const abletonIntegration = registry.get('ableton');
+if (abletonIntegration) {
+  app.use('/api/ableton', abletonIntegration.getRoutes());
 }
 
 // Setup wizard routes

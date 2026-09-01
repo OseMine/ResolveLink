@@ -26,7 +26,9 @@ export function Titlebar({ onSetup }: { onSetup?: () => void }) {
           <button
             onClick={onSetup}
             title="Setup Wizard"
+            aria-label="Open Setup Wizard"
             className="p-1.5 rounded-md text-r-400 hover:text-r-200 hover:bg-r-650 transition-all duration-150"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSetup(); } }}
           >
             <Settings size={13} strokeWidth={2.5} />
           </button>
@@ -34,12 +36,16 @@ export function Titlebar({ onSetup }: { onSetup?: () => void }) {
         <button
           onClick={() => window.electronAPI?.minimize()}
           className="p-1.5 rounded-md text-r-400 hover:text-r-200 hover:bg-r-650 transition-all duration-150"
+          aria-label="Minimize window"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.electronAPI?.minimize(); } }}
         >
           <Minus size={13} strokeWidth={2.5} />
         </button>
         <button
           onClick={() => window.electronAPI?.close()}
           className="p-1.5 rounded-md text-r-400 hover:text-white hover:bg-danger/30 transition-all duration-150"
+          aria-label="Close window"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.electronAPI?.close(); } }}
         >
           <X size={13} strokeWidth={2.5} />
         </button>

@@ -147,7 +147,7 @@ export function SetupWizard({ open, onClose }: SetupWizardProps) {
               disabled={saving}
               className="px-3 py-1.5 text-[11px] font-medium text-r-900 rounded bg-accent hover:bg-accent/90 transition-colors disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save & Restart'}
+              {saving ? 'Saving...' : 'Save Configuration (restart required)'}
             </button>
           </div>
         </div>

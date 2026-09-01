@@ -27,9 +27,19 @@
 
 /** @typedef {'created' | 'linked' | 'sending' | 'queued' | 'rendering' | 'rendered' | 'imported' | 'error' | 'completed' | 'sent'} LinkStatus */
 
-/** @typedef {{ id: string; clips: Array<ClipData & { linkId: string; status: string }>; settings: LinkSettings; status: LinkStatus; exportPath: string | null; createdAt: string; updatedAt?: string; target?: 'ae' | 'reaper' }} Link */
+/** @typedef {{ id: string; clips: Array<ClipData & { linkId: string; status: string }>; settings: LinkSettings; status: LinkStatus; exportPath: string | null; createdAt: string; updatedAt?: string; target?: 'ae' | 'reaper' | 'ableton' }} Link */
 
 /** @typedef {{ width: number; height: number; fps: number; duration: number; renderQueue?: string; sampleRate?: number }} LinkSettings */
+
+// --- Ableton Types ---
+
+/** @typedef {{ available: boolean; running: boolean; version: string|null; installPath: string|null }} AbletonStatus */
+
+/** @typedef {{ id: string; clips: Array<ClipData & { linkId: string; status: string }>; settings: LinkSettings; status: LinkStatus; exportPath: string|null; createdAt: string; target: 'ableton'; oscPayloadPath?: string; midiScriptPath?: string; oscSequencePath?: string; maxDeviceConfigPath?: string }} AbletonLink */
+
+/** @typedef {{ name: string; clips: AbletonClip[]; color: string }} AbletonTrack */
+
+/** @typedef {{ name: string; start: number; duration: number; sourcePath: string; color: string }} AbletonClip */
 
 // --- REAPER Types ---
 
