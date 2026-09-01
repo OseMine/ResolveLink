@@ -17,8 +17,8 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      pull-requests: read
-      issues: read
+      pull-requests: write    # Required to comment on pull requests
+      issues: write           # Required to comment on issues
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -29,5 +29,9 @@ jobs:
         uses: anomalyco/opencode/github@latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_AUTO_APPROVE: "true"
         with:
-          model: opencode/big-pickle
+          model: opencode/deepseek-v4-flash-free
+          use_github_token: true
+          # Removed invalid inputs: auto_approve and args
