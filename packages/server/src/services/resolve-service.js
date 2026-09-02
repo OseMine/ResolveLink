@@ -41,7 +41,9 @@ function executeBridge(command, args = [], timeout = 10000) {
 
     const defaultScriptingPath = process.platform === 'win32'
       ? 'C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Support\\Developer\\Scripting\\Modules'
-      : '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/Modules';
+      : process.platform === 'linux'
+        ? '/opt/resolve/Developer/Scripting/Modules'
+        : '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/Modules';
 
     const env = {
       ...process.env,

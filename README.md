@@ -306,7 +306,7 @@ resolvelink/
 
 - Node.js 18+
 - Python 3.10+ (for Resolve scripting bridge)
-- DaVinci Resolve Studio 21+ (for scripting API)
+- DaVinci Resolve 19+ (scripting API supported in free and Studio)
 - Adobe After Effects 2022+ (for CEP)
 - REAPER 6+ *(optional, for audio post-production workflow)*
 

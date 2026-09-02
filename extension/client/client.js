@@ -613,7 +613,8 @@ function executeJob(job) {
   text.textContent = "Executing script...";
 
   api("PUT", "/api/jobs/" + job.jobId + "/status", {
-    status: "executing"
+    status: "executing",
+    leaseId: job.leaseId
   }).catch(function () {});
 
   console.log("[ResolveLink] Executing job:", job.jobId, "link:", job.linkId);

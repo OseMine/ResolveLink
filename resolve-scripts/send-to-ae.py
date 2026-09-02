@@ -218,7 +218,7 @@ def create_ae_timeline(resolve, selected_clips, meta):
     append_list = []
     for c in video_entries:
         source_in = c.get("sourceIn", 0)
-        fps = float(timeline.GetSetting("timelineFrameRate"))  # or whatever your script uses
+        fps = meta['fps']
         src_fps = float(c.get("sourceFps", fps))
         dur_tl = c.get("duration", 0)
         dur_src = int(dur_tl * src_fps / fps) if fps > 0 else dur_tl

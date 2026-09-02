@@ -96,3 +96,12 @@ ipcMain.on('open:external', (_event, url) => {
     if (u.protocol === 'https:') shell.openExternal(url);
   } catch {}
 });
+
+// Reveal a file in the OS file manager
+ipcMain.on('file:show-in-folder', (_event, filePath) => {
+  try {
+    if (typeof filePath === 'string' && filePath.length > 0) {
+      shell.showItemInFolder(filePath);
+    }
+  } catch {}
+  });

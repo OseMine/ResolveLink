@@ -48,13 +48,6 @@ export interface ServerFile {
   name: string;
 }
 
-export interface ProjectStats {
-  bugs: number;
-  features: number;
-  bugLabels: string[];
-  featureLabels: string[];
-}
-
 const API_BASE = (typeof window !== 'undefined' && (window as any).electronAPI?.getServerOrigin)
   ? (window as any).electronAPI.getServerOrigin() + '/api'
   : '/api';
@@ -101,7 +94,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   // Health
   health: () => request<{ status: string; links: number }>('/health'),
-  stats: () => request<ProjectStats>('/stats'),
 
   // Setup
   getSetup: () => request<SetupConfig>('/setup'),
@@ -206,8 +198,8 @@ let wsRetryDelay = 3000;
 const WS_MAX_RETRY = 30000;
 let activeSocket: WebSocket | null = null;
 
-export function createWebSocket(onMessage: WSHandler): WebSocket {
-  if (activeSocket && activeSocket.readyState !== WebSocket.CLOSED) {
+export function createWebSocket(onMessage: WSHandler, persist: boolean = false): WebSocket {
+  if (!persist && activeSocket && activeSocket.readyState !== WebSocket.CLOSED) {
     activeSocket.onclose = null;
     activeSocket.close();
   }
@@ -216,7 +208,7 @@ export function createWebSocket(onMessage: WSHandler): WebSocket {
     ? (window as any).electronAPI.getServerOrigin().replace('http', 'ws') + ''
     : WS_BASE;
   const ws = new WebSocket(wsUrl);
-  activeSocket = ws;
+  if (!persist) activeSocket = ws;
 
   ws.onopen = () => {
     console.log('[WS] Connected to ResolveLink server');
@@ -233,9 +225,9 @@ export function createWebSocket(onMessage: WSHandler): WebSocket {
   };
 
   ws.onclose = () => {
-    if (activeSocket !== ws) return;
+    if (!persist && activeSocket !== ws) return;
     console.log(`[WS] Disconnected. Reconnecting in ${wsRetryDelay / 1000}s...`);
-    setTimeout(() => createWebSocket(onMessage), wsRetryDelay);
+    setTimeout(() => createWebSocket(onMessage, persist), wsRetryDelay);
     wsRetryDelay = Math.min(wsRetryDelay * 1.5, WS_MAX_RETRY);
   };
 

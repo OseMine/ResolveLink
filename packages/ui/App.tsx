@@ -87,7 +87,7 @@ export default function App() {
           });
         }
       }
-    });
+    }, true);
     return () => ws.close();
   }, []);
 

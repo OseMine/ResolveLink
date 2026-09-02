@@ -75,7 +75,14 @@ export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps)
           )}
           {link.exportPath && (
             <button
-              onClick={() => {}}
+              onClick={() => {
+                const electron = (window as any)?.electronAPI;
+                if (electron?.showItemInFolder) {
+                  electron.showItemInFolder(link.exportPath);
+                } else {
+                  alert(`Export file: ${link.exportPath}`);
+                }
+              }}
               className="p-1.5 rounded-md text-r-400 hover:text-accent hover:bg-accent/10 transition-all duration-150"
               title="Show in Explorer"
               aria-label="Show export file in Explorer"

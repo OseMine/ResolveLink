@@ -6,7 +6,7 @@
 |-------------|---------|-------|
 | **Node.js** | 18+ | Download from [nodejs.org](https://nodejs.org) |
 | **Python** | 3.10+ | Required for Resolve scripting bridge |
-| **DaVinci Resolve Studio** | 21+ | Free version does not support scripting API |
+| **DaVinci Resolve** | 19+ (free or Studio) | Scripting API supported in both free and Studio starting v19 |
 | **Adobe After Effects** | 2022+ | Any version with CEP support |
 | **REAPER** | 6+ | *Optional* — for audio post-production workflow |
 | **OS** | Windows 10/11, macOS 12+, or Linux | |
@@ -304,7 +304,7 @@ For REAPER scripts, update via ReaPack:
 2. Run `.\scripts\setup.ps1 -Force` to re-detect
 
 ### Plugin not showing in Resolve
-1. Must use DaVinci Resolve **Studio** (not free)
+1. Must use DaVinci Resolve **19 or newer** (scripting supported in both free and Studio)
 2. Restart Resolve after installing
 3. Check **Workspace > Console** for errors
 

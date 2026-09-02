@@ -156,9 +156,7 @@ const aeIntegration = {
       const aePath = getAEExePath();
       const compName = `Resolve_Link_${id.slice(0, 8)}`;
       try {
-        const child = spawn(aePath || aerenderPath, aePath
-          ? ['-r', link.jsxPath]
-          : ['-project', link.jsxPath, '-comp', compName, '-output', exportDir],
+        const child = spawn(aePath || aerenderPath, ['-r', link.jsxPath],
           { stdio: 'pipe' });
 
         let stderr = '';

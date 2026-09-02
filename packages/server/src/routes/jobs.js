@@ -3,6 +3,7 @@
  * Handles CEP extension polling and job status updates.
  */
 const express = require('express');
+const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { store } = require('../state');
 const { validate } = require('../middleware/validation');
@@ -68,7 +69,9 @@ router.put('/:jobId/status', validate(JobStatusRequestSchema), (req, res) => {
         link.status = 'rendering';
         try {
           const { startRenderWatch } = require('../integrations/ae/render-watcher');
-          startRenderWatch(link, job.result);
+          const config = require('../config.json');
+          const exportDir = path.resolve(process.env.EXPORT_DIR || config.paths.vfxExportDir);
+          startRenderWatch(link, job.result, exportDir);
         } catch {
           // render watcher not yet available
         }

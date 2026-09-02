@@ -182,12 +182,13 @@ export function useResolveBridge() {
     // Use selection-level resolution if available, then clip-level, then defaults
     const firstClip = clips[0];
     const selectionData = state.selection;
+    const fps = settings?.fps || firstClip?.fps || selectionData?.fps || 24;
     const resolvedSettings = {
       width: settings?.width || selectionData?.width || firstClip?.resolution?.width || 1920,
       height: settings?.height || selectionData?.height || firstClip?.resolution?.height || 1080,
-      fps: settings?.fps || firstClip?.fps || 24,
+      fps,
       duration: settings?.duration || Math.ceil(
-        clips.reduce((sum, c) => sum + c.duration, 0) / (firstClip?.fps || 24)
+        clips.reduce((sum, c) => sum + c.duration, 0) / (fps > 0 ? fps : 24)
       ),
       ...settings,
     };

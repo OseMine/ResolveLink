@@ -13,4 +13,4 @@ Add this URL in ReaPack > Edit repositories:
 ## Requirements
 - [Git](https://git-scm.com)
 - [Node.js](https://nodejs.org) 18+
-- [DaVinci Resolve Studio](https://www.blackmagicdesign.com/products/davinciresolve/) 18+
+- [DaVinci Resolve](https://www.blackmagicdesign.com/products/davinciresolve/) 19+ (free or Studio, scripting supported in both)

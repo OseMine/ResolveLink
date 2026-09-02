@@ -12,7 +12,7 @@ Usage:
     python resolve_bridge.py selection --track 1
     python resolve_bridge.py clip-properties <clip_path>
 
-Requires DaVinci Resolve Studio 18+ running with Scripting API enabled.
+Requires DaVinci Resolve 19+ (free or Studio) running with Scripting API enabled.
 """
 
 import sys
@@ -80,6 +80,12 @@ def get_resolve_module():
         search_paths.append(
             os.path.join(home, "Library", "Application Support", "Blackmagic Design", "DaVinci Resolve", "Developer", "Scripting", "Modules")
         )
+    elif platform.system() == "Linux":
+        # Standard Free/Studio install locations (same module path on both)
+        search_paths.append("/opt/resolve/Developer/Scripting/Modules")
+        search_paths.append("/opt/resolve/libs/Fusion/Modules")
+        search_paths.append("/usr/local/resolve/Developer/Scripting/Modules")
+        search_paths.append(os.path.join(os.path.expanduser("~"), ".local", "share", "DavinciResolve", "Developer", "Scripting", "Modules"))
 
     for sp in search_paths:
         if os.path.isdir(sp) and sp not in sys.path:
@@ -120,11 +126,18 @@ def cmd_status(resolve):
         return {"connected": False, "error": "DaVinci Resolve not running or Scripting API not enabled"}
 
     try:
-        version = resolve.GetVersion()
+        version_result = resolve.GetVersion()
+        # GetVersion() returns a tuple: (version_string, product_name) in newer versions
+        if isinstance(version_result, (tuple, list)) and len(version_result) >= 2:
+            version = str(version_result[0])
+            product = str(version_result[1])
+        else:
+            version = str(version_result)
+            product = "DaVinci Resolve"
         return {
             "connected": True,
             "version": version,
-            "product": "DaVinci Resolve",
+            "product": product,
         }
     except Exception as e:
         return {"connected": False, "error": str(e)}

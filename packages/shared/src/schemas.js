@@ -56,6 +56,7 @@ const JobStatusRequestSchema = z.object({
   status: z.string().min(1),
   result: z.any().optional(),
   error: z.string().optional(),
+  leaseId: z.string().optional(),
 });
 
 const LinkStatusUpdateSchema = z.object({

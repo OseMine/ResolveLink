@@ -86,19 +86,22 @@ router.post('/batch-export', validate(BatchExportRequestSchema), async (req, res
       }
 
       const linkId = uuidv4();
+      const fps = parseFloat(result.frameRate) || 24;
+      const firstStart = clipData.reduce((min, c) => Math.min(min, c.start || 0), Infinity) || 0;
+      const maxEnd = clipData.reduce((max, c) => Math.max(max, (c.start || 0) + (c.duration || 0)), 0);
       const link = {
         id: linkId,
         clips: clipData.map(c => ({ ...c, linkId, status: 'pending' })),
         settings: {
           width: result.resolution?.width || 1920,
           height: result.resolution?.height || 1080,
-          fps: parseFloat(result.frameRate) || 24,
-          duration: 10,
+          fps,
+          duration: fps > 0 ? (maxEnd - firstStart) / fps : 10,
         },
         createdAt: new Date().toISOString(),
         status: 'created',
         exportPath: null,
-        timelineName: name,
+        aeTimelineName: name,
       };
       store.activeLinks.set(linkId, link);
 
