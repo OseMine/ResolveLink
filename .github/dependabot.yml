@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+		directories:
+			- "/"
+		schedule:
+			interval: weekly
+	- package-ecosystem: npm
+		directories:
+			- "/"
+		schedule:
+			interval: weekly
+	- package-ecosystem: pip
+		directories:
+			- "/"
+		schedule:
+			interval: weekly

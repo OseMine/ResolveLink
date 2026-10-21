@@ -13,6 +13,7 @@ import { useKeyboardShortcuts, ShortcutHint as KeyboardShortcutsHint } from './c
 import { useResolveBridge } from './lib/useResolveBridge';
 import { api, createWebSocket } from './lib/api';
 import type { ResolveProject } from './lib/api';
+import { APP_VERSION } from 'config';
 
 export default function App() {
   const {
@@ -173,7 +174,7 @@ export default function App() {
         <div className="pt-3 divider">
           <div className="flex items-center justify-center">
             <span className="text-[10px] text-r-500 font-mono tracking-wider">
-              ResolveLink v1.0.0
+              ResolveLink v{APP_VERSION}
             </span>
           </div>
         </div>

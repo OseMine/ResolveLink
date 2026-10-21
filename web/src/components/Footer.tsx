@@ -1,3 +1,5 @@
+import { APP_VERSION } from '../config';
+
 export function Footer() {
   return (
     <footer className="py-6 md:py-8 border-t border-[#2a2a2a] text-center text-[#444444] text-[0.75rem] font-mono tracking-[0.05em] relative z-10">
@@ -19,7 +21,7 @@ export function Footer() {
             </a>
           ))}
         </div>
-        <p>ResolveLink v1.0.0</p>
+        <p>ResolveLink {APP_VERSION}</p>
       </div>
     </footer>
   );

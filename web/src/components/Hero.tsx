@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import TextAnimator from '@/lib/text-animator';
 import { Download, Github } from 'lucide-react';
 import { WorkflowDiagram } from './WorkflowDiagram';
+import { APP_VERSION } from '../config';
 
 const LUA_URL = 'https://github.com/OseMine/ResolveLink/releases/latest/download/install-release.lua';
 
@@ -62,8 +63,8 @@ export function Hero() {
       <div className="max-w-[800px]">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 md:mb-8 rounded-full bg-accent/[0.08] border border-accent/20 text-accent text-[0.75rem] font-medium opacity-0 translate-y-5 animate-fade-up [animation-delay:0.2s] [animation-fill-mode:forwards]">
           <span className="w-[7px] h-[7px] rounded-full bg-success animate-pulse-dot" />
-          v1.1.0 &mdash; Now Available
-        </div>
+          {APP_VERSION} &mdash; Now Available 
+        </div> 
 
         <h1 className="font-extrabold leading-[1.05] tracking-tight mb-5 md:mb-6 opacity-0 translate-y-7 animate-fade-up [animation-delay:0.4s] [animation-fill-mode:forwards]">
           <span id="hero-line-1" className="block text-[clamp(2rem,7vw,5rem)] text-[#e0e0e0]">Dynamic Link for</span>
@@ -73,7 +74,7 @@ export function Hero() {
         </h1>
 
         <p id="hero-desc" className="text-[1rem] md:text-[1.1rem] text-[#888888] max-w-[520px] mx-auto mb-8 md:mb-10 opacity-0 translate-y-7 animate-fade-up [animation-delay:0.6s] [animation-fill-mode:forwards]">
-          Bridge Resolve with After Effects and REAPER. One click to send, auto round-trip sync back.
+          Bridge Resolve with any Creative App. One click to sync back.
         </p>
 
         <div className="flex items-center justify-center gap-3 flex-wrap opacity-0 translate-y-7 animate-fade-up [animation-delay:0.8s] [animation-fill-mode:forwards]">
