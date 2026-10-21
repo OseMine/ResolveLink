@@ -129,6 +129,7 @@ export function Install() {
           Installs dependencies, builds the project, and starts the server.
         </p>
       </div>
+    </div>
     </section>
   );
 }

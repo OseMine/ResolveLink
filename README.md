@@ -5,11 +5,11 @@
 <h1 align="center">ResolveLink</h1>
 
 <p align="center">
-  <strong>Dynamic Link equivalent for DaVinci Resolve to After Effects & REAPER</strong>
+  <strong>Dynamic Link equivalent for DaVinci Resolve to After Effects, REAPER & Ableton Live</strong>
 </p>
 
 <p align="center">
-  A native DaVinci Resolve Workflow Integration Plugin that bridges DaVinci Resolve with Adobe After Effects and REAPER, providing a Dynamic Link-like workflow for VFX, motion graphics, and audio post-production.
+  A native DaVinci Resolve Workflow Integration Plugin that bridges DaVinci Resolve with Adobe After Effects, REAPER, and Ableton Live, providing a Dynamic Link-like workflow for VFX, motion graphics, and audio post-production.
 </p>
 
 <p align="center">
@@ -20,12 +20,13 @@
   <img src="https://img.shields.io/badge/Node-18+-339933?logo=node.js&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/Electron-28-47848F?logo=electron&logoColor=white" alt="Electron" />
+  <img src="https://img.shields.io/badge/Ableton-Live%2011%2B-ff69b4?logo=ableton&logoColor=white" alt="Ableton Live" />
   <a href="https://github.com/OseMine/ResolveLink/actions"><img src="https://github.com/OseMine/ResolveLink/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
 </p>
 <br>
 <p align="center">
   <img src="https://img.shields.io/badge/bugs-0-red" alt="0 bugs" />
-  <img src="https://img.shields.io/badge/features-83-blueviolet" alt="83 features" />
+  <img src="https://img.shields.io/badge/features-100+-blueviolet" alt="100+ features" />
 </p>
 
 ---
@@ -51,15 +52,22 @@
   <img src="https://raw.githubusercontent.com/OseMine/ResolveLink/main/assets/Screenshot-REAPER.png" width="560" alt="ResolveLink Panel in REAPER" />
 </p>
 
+<br/>
+
+<p align="center">
+  <b>Ableton Live</b><br/>
+  <img src="https://raw.githubusercontent.com/OseMine/ResolveLink/main/assets/Screenshot-Ableton.png" width="560" alt="ResolveLink in Ableton Live" />
+</p>
+
 ---
 
 ## The Problem
 
-DaVinci Resolve lacks Adobe's Dynamic Link. When VFX work needs to happen in After Effects or audio needs to be mixed in REAPER, editors must manually export clips, open the target application, import footage, match timecodes, render, and re-import back. This breaks creative flow and wastes hours.
+DaVinci Resolve lacks Adobe's Dynamic Link. When VFX work needs to happen in After Effects, audio needs to be mixed in REAPER, or music/sound design needs Ableton Live — editors must manually export clips, open the target application, import footage, match timecodes, render, and re-import back. This breaks creative flow and wastes hours.
 
 ## The Solution
 
-ResolveLink automates the entire round-trip. Select clips in Resolve, click one button, and a synchronized After Effects composition is created instantly. When AE work is rendered, the result automatically syncs back to the Resolve timeline as a compound clip. For audio, send clips directly to REAPER for mixing — the same round-trip workflow applies.
+ResolveLink automates the entire round-trip. Select clips in Resolve, click one button, and a synchronized After Effects composition is created instantly. When AE work is rendered, the result automatically syncs back to the Resolve timeline as a compound clip. For audio, send clips directly to REAPER for mixing — the same round-trip workflow applies. For music/sound design, send clips to Ableton Live for beat sync, stem export, and device automation.
 
 ```
  ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
@@ -69,17 +77,28 @@ ResolveLink automates the entire round-trip. Select clips in Resolve, click one 
  │  Click "Send"     │      │  - File Watcher   │      │  Auto Comp       │
  │  Auto Re-import   │ <─── │  - WebSocket      │ <─── │  Render & Export │
  └──────────────────┘      └────────┬─────────┘      └──────────────────┘
-                                    │
-                                    │
-                           ┌────────▼─────────┐
-                           │                   │
-                           │    REAPER DAW     │
-                           │                   │
-                           │  Panel UI         │
-                           │  File-based IPC   │
-                           │  Render & Export  │
-                           └──────────────────┘
+                                     │
+                                     │
+                            ┌────────▼─────────┐
+                            │                   │
+                            │    REAPER DAW     │
+                            │                   │
+                            │  Panel UI         │
+                            │  Named Pipe IPC   │
+                            │  Render & Export  │
+                            └──────────────────┘
+                                     │
+                            ┌────────▼─────────┐
+                            │                   │
+                            │   Ableton Live    │
+                            │                   │
+                            │  Named Pipe IPC   │
+                            │  Clip/Device Ctrl │
+                            │  Stem Export      │
+                            └──────────────────┘
 ```
+
+---
 
 ## Features
 
@@ -90,19 +109,47 @@ ResolveLink automates the entire round-trip. Select clips in Resolve, click one 
 - **File Watcher** — Monitors render output folders and syncs completed renders back to Resolve automatically
 - **Compound Clip Import** — Rendered output is automatically imported back into Resolve as a compound clip (V2 render over V1 originals)
 - **CEP Extension** — Panel inside After Effects that polls for jobs, executes scripts, and handles rendering
+- **Marker Transfer** — Timeline markers from Resolve are transferred to AE comp markers
+- **Transform Preservation** — Crop, zoom, pan, rotation, opacity, anchor point from Resolve clips applied to AE layers
 
 ### REAPER
+- **Native Native Extension** — C++ extension with named pipe IPC (sub-ms latency) + WebSocket fallback
 - **Unified Panel** — Single GFX UI window with all controls (no dependencies required)
 - **Background Callback** — Toggle ON/OFF to auto-import audio from Resolve into REAPER
 - **Send Render to Resolve** — One-click render and import audio back into DaVinci
 - **Update Project** — Sync REAPER items to match Resolve timeline (position, length, track)
 - **File-based IPC** — No network dependency between REAPER scripts and server
 - **Auto-Save** — Projects saved automatically to `exports/reaper-projects/`
+- **Stem Export** — Render each track as separate stem file (WAV/FLAC/MP3/AIFF)
+- **Clip-Level Export** — Each Resolve audio clip lands as separate REAPER item with correct position/duration
+- **Content-Hash Change Detection** — SHA256-based render detection prevents false "unchanged" results
+- **Track Index Matching** — Unambiguous clip matching via `trackIdx:filename` keys
 - **ReaPack Repository** — Install scripts via ReaPack package manager
+- **File Locking** — Atomic writes with lock files prevent IPC race conditions
+
+### Ableton Live
+- **Native Extension (C++)** — Ableton Extension SDK integration, sub-millisecond named pipe IPC
+- **Live Set Control** — Full transport (play/stop/record/seek), tempo, time signature, loop, quantization
+- **Clip Management** — Create audio/MIDI clips, launch/stop, gain/pitch/warp, envelopes, warp markers
+- **Track Control** — Volume, pan, mute, solo, arm, device chains, sends/returns
+- **Device Management** — Instruments, audio/MIDI effects, racks (Audio/MIDI/Instrument/Drum), chains, macros, mappings
+- **Parameter Automation** — Read/write device parameters, add/clear automation envelopes
+- **Stem Export** — Per-track stem rendering with solo-in-place automation
+- **MIDI Remote Scripts** — Python scripts for Ableton MIDI remote control surface
+- **Max for Live** — Auto-generated Max for Live device configs for complex workflows
 
 ### General
+- **Project File System** — `.rl` project files in `~/Documents/ResolveLink/ProjectName/` with full directory structure
 - **Desktop App** — Electron UI for server management, project browser, and status
 - **Real-time Status** — Live status indicators via WebSocket
+- **Setup Wizard** — Auto-detect Python and AE paths, first-run configuration
+- **Dark UI** — Matches DaVinci Resolve's professional dark theme exactly
+- **Cross-Platform** — Windows, macOS, and Linux support
+- **Project Templates** — VFX shot, audio post, color grade templates
+- **Keyboard Shortcuts** — `?` for cheat sheet, `Ctrl+Enter` to send, `Ctrl+Shift+R` refresh
+- **Light/Dark Mode** — Theme toggle with system preference detection
+- **Random Workflow Tips** — Helpful tips on each app load
+- **Token Auth** — Optional token-based auth for write operations
 - **Setup Wizard** — Auto-detect Python and AE paths, first-run configuration
 - **Dark UI** — Matches DaVinci Resolve's professional dark theme exactly
 - **Cross-Platform** — Windows, macOS, and Linux support
@@ -147,8 +194,8 @@ That's it. The script will:
    ```
    https://raw.githubusercontent.com/OseMine/ResolveLink/main/index.xml
    ```
-4. Click **OK**, then **ReaPack > Synchronize packages**
-5. Install from **ReaPack > Browse packages > ResolveLink**
+2. Click **OK**, then **ReaPack > Synchronize packages**
+3. Install from **ReaPack > Browse packages > ResolveLink**
 
 #### Available Scripts
 
@@ -191,6 +238,8 @@ All configuration is driven by `.env`:
 | `AE_PATH_MAC` | *(auto-detected)* | After Effects install path |
 | `REAPER_PATH_WIN` | *(auto-detected)* | REAPER install path (Windows) |
 | `REAPER_PATH_MAC` | *(auto-detected)* | REAPER install path (macOS) |
+| `ABLETON_PATH_WIN` | *(auto-detected)* | Ableton Live install path (Windows) |
+| `ABLETON_PATH_MAC` | *(auto-detected)* | Ableton Live install path (macOS) |
 | `RESOLVE_SCRIPTING_PATH` | *(auto-detected)* | Resolve scripting modules |
 | `WATCHER_ENABLED` | `true` | Enable file watcher |
 | `WATCH_FOLDERS` | *(none)* | Extra folders to watch (comma-separated) |
@@ -209,9 +258,13 @@ See `.env.example` for all options.
 | **Backend Server** | Node.js, Express, Chokidar, WebSocket (ws), Zod, dotenv |
 | **Resolve Bridge** | Python 3.10+ (DaVinciResolveScript API), Node.js child_process wrapper |
 | **Adobe Automation** | CEP Extension (HTML/JS panel), ExtendScript (.jsx), base64-encoded payloads |
-| **REAPER Automation** | Pure GFX panel, Lua scripts, file-based IPC |
+| **REAPER Automation** | Native C++ extension (named pipes), Lua scripts, file-based IPC fallback |
+| **Ableton Automation** | Native C++ extension (Ableton Extension SDK), ExtendScript, OSC/MIDI |
 | **Validation** | Zod schema validation on all POST/PUT endpoints |
 | **Testing** | Vitest (unit + integration) |
+| **Project Files** | JSON-based `.rl` format in `~/Documents/ResolveLink/ProjectName/` |
+
+---
 
 ## Project Structure
 
@@ -236,7 +289,8 @@ resolvelink/
 │   │   │   ├── routes/                # REST API route handlers
 │   │   │   ├── integrations/          # External tool integrations
 │   │   │   │   ├── ae/                # After Effects (spawn, JSX generators)
-│   │   │   │   └── reaper/            # REAPER service
+│   │   │   │   ├── reaper/            # REAPER (service, generators, watcher)
+│   │   │   │   └── ableton/           # Ableton Live (service, generators)
 │   │   │   └── services/              # Core services
 │   │   ├── resolve-bridge.py          # Python DaVinci Resolve scripting bridge
 │   │   └── package.json
@@ -249,6 +303,32 @@ resolvelink/
 │   │
 │   └── shared/                 # Shared types and utilities
 │       └── package.json
+│
+├── native/                       # Native C++ extensions
+│   ├── reaper/                   # REAPER native extension
+│   │   ├── CMakeLists.txt
+│   │   ├── include/               # Headers
+│   │   └── src/                   # Source
+│   │
+│   └── ableton/                  # Ableton Live native extension
+│       ├── CMakeLists.txt
+│       ├── include/               # Headers
+│       │   ├── AbletonExtension.h
+│       │   ├── LiveSetManager.h
+│       │   ├── TransportController.h
+│       │   ├── ClipManager.h
+│       │   ├── DeviceManager.h
+│       │   ├── ipc/IPCServer.h
+│       │   └── util/
+│       └── src/                   # Source
+│           ├── plugin_main.cpp    # Extension entry point
+│           ├── ExtensionImpl.cpp  # Implementation
+│           ├── LiveSetManager.cpp
+│           ├── TransportController.cpp
+│           ├── ClipManager.cpp
+│           ├── DeviceManager.cpp
+│           ├── ipc/IPCServer.cpp
+│           └── util/
 │
 ├── extension/                  # CEP Extension (inside After Effects)
 │   ├── CSXS/manifest.xml
@@ -267,10 +347,14 @@ resolvelink/
 │   ├── json.lua                    # Shared JSON decoder module
 │   ├── reaper-callback.lua         # Background worker (file-based IPC)
 │   ├── send-to-resolve.lua         # Render and import to DaVinci
-│   └── update-project.lua          # Sync REAPER to DaVinci timeline
+│   ├── update-project.lua          # Sync REAPER to DaVinci timeline
+│   └── lock.lua                    # File locking module
 │
 ├── adobe/                      # ExtendScript library
 │   └── import_pipeline.jsx    # Standalone AE composition importer
+│
+├── resolve-scripts/            # Shared Python module
+│   └── resolvelink_shared.py
 │
 ├── test/                       # Test suite
 ├── docs/                       # Documentation
@@ -309,6 +393,7 @@ resolvelink/
 - DaVinci Resolve 19+ (scripting API supported in free and Studio)
 - Adobe After Effects 2022+ (for CEP)
 - REAPER 6+ *(optional, for audio post-production workflow)*
+- Ableton Live 11.3+ *(optional, for music/sound design workflow)*
 
 ### Commands
 
@@ -347,11 +432,23 @@ resolvelink/
 3. **Generate** — Server generates Lua import script + JSON payload + render config
 4. **IPC** — Server writes job file to `exports/reaper-jobs/`
 5. **Execute** — Panel's callback picks up job, imports audio into REAPER
-6. **Mix** — Audio engineer mixes in REAPER
+6. **Work** — Audio engineer mixes in REAPER
 7. **Save** — Project auto-saved to `exports/reaper-projects/`
 8. **Render** — Engineer renders to configured export directory
 9. **Import** — Panel sends rendered audio to server, imports into Resolve
 10. **Sync** — Audio track added to Resolve timeline, old clips muted
+
+### Ableton Live Workflow
+
+1. **Selection** — Editor clicks "Send to Ableton" in the Resolve launcher
+2. **Dialog** — Shows available audio/MIDI clips for selection
+3. **Generate** — Server creates Ableton link with OSC payload, MIDI script, Max for Live config
+4. **IPC** — Job sent via native extension named pipe (sub-ms latency)
+5. **Execute** — Native extension places clips, sets tempo, creates tracks/devices
+6. **Work** — Producer arranges, mixes, designs sound in Ableton Live
+7. **Export** — Stem export or master render via native extension
+8. **Import** — Auto-import back to Resolve or manual import via UI
+9. **Sync** — UI shows updated link status via WebSocket
 
 ---
 
@@ -363,6 +460,8 @@ resolvelink/
 | `Ctrl+Enter` | Send selected clips to AE |
 | `Ctrl+T` | Toggle tools panel |
 | `Ctrl+,` | Open setup wizard |
+| `?` | Show keyboard shortcut cheat sheet |
+| `Esc` | Close modals/panels |
 
 ---
 
