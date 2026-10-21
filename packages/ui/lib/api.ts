@@ -48,14 +48,71 @@ export interface ServerFile {
   name: string;
 }
 
+export interface DiagnosticsCheck {
+  path: string;
+  exists: boolean;
+  writable?: boolean;
+}
+
+export interface Diagnostics {
+  app: {
+    name: string;
+    version: string;
+    platform: string;
+    arch: string;
+    node: string;
+    uptimeSeconds: number;
+    port: number;
+    host: string;
+    authEnabled: boolean;
+  };
+  config: {
+    envPath: string;
+    hasEnv: boolean;
+    pythonPath: string;
+    aePath: string;
+    reaperPath: string;
+    scriptingPath: string;
+  };
+  paths: {
+    exportDir: DiagnosticsCheck;
+    tempDir: DiagnosticsCheck;
+    resolveBridge: { path: string; exists: boolean };
+  };
+  python: {
+    command: string;
+    found: boolean;
+    version: string | null;
+    supported: boolean;
+    error: string | null;
+  };
+  integrations: Record<string, {
+    available: boolean;
+    running: boolean;
+    version: string | null;
+    installPath: string | null;
+    error?: string;
+  }>;
+}
+
 const API_BASE = (typeof window !== 'undefined' && (window as any).electronAPI?.getServerOrigin)
   ? (window as any).electronAPI.getServerOrigin() + '/api'
   : '/api';
 const WS_BASE = (() => {
-  if (typeof window !== 'undefined' && (window as any).electronAPI?.getServerOrigin) {
-    return (window as any).electronAPI.getServerOrigin().replace('http', 'ws') + '';
+  if (typeof window === 'undefined') return 'ws://127.0.0.1:3030';
+
+  if ((window as any).electronAPI?.getServerOrigin) {
+    return (window as any).electronAPI.getServerOrigin().replace(/^http/, 'ws');
   }
-  return `ws://${window.location.hostname}:${window.location.port}`;
+
+  // Packaged fallback: the page may be opened from file://.
+  if (window.location.protocol === 'file:') return 'ws://127.0.0.1:3030';
+
+  const port = window.location.port;
+  // The Vite dev server (5173) proxies /api but not the WebSocket upgrade,
+  // so connect to the bridge server directly in development.
+  const wsPort = !port || port === '5173' ? '3030' : port;
+  return `ws://${window.location.hostname}:${wsPort}`;
 })();
 
 // Auth token — fetched from server on startup when auth is enabled
@@ -80,20 +137,41 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers,
-    ...options,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers,
+      ...options,
+    });
+  } catch {
+    throw new Error(
+      'Cannot reach the ResolveLink bridge. Make sure ResolveLink is running, then try again.'
+    );
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || 'Request failed');
+    let message = err.error || res.statusText || 'Request failed';
+
+    if (res.status === 401 || res.status === 403) {
+      message = 'Access denied. Enable the correct API token in Settings.';
+    } else if (Array.isArray(err.details) && err.details.length > 0) {
+      message = `${message}: ${err.details[0].message || err.details[0].path}`;
+    }
+
+    throw new Error(message);
   }
+
+  if (res.status === 204) return undefined as T;
   return res.json();
 }
 
 export const api = {
   // Health
-  health: () => request<{ status: string; links: number }>('/health'),
+  health: () => request<{ status: string; links: number; version: string }>('/health'),
+
+  // Diagnostics (plain-language environment check)
+  getDiagnostics: () => request<Diagnostics>('/diagnostics'),
 
   // Setup
   getSetup: () => request<SetupConfig>('/setup'),
@@ -149,10 +227,15 @@ export const api = {
 
   // Links
   getLinks: () => request<Link[]>('/links'),
-  linkClip: (clipData: ClipData[], settings?: Partial<Link['settings']>, presetName?: string) =>
+  linkClip: (
+    clipData: ClipData[],
+    settings?: Partial<Link['settings']>,
+    presetName?: string,
+    markers?: TimelineMarker[]
+  ) =>
     request<{ linkId: string; status: string; jsxPath: string; payloadPath: string }>(
       '/link-clip',
-      { method: 'POST', body: JSON.stringify({ clipData, settings, presetName }) }
+      { method: 'POST', body: JSON.stringify({ clipData, settings, presetName, markers }) }
     ),
   updateLinkStatus: (id: string, status: string, exportPath?: string) =>
     request<Link>(`/links/${id}/status`, {
@@ -190,48 +273,136 @@ export const api = {
     }),
 };
 
-// --- WebSocket ---
+// --- WebSocket (single shared connection) ---
+//
+// Every component subscribes to the same socket. This prevents duplicate
+// connections (React StrictMode double-mount, multiple components) and makes
+// sure a deliberate unmount never triggers a reconnect loop.
 
 type WSHandler = (type: string, payload: any) => void;
+type WSStatusHandler = (connected: boolean) => void;
 
-let wsRetryDelay = 3000;
 const WS_MAX_RETRY = 30000;
-let activeSocket: WebSocket | null = null;
+const WS_INITIAL_RETRY = 3000;
 
-export function createWebSocket(onMessage: WSHandler, persist: boolean = false): WebSocket {
-  if (!persist && activeSocket && activeSocket.readyState !== WebSocket.CLOSED) {
-    activeSocket.onclose = null;
-    activeSocket.close();
+let sharedSocket: WebSocket | null = null;
+let sharedRetryDelay = WS_INITIAL_RETRY;
+let sharedRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let sharedConnected = false;
+const sharedHandlers = new Set<WSHandler>();
+const sharedStatusHandlers = new Set<WSStatusHandler>();
+
+function getWebSocketUrl(): string {
+  if (typeof window !== 'undefined' && (window as any).electronAPI?.getServerOrigin) {
+    return (window as any).electronAPI.getServerOrigin().replace(/^http/, 'ws');
+  }
+  return WS_BASE;
+}
+
+function notifyStatus(connected: boolean) {
+  if (sharedConnected === connected) return;
+  sharedConnected = connected;
+  sharedStatusHandlers.forEach((handler) => {
+    try {
+      handler(connected);
+    } catch {
+      // A broken subscriber must not take down the socket.
+    }
+  });
+}
+
+function scheduleReconnect() {
+  if (sharedRetryTimer) return;
+  if (sharedHandlers.size === 0 && sharedStatusHandlers.size === 0) return;
+
+  sharedRetryTimer = setTimeout(() => {
+    sharedRetryTimer = null;
+    ensureSocket();
+  }, sharedRetryDelay);
+
+  sharedRetryDelay = Math.min(sharedRetryDelay * 1.5, WS_MAX_RETRY);
+}
+
+function ensureSocket() {
+  if (typeof window === 'undefined') return;
+  if (sharedSocket && (sharedSocket.readyState === WebSocket.OPEN || sharedSocket.readyState === WebSocket.CONNECTING)) {
+    return;
   }
 
-  const wsUrl = typeof window !== 'undefined' && (window as any).electronAPI?.getServerOrigin
-    ? (window as any).electronAPI.getServerOrigin().replace('http', 'ws') + ''
-    : WS_BASE;
-  const ws = new WebSocket(wsUrl);
-  if (!persist) activeSocket = ws;
+  const socket = new WebSocket(getWebSocketUrl());
+  sharedSocket = socket;
 
-  ws.onopen = () => {
-    console.log('[WS] Connected to ResolveLink server');
-    wsRetryDelay = 3000;
+  socket.onopen = () => {
+    sharedRetryDelay = WS_INITIAL_RETRY;
+    notifyStatus(true);
   };
 
-  ws.onmessage = (event) => {
+  socket.onmessage = (event) => {
+    let message: { type: string; payload: any };
     try {
-      const { type, payload } = JSON.parse(event.data);
-      onMessage(type, payload);
-    } catch (e) {
-      console.error('[WS] Invalid message:', e);
+      message = JSON.parse(event.data);
+    } catch {
+      return;
     }
+    sharedHandlers.forEach((handler) => {
+      try {
+        handler(message.type, message.payload);
+      } catch (err) {
+        console.error('[WS] Handler failed:', err);
+      }
+    });
   };
 
-  ws.onclose = () => {
-    if (!persist && activeSocket !== ws) return;
-    console.log(`[WS] Disconnected. Reconnecting in ${wsRetryDelay / 1000}s...`);
-    setTimeout(() => createWebSocket(onMessage, persist), wsRetryDelay);
-    wsRetryDelay = Math.min(wsRetryDelay * 1.5, WS_MAX_RETRY);
+  socket.onclose = () => {
+    if (sharedSocket !== socket) return;
+    sharedSocket = null;
+    notifyStatus(false);
+    scheduleReconnect();
   };
 
-  ws.onerror = (err) => console.error('[WS] Error:', err);
+  socket.onerror = () => {
+    // onclose always follows onerror; keep the console clean.
+  };
+}
 
-  return ws;
+function closeSocketIfUnused() {
+  if (sharedHandlers.size > 0 || sharedStatusHandlers.size > 0) return;
+  if (sharedRetryTimer) {
+    clearTimeout(sharedRetryTimer);
+    sharedRetryTimer = null;
+  }
+  if (sharedSocket) {
+    const socket = sharedSocket;
+    sharedSocket = null;
+    socket.onclose = null;
+    socket.close();
+  }
+  notifyStatus(false);
+}
+
+/** Subscribe to real-time server events. Returns an unsubscribe function. */
+export function subscribeWebSocket(handler: WSHandler): () => void {
+  sharedHandlers.add(handler);
+  ensureSocket();
+
+  return () => {
+    sharedHandlers.delete(handler);
+    closeSocketIfUnused();
+  };
+}
+
+/** Subscribe to bridge connection changes. Fires immediately with current state. */
+export function subscribeWebSocketStatus(handler: WSStatusHandler): () => void {
+  sharedStatusHandlers.add(handler);
+  ensureSocket();
+  handler(sharedConnected);
+
+  return () => {
+    sharedStatusHandlers.delete(handler);
+    closeSocketIfUnused();
+  };
+}
+
+export function isWebSocketConnected(): boolean {
+  return sharedConnected;
 }

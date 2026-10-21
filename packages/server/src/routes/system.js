@@ -12,6 +12,8 @@ const resolveBridge = require('../services/resolve-service');
 const { validate } = require('../middleware/validation');
 const { BatchExportRequestSchema, ClearRequestSchema } = require('@resolvelink/shared');
 const { createLogger } = require('../logger');
+const { version } = require('../version');
+const { getDiagnostics } = require('../services/diagnostics');
 
 const log = createLogger('System');
 const router = express.Router();
@@ -19,15 +21,31 @@ const router = express.Router();
 // These are set during init
 let TEMP_DIR = './temp';
 let EXPORT_DIR = './exports';
+let APP_OPTIONS = {};
 
-function initSystemRoutes(tempDir, exportDir) {
+function initSystemRoutes(tempDir, exportDir, options = {}) {
   TEMP_DIR = tempDir;
   EXPORT_DIR = exportDir;
+  APP_OPTIONS = options;
 }
 
 // GET /api/health — Health check
 router.get('/health', (_req, res) => {
-  res.json({ status: 'ok', links: store.activeLinks.size });
+  res.json({ status: 'ok', links: store.activeLinks.size, version });
+});
+
+// GET /api/diagnostics — One-call environment check for the UI
+router.get('/diagnostics', async (_req, res) => {
+  try {
+    res.json(await getDiagnostics({
+      ...APP_OPTIONS,
+      exportDir: EXPORT_DIR,
+      tempDir: TEMP_DIR,
+    }));
+  } catch (err) {
+    log.error(`Diagnostics failed: ${err.message}`);
+    res.status(500).json({ error: `Could not run diagnostics: ${err.message}` });
+  }
 });
 
 // GET /api/history — Job history
@@ -140,24 +158,23 @@ router.get('/update-check', (_req, res) => {
       try {
         const release = JSON.parse(data);
         const latestVersion = release.tag_name?.replace(/^v/, '') || null;
-        const currentVersion = require('../../../package.json').version;
         res.json({
-          currentVersion,
+          currentVersion: version,
           latestVersion,
-          updateAvailable: latestVersion && latestVersion !== currentVersion,
+          updateAvailable: !!latestVersion && latestVersion !== version,
           downloadUrl: release.html_url || null,
           releaseNotes: release.body || '',
         });
       } catch {
-        res.json({ currentVersion: require('../../../package.json').version, updateAvailable: false, error: 'Failed to parse release info' });
+        res.json({ currentVersion: version, updateAvailable: false, error: 'Failed to parse release info' });
       }
     });
   });
 
   req2.on('error', () => {
-    res.json({ currentVersion: require('../../../package.json').version, updateAvailable: false, error: 'Could not reach GitHub' });
+    res.json({ currentVersion: version, updateAvailable: false, error: 'Could not reach GitHub' });
   });
-  req2.setTimeout(5000, () => { req2.destroy(); res.json({ currentVersion: require('../../../package.json').version, updateAvailable: false, error: 'Timeout' }); });
+  req2.setTimeout(5000, () => { req2.destroy(); res.json({ currentVersion: version, updateAvailable: false, error: 'Timeout' }); });
 });
 
 // POST /api/clear — Clear temp/export directories

@@ -1,191 +1,101 @@
 /**
- * Ableton Script Generators
- * Generates OSC payloads, Max for Live device scripts, MIDI remote scripts,
- * and Resolve import scripts for the Ableton round-trip workflow.
+ * Ableton Integration - Script Generators
+ *
+ * Creates Lua scripts for REAPER to communicate with Ableton Live via OSC,
+ * and generates import scripts for DaVinci Resolve.
  */
 const path = require('path');
-const { createLogger } = require('../../logger');
-
-const log = createLogger('Ableton-Gen');
 
 /**
- * Generate the JSON payload describing the Ableton clip arrangement.
- * Converts frame-based clip data to beat-based positions using BPM.
- * @param {import('@resolink/shared').Link} link
- * @returns {object}
- */
-function generateOSCPayload(link) {
-  const fps = link.settings.fps || 24;
-  const bpm = link.settings.bpm || 120;
-  const beatsPerFrame = bpm / 60 / fps;
-
-  const firstClipStart = link.clips.reduce((min, clip) => {
-    const s = clip.start || 0;
-    return s < min ? s : min;
-  }, Infinity);
-
-  const maxEnd = link.clips.reduce((max, clip) => {
-    const end = (clip.start || 0) + (clip.duration || 0);
-    return end > max ? end : max;
-  }, 0);
-
-  const totalDurationBeats = (maxEnd - firstClipStart) * beatsPerFrame;
-
-  return {
-    linkId: link.id,
-    trackName: `ResolveLink_${link.id.slice(0, 8)}`,
-    bpm,
-    fps,
-    beatsPerFrame,
-    totalDurationBeats,
-    clips: link.clips.map((clip) => ({
-      name: clip.name,
-      startBeats: ((clip.start || 0) - firstClipStart) * beatsPerFrame,
-      durationBeats: (clip.duration || 0) * beatsPerFrame,
-      sourcePath: (clip.sourcePath || '').replace(/\\/g, '/'),
-      volume: clip.volume != null ? clip.volume : 1.0,
-      muted: clip.muted || false,
-      trackIndex: clip.trackIndex || 1,
-    })),
-  };
-}
-
-/**
- * Generate a Max for Live device script (.amxd) JSON description.
- * This describes the device structure that would be created on the target track.
- * The actual .amxd binary would be authored in Max MSP; this generates the
- * configuration payload that the device reads on instantiation.
- * @param {import('@resolink/shared').Link} link
- * @param {string} exportDir
- * @returns {object}
- */
-function generateMaxLiveDevicePayload(link, exportDir) {
-  const payload = generateOSCPayload(link);
-  const compName = `ResolveLink_${link.id.slice(0, 8)}`;
-  const exportPath = path.join(exportDir, `${compName}.wav`).replace(/\\/g, '/');
-
-  return {
-    deviceType: 'resolvelink_transport',
-    version: '1.0.0',
-    linkId: link.id,
-    trackName: payload.trackName,
-    bpm: payload.bpm,
-    totalDurationBeats: payload.totalDurationBeats,
-    exportPath,
-    clips: payload.clips,
-    renderSettings: {
-      format: 'wav',
-      sampleRate: link.settings.sampleRate || 48000,
-      bitDepth: 24,
-      lengthBeats: payload.totalDurationBeats,
-    },
-  };
-}
-
-/**
- * Generate a MIDI remote script for ResolveLink.
- * Ableton MIDI remote scripts are Python files in User Remote Scripts.
- * This generates a script that listens for OSC or MIDI messages from ResolveLink.
- * @param {import('@resolink/shared').Link} link
+ * Generate a Lua script for REAPER that creates a track and sends clip info to Ableton via OSC.
+ * @param {import('@resolvelink/shared').Link} link
  * @param {string} exportDir
  * @returns {string}
  */
-function generateMIDIRemoteScript(link, exportDir) {
-  const payload = generateOSCPayload(link);
+function generateReaperScript(link, exportDir) {
   const compName = `ResolveLink_${link.id.slice(0, 8)}`;
   const exportPath = path.join(exportDir, `${compName}.wav`).replace(/\\/g, '/');
 
-  return `# ResolveLink Ableton MIDI Remote Script
-# Link ID: ${link.id}
-# Generated: ${new Date().toISOString()}
-# User: Place this file in Ableton's User Remote Scripts folder
-# Path: ~/AppData/Roaming/Ableton/Live x.x.x/Preferences/User Remote Scripts/ResolveLink/
+  const payload = {
+    trackName: compName,
+    bpm: link.settings.bpm || 120,
+    totalDurationBeats: Math.round((link.settings.duration || 10) * (link.settings.bpm || 120) / 60),
+    exportPath,
+    clips: link.clips.map((clip, i) => ({
+      name: clip.name || `Clip_${i + 1}`,
+      startFrames: clip.start || 0,
+      durationFrames: clip.duration || 0,
+      sourceIn: clip.sourceIn || 0,
+      sourceOut: clip.sourceOut || 0,
+    })),
+  };
 
-from _Framework.Defaults import *
-from _Framework.InputControlElement import *
-from _Framework.SliderElement import SliderElement
-from _Framework.ButtonElement import ButtonElement
-from Live import *
+  return `-- ResolveLink REAPER → Ableton Script
+-- Link ID: ${link.id}
+-- Generated: ${new Date().toISOString()}
+--
+-- This script runs inside REAPER. It creates a track with the rendered audio
+-- and sends clip timing information to Ableton Live via OSC.
+--
+-- Requirements: REAPER with SWS/S&M extensions for OSC support.
 
-__author__ = "ResolveLink"
-__version__ = "1.0.0"
-__api_version__ = (1, 1, 16)
+local json = require("dkjson")
+local socket = require("socket")
 
-def get_instance_capabilities():
-    return (1, 1, 16)
+local osc_host = "127.0.0.1"
+local osc_port = 8000
 
-def create_instance(c_instance):
-    return ResolveLinkController(c_instance)
+function sendOSC(address, ...)
+  local udp = socket.udp()
+  udp:setpeername(osc_host, osc_port)
+  local msg = address .. " " .. table.concat({...}, " ")
+  udp:send(msg)
+  udp:close()
+end
 
+local payload = {
+  _link_id = "${link.id}",
+  _track_name = "${payload.trackName}",
+  _bpm = ${payload.bpm},
+  _total_beats = ${payload.totalBeats},
+  _export_path = "${payload.exportPath}",
+  _clips = ${JSON.stringify(payload.clips)},
+}
 
-class ResolveLinkController(MidiChallenger):
-    """MIDI Remote Script for ResolveLink audio round-trip."""
+-- Create a new track for the rendered audio
+local track = reaper.AddTrack(0)
+reaper.SetTrackName(track, payload._track_name)
 
-    def __init__(self, c_instance):
-        self._c_instance = c_instance
-        self._link_id = "${link.id}"
-        self._track_name = "${payload.trackName}"
-        self._bpm = ${payload.bpm}
-        self._total_beats = ${payload.totalDurationBeats}
-        self._export_path = r"${exportPath}"
-        self._clips = ${JSON.stringify(payload.clips)}
-        MidiChallenger.__init__(self)
+-- Import the rendered file as a media item
+local item = reaper.AddMediaItemToTrack(track)
+local take = reaper.AddTake(item, payload._export_path, false)
 
-    def application(self):
-        return self._c_instance.application()
+-- Send clip data to Ableton via OSC
+sendOSC("/resolvelink/clips", json.encode(payload._clips))
+sendOSC("/resolvelink/bpm", payload._bpm)
+sendOSC("/resolvelink/play", 1)
 
-    def song(self):
-        return self._c_instance.song()
-
-    def disconnect(self):
-        self._c_instance = None
-
-    def build_midi_map(self, midi_map_handle):
-        pass
-
-    def update_display(self):
-        pass
-
-    def receive_midi_chunk(self, midi_bytes):
-        pass
-
-    def create_resolvelink_track(self):
-        """Called when ResolveLink sends a /resolvelink/create message."""
-        song = self.song()
-        track = song.create_audio_track(-1)
-        if track:
-            track.name = self._track_name
-        return track
-
-    def trigger_export(self):
-        """Trigger arrangement export to exportPath."""
-        song = self.song()
-        song.export_audio_file(
-            self._export_path,
-            48000,
-            24,
-            2,
-            self._total_beats
-        )
+print("ResolveLink: Sent " .. #payload._clips .. " clips to Ableton Live")
 `;
 }
 
 /**
- * Generate a Lua script for Resolve to import the rendered audio file back.
- * @param {import('@resolink/shared').Link} link
+ * Generate a Lua script for REAPER to import the rendered audio file back to Resolve.
+ * @param {import('@resolvelink/shared').Link} link
  * @param {string} renderedFilePath
  * @returns {string}
  */
 function generateResolveImportScript(link, renderedFilePath) {
   const compName = `ResolveLink_${link.id.slice(0, 8)}`;
   const safePath = renderedFilePath.replace(/\\/g, '/');
+  const resolveScriptPath = path.join(process.cwd(), 'resolve-scripts', 'ResolveLink.lua').replace(/\\/g, '/');
 
   return `-- ResolveLink Ableton Import Script
 -- Link ID: ${link.id}
 -- Generated: ${new Date().toISOString()}
 --
 -- Usage: Run this in Resolve Console (Python)
--- > dofile([[${path.join(process.cwd(), 'resolve-scripts', 'ResolveLink.lua').replace(/\\/g, '\\\\')]])
+-- > dofile([[${resolveScriptPath}]])
 -- > import_audio_to_resolve([[${safePath}]], [[${compName}]])
 
 local rendered_file = [[${safePath}]]
@@ -212,109 +122,105 @@ end
  * @returns {object}
  */
 function generateASDMetadata(clipData) {
+  const startSec = (clipData.start || 0) / (clipData.fps || 24);
+  const durationSec = (clipData.duration || 0) / (clipData.fps || 24);
+  const endSec = startSec + durationSec;
+
   return {
-    filename: clipData.sourcePath,
-    name: clipData.name,
-    length: clipData.durationBeats || 4.0,
-    sampleRate: clipData.sampleRate || 48000,
-    bitDepth: clipData.bitDepth || 24,
-    channels: 2,
+    name: clipData.name || 'Clip',
+    start: startSec,
+    end: endSec,
+    loopStart: startSec,
+    loopEnd: endSec,
+    warpMode: 0,
+    gain: clipData.volume || 1,
+    pitch: 0,
+    transpose: 0,
+    detune: 0,
+    filePath: clipData.sourcePath || '',
   };
 }
 
 /**
- * Generate an OSC command sequence as a JSON payload for external use.
- * Describes the sequence of OSC messages to send to Ableton.
- * @param {import('@resolink/shared').Link} link
- * @returns {object}
- */
-function generateOSCCommandSequence(link) {
-  const payload = generateOSCPayload(link);
-
-  const commands = [];
-
-  commands.push({
-    index: 0,
-    address: '/live/song/create_audio_track',
-    args: [{ type: 'i', value: -1 }],
-    description: 'Create audio track at end of track list',
-  });
-
-  const trackNameSafe = payload.trackName.replace(/"/g, '\\"');
-  commands.push({
-    index: 1,
-    address: '/live/track/set_name',
-    args: [{ type: 'i', value: -1 }, { type: 's', value: payload.trackName }],
-    description: 'Set track name',
-  });
-
-  payload.clips.forEach((clip, i) => {
-    const clipNameSafe = clip.name.replace(/"/g, '\\"');
-    const sourceSafe = clip.sourcePath.replace(/\\/g, '/');
-
-    commands.push({
-      index: commands.length,
-      address: '/live/clip_slot/create_clip',
-      args: [
-        { type: 'i', value: -1 },
-        { type: 'i', value: i },
-        { type: 'f', value: clip.durationBeats },
-      ],
-      description: `Create clip slot ${i}: ${clip.name}`,
-    });
-
-    commands.push({
-      index: commands.length,
-      address: '/live/clip/set_file',
-      args: [
-        { type: 'i', value: -1 },
-        { type: 'i', value: i },
-        { type: 's', value: sourceSafe },
-      ],
-      description: `Set clip ${i} source file: ${clip.name}`,
-    });
-
-    if (clip.startBeats > 0) {
-      commands.push({
-        index: commands.length,
-        address: '/live/clip/set_start_marker',
-        args: [
-          { type: 'i', value: -1 },
-          { type: 'i', value: i },
-          { type: 'f', value: clip.startBeats },
-        ],
-        description: `Set clip ${i} start position in beats`,
-      });
-    }
-  });
-
-  return {
-    linkId: link.id,
-    trackName: payload.trackName,
-    bpm: payload.bpm,
-    totalDurationBeats: payload.totalDurationBeats,
-    commands,
-  };
-}
-
-/**
- * Generate a Max for Live device JSON config that describes the
- * transport/export device parameters.
+ * Generate a complete Ableton Live Set (.als) XML for a link.
+ * Note: .als files are gzipped XML. This returns the XML string (caller must gzip).
  * @param {import('@resolvelink/shared').Link} link
  * @param {string} exportDir
- * @returns {string} JSON string of the device configuration
+ * @returns {string}
  */
-function generateMaxLiveDeviceConfig(link, exportDir) {
-  const config = generateMaxLiveDevicePayload(link, exportDir);
-  return JSON.stringify(config, null, 2);
+function generateALSXML(link, exportDir) {
+  const compName = `ResolveLink_${link.id.slice(0, 8)}`;
+  const bpm = link.settings.bpm || 120;
+  const sampleRate = link.settings.sampleRate || 44100;
+  const signatureNumerator = link.settings.signatureNumerator || 4;
+  const signatureDenominator = link.settings.signatureDenominator || 4;
+
+  const clips = link.clips.map((clip, i) => ({
+    ...clip,
+    index: i,
+    startBeats: Math.round(((clip.start || 0) / (clip.fps || 24)) * (bpm / 60)),
+    durationBeats: Math.round(((clip.duration || 0) / (clip.fps || 24)) * (bpm / 60)),
+  }));
+
+  const totalBeats = Math.max(
+    ...clips.map((c) => c.startBeats + c.durationBeats),
+    Math.round((link.settings.duration || 10) * (bpm / 60))
+  );
+
+  let trackIndex = 0;
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Ableton MajorVersion="11" MinorVersion="2" SchemaChangeCount="41" Creator="ResolveLink">
+  <LiveSet>
+    <Tempo>
+      <AutomationTime>
+        <Manual>
+          <BPM Value="${bpm}" />
+        </Manual>
+      </AutomationTime>
+    </Tempo>
+    <TimeSignature Numerator="${signatureNumerator}" Denominator="${signatureDenominator}" />
+    <Tracks>
+      ${clips
+        .map((clip) => {
+          trackIndex++;
+          return `
+      <AudioTrack>
+        <Name>${clip.name || `Clip_${clip.index + 1}`}</Name>
+        <DeviceChain />
+        <ClipSlots>
+          <ClipSlot>
+            <Clip>
+              <Name>${clip.name || `Clip_${clip.index + 1}`}</Name>
+              <CurrentStart>${clip.startBeats}.0</CurrentStart>
+              <LoopStart>${clip.startBeats}.0</LoopStart>
+              <LoopEnd>${clip.startBeats + clip.durationBeats}.0</LoopEnd>
+              <End>${clip.startBeats + clip.durationBeats}.0</End>
+              <SampleRef>
+                <FileRef Path="${path.join(exportDir, clip.sourcePath || '').replace(/\\/g, '/')}"/>
+              </SampleRef>
+            </Clip>
+          </ClipSlot>
+        </ClipSlots>
+      </AudioTrack>`;
+        })
+        .join('')}
+    </Tracks>
+    <MasterTrack>
+      <DeviceChain />
+    </MasterTrack>
+    <SceneList />
+    <Arrangement>
+      <Locators />
+      <TimeSpan Start="0.0" End="${totalBeats}.0" />
+    </Arrangement>
+  </LiveSet>
+</Ableton>`;
 }
 
 module.exports = {
-  generateOSCPayload,
-  generateMaxLiveDevicePayload,
-  generateMIDIRemoteScript,
+  generateReaperScript,
   generateResolveImportScript,
   generateASDMetadata,
-  generateOSCCommandSequence,
-  generateMaxLiveDeviceConfig,
+  generateALSXML,
 };

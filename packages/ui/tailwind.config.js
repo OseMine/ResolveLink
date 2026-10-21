@@ -25,18 +25,22 @@ export default {
           100: '#cccccc',
           50: '#e0e0e0',
         },
+        // Material 3 Green palette
         accent: {
-          DEFAULT: '#2563a0',
-          hover: '#2d75b8',
-          glow: '#2563a040',
-          subtle: '#2563a015',
+          DEFAULT: '#4CAF50',      // Primary green (Material 3 primary)
+          hover: '#66BB6A',        // Light green (hover)
+          active: '#43A047',       // Dark green (active/pressed)
+          container: '#E8F5E9',    // Light container
+          onContainer: '#1B5E20',  // On container
+          glow: '#4CAF5040',       // Glow
+          subtle: '#4CAF5015',     // Subtle background
         },
-        success: { DEFAULT: '#3d8c40', glow: '#3d8c4030' },
-        warn: { DEFAULT: '#c67d1a', glow: '#c67d1a30' },
-        danger: { DEFAULT: '#c0392b', glow: '#c0392b30' },
+        success: { DEFAULT: '#4CAF50', glow: '#4CAF5030' },
+        warn: { DEFAULT: '#FFB300', glow: '#FFB30030' },   // Material 3 amber
+        danger: { DEFAULT: '#EF5350', glow: '#EF535030' }, // Material 3 red
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Roboto', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
       },
       boxShadow: {

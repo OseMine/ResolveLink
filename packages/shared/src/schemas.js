@@ -6,6 +6,21 @@ const { z } = require('zod');
 
 // --- Clip & Link Schemas ---
 
+const ClipTransformSchema = z.object({
+  zoomX: z.number().optional(),
+  zoomY: z.number().optional(),
+  pan: z.number().optional(),
+  tilt: z.number().optional(),
+  rotationAngle: z.number().optional(),
+  anchorPointX: z.number().optional(),
+  anchorPointY: z.number().optional(),
+  cropLeft: z.number().optional(),
+  cropRight: z.number().optional(),
+  cropTop: z.number().optional(),
+  cropBottom: z.number().optional(),
+  opacity: z.number().optional(),
+}).partial();
+
 const ClipDataSchema = z.object({
   name: z.string().min(1),
   start: z.number().min(0),
@@ -18,6 +33,19 @@ const ClipDataSchema = z.object({
   trackName: z.string().optional(),
   volume: z.number().min(0).max(2).optional(),
   muted: z.boolean().optional(),
+  // Media type + transform data must survive validation or audio clips are
+  // treated as video and crop/zoom/opacity are silently dropped.
+  mediaType: z.enum(['video', 'audio']).optional(),
+  transform: ClipTransformSchema.nullable().optional(),
+});
+
+const TimelineMarkerSchema = z.object({
+  frame: z.number().min(0),
+  name: z.string().optional(),
+  note: z.string().optional(),
+  color: z.string().optional(),
+  duration: z.number().optional(),
+  clipName: z.string().optional(),
 });
 
 const LinkSettingsSchema = z.object({
@@ -38,6 +66,7 @@ const LinkClipRequestSchema = z.object({
   clipData: z.array(ClipDataSchema).min(1, 'At least one clip is required'),
   settings: LinkSettingsSchema.partial().optional(),
   aeTimelineName: z.string().optional(),
+  markers: z.array(TimelineMarkerSchema).optional(),
 });
 
 const ReaperLinkClipRequestSchema = z.object({
@@ -46,6 +75,7 @@ const ReaperLinkClipRequestSchema = z.object({
     fps: z.number().positive().optional(),
     sampleRate: z.number().int().positive().optional(),
     duration: z.number().positive().optional(),
+    stemExport: z.boolean().optional(),
   }).optional(),
   timelineMode: z.boolean().optional(),
   projectName: z.string().optional(),
@@ -60,7 +90,7 @@ const JobStatusRequestSchema = z.object({
 });
 
 const LinkStatusUpdateSchema = z.object({
-  status: z.string().min(1),
+  status: LinkStatusSchema,
   exportPath: z.string().optional(),
 });
 
@@ -131,6 +161,49 @@ const AbletonImportRequestSchema = z.object({
   positionBeats: z.number().optional(),
 });
 
+// --- Additional Request Schemas for missing validations ---
+
+// AE integration routes
+const AeRenderRequestSchema = z.object({
+  // No body needed for render endpoint
+});
+
+const AeAutoRequestSchema = z.object({
+  // No body needed for auto endpoint
+});
+
+const RenderActiveCompSchema = z.object({
+  // No body needed
+});
+
+// Links routes
+const LinkIdParamSchema = z.object({
+  id: z.string().uuid({ message: 'Invalid link ID format' }),
+});
+
+const LinkEditingRequestSchema = z.object({
+  status: z.enum(['editing', 'idle']),
+});
+
+// Reaper routes
+const ReaperAutoRequestSchema = z.object({
+  // No body needed
+});
+
+// Ableton integration routes
+const AbletonRenderRequestSchema = z.object({
+  // No body needed for render endpoint
+});
+
+const AbletonAutoRequestSchema = z.object({
+  // No body needed for auto endpoint
+});
+
+// Presets routes
+const PresetNameParamSchema = z.object({
+  name: z.string().min(1, 'Preset name is required'),
+});
+
 // --- Response Schemas ---
 
 const HealthResponseSchema = z.object({
@@ -145,6 +218,8 @@ const SuccessResponseSchema = z.object({
 module.exports = {
   // Schemas
   ClipDataSchema,
+  ClipTransformSchema,
+  TimelineMarkerSchema,
   LinkSettingsSchema,
   LinkClipStatusSchema,
   LinkStatusSchema,
@@ -162,6 +237,16 @@ module.exports = {
   ReaperImportRequestSchema,
   AbletonLinkClipRequestSchema,
   AbletonImportRequestSchema,
+  // New schemas for missing validations
+  AeRenderRequestSchema,
+  AeAutoRequestSchema,
+  RenderActiveCompSchema,
+  LinkIdParamSchema,
+  LinkEditingRequestSchema,
+  ReaperAutoRequestSchema,
+  AbletonRenderRequestSchema,
+  AbletonAutoRequestSchema,
+  PresetNameParamSchema,
   HealthResponseSchema,
   SuccessResponseSchema,
 };

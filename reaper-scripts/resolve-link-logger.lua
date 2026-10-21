@@ -1,6 +1,6 @@
 -- @reapack ResolveLink Logger
 -- @version 1.0.0
--- @author Oskar
+-- @author OseMine
 -- @repository https://github.com/OseMine/ResolveLink
 --
 -- Toggleable logger for ResolveLink scripts.

@@ -114,6 +114,17 @@ function createCompFromPayload(jsonPayload) {
             }
         }
 
+        // Copy timeline markers into the comp (frames relative to comp start).
+        var markers = data.markers || [];
+        for (var m = 0; m < markers.length; m++) {
+            try {
+                var markerValue = new MarkerValue(markers[m].name || "");
+                if (markers[m].note) markerValue.comment = markers[m].note;
+                if (markers[m].duration) markerValue.duration = markers[m].duration / fps;
+                comp.markerProperty.setValueAtTime((markers[m].frame || 0) / fps, markerValue);
+            } catch (markerError) {}
+        }
+
         comp.openInViewer();
         return "OK";
     } catch (e) {

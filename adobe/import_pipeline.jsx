@@ -150,6 +150,41 @@
                 layer.startTime = compStartSec - sourceInSec;
                 layer.inPoint = compStartSec;
                 layer.outPoint = compStartSec + durationSec;
+
+                if (clip.transform) {
+                    var t = clip.transform;
+                    try {
+                        if (t.zoomX !== undefined || t.zoomY !== undefined) {
+                            layer.transform.scale.setValue([
+                                (t.zoomX !== undefined ? t.zoomX : 1) * 100,
+                                (t.zoomY !== undefined ? t.zoomY : 1) * 100
+                            ]);
+                        }
+                        if (t.pan !== undefined || t.tilt !== undefined) {
+                            layer.transform.position.setValue([
+                                (t.pan !== undefined ? t.pan : 0) + width / 2,
+                                (t.tilt !== undefined ? t.tilt : 0) + height / 2
+                            ]);
+                        }
+                        if (t.rotationAngle !== undefined) layer.transform.rotation.setValue(t.rotationAngle);
+                        if (t.opacity !== undefined) layer.transform.opacity.setValue(t.opacity);
+                        if (t.anchorPointX !== undefined || t.anchorPointY !== undefined) {
+                            layer.transform.anchorPoint.setValue([
+                                t.anchorPointX !== undefined ? t.anchorPointX : 0,
+                                t.anchorPointY !== undefined ? t.anchorPointY : 0
+                            ]);
+                        }
+                        if (t.cropLeft !== undefined || t.cropRight !== undefined ||
+                            t.cropTop !== undefined || t.cropBottom !== undefined) {
+                            layer.setCrop([
+                                (t.cropLeft || 0) / width * 100,
+                                (t.cropTop || 0) / height * 100,
+                                (t.cropRight || 0) / width * 100,
+                                (t.cropBottom || 0) / height * 100
+                            ]);
+                        }
+                    } catch (transformError) {}
+                }
             }
 
             imported++;
@@ -157,6 +192,19 @@
             $.writeln("ResolveLink: Failed to import " + clip.filePath + ": " + e.toString());
             failed++;
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Copy timeline markers into the comp
+    // ---------------------------------------------------------------------------
+    var markers = payloadData.markers || [];
+    for (var mi = 0; mi < markers.length; mi++) {
+        try {
+            var markerValue = new MarkerValue(markers[mi].name || "");
+            if (markers[mi].note) markerValue.comment = markers[mi].note;
+            if (markers[mi].duration) markerValue.duration = markers[mi].duration / fps;
+            comp.markerProperty.setValueAtTime((markers[mi].frame || 0) / fps, markerValue);
+        } catch (markerError) {}
     }
 
     // ---------------------------------------------------------------------------

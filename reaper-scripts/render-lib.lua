@@ -3,6 +3,19 @@
 
 local M = {}
 
+-- ── File Locking ────────────────────────────────────────────
+local file_lock = nil
+local function get_lock()
+    if not file_lock then
+        local scriptDir = debug.getinfo(1, "S").source:match("@?(.*/)")
+        if not scriptDir then
+            scriptDir = reaper.GetResourcePath() .. "/Scripts/ResolveLink/"
+        end
+        file_lock = dofile(scriptDir .. "lock.lua")
+    end
+    return file_lock
+end
+
 -- ── Parse render config from JSON file ─────────────────────
 function M.readConfig(exportDir, exportPath)
     return {
@@ -27,15 +40,16 @@ end
 -- ── Send rendered audio file to ResolveLink server ─────────
 -- Returns: response string or nil
 function M.sendFileToResolve(serverUrl, filePath, tempDir)
+    local lock = get_lock()
     local resultFile = tempDir .. "/_import_result.json"
     local tmpFile = tempDir .. "/_import_request.json"
 
     local normalizedPath = filePath:gsub("\\", "/")
     local json = '{"filePath":"' .. normalizedPath .. '"}'
-    local f = io.open(tmpFile, "w")
-    if not f then return nil, "Could not write temp file" end
-    f:write(json)
-    f:close()
+    
+    if not lock.write_file_locked(tmpFile, json, 5000) then
+        return nil, "Could not write temp file (lock)"
+    end
 
     local curlCmd = 'curl -sf -X PUT "' .. serverUrl .. '/api/reaper/import-to-resolve" '
         .. '-H "Content-Type: application/json" '
@@ -51,14 +65,11 @@ function M.sendFileToResolve(serverUrl, filePath, tempDir)
     handle:close()
     os.remove(tmpFile)
 
-    local rf = io.open(resultFile, "r")
-    if rf then
-        local resp = rf:read("*a")
-        rf:close()
-        os.remove(resultFile)
-        return resp
+    local content, err = lock.read_file_locked(resultFile, 5000)
+    os.remove(resultFile)
+    if content then
+        return content
     end
-
     return result
 end
 

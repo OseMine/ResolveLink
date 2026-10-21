@@ -66,11 +66,14 @@ function detectAEPath(config) {
   return null;
 }
 
+// The .env file lives at the repository root, four levels above this file
+// (packages/server/src/routes -> packages/server/src -> packages/server -> packages -> root).
+const ENV_PATH = path.join(__dirname, '..', '..', '..', '..', '.env');
+
 function initSetupRoutes(config, port, host, exportDir, tempDir) {
   // GET /api/setup — Detect paths and return current config
   router.get('/', (_req, res) => {
-    const envPath = path.join(__dirname, '..', '..', '..', '.env');
-    const hasEnv = fs.existsSync(envPath);
+    const hasEnv = fs.existsSync(ENV_PATH);
 
     const python = detectPythonPath();
     const aePath = detectAEPath(config);
@@ -100,41 +103,46 @@ function initSetupRoutes(config, port, host, exportDir, tempDir) {
     });
   });
 
-  // POST /api/setup — Write .env file
+  // POST /api/setup — Write .env file (merges with existing values)
   router.post('/', validate(SetupRequestSchema), (req, res) => {
     const { pythonPath, aePath, reaperPath, exportDir, tempDir, port, host, scriptingPath } = req.body;
 
-    const lines = [
-      '# ResolveLink Configuration',
-      `PORT=${port || 3030}`,
-      `HOST=${host || '127.0.0.1'}`,
-      `EXPORT_DIR=${exportDir || './exports'}`,
-      `TEMP_DIR=${tempDir || './temp'}`,
-      '',
-    ];
+    const updates = {
+      PORT: String(port || 3030),
+      HOST: host || '127.0.0.1',
+      EXPORT_DIR: exportDir || './exports',
+      TEMP_DIR: tempDir || './temp',
+    };
 
-    if (pythonPath) lines.push(`PYTHON_PATH=${pythonPath}`);
-    if (aePath) {
-      if (process.platform === 'win32') {
-        lines.push(`AE_PATH_WIN=${aePath}`);
-      } else {
-        lines.push(`AE_PATH_MAC=${aePath}`);
-      }
-    }
-    if (scriptingPath) lines.push(`RESOLVE_SCRIPTING_PATH=${scriptingPath}`);
-    if (reaperPath) {
-      if (process.platform === 'win32') {
-        lines.push(`REAPER_PATH_WIN=${reaperPath}`);
-      } else {
-        lines.push(`REAPER_PATH_MAC=${reaperPath}`);
-      }
-    }
-    lines.push('');
+    if (pythonPath) updates.PYTHON_PATH = pythonPath;
+    if (aePath) updates[process.platform === 'win32' ? 'AE_PATH_WIN' : 'AE_PATH_MAC'] = aePath;
+    if (scriptingPath) updates.RESOLVE_SCRIPTING_PATH = scriptingPath;
+    if (reaperPath) updates[process.platform === 'win32' ? 'REAPER_PATH_WIN' : 'REAPER_PATH_MAC'] = reaperPath;
 
-    const envPath = path.join(__dirname, '..', '..', '..', '.env');
     try {
-      fs.writeFileSync(envPath, lines.join('\n'), 'utf8');
-      res.json({ success: true, message: 'Configuration saved. Restart the server to apply.' });
+      // Preserve keys the wizard doesn't manage (LOG_LEVEL, WATCH_FOLDERS, ...)
+      const existing = {};
+      if (fs.existsSync(ENV_PATH)) {
+        for (const line of fs.readFileSync(ENV_PATH, 'utf8').split(/\r?\n/)) {
+          const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+          if (match) existing[match[1]] = match[2];
+        }
+      }
+
+      const merged = { ...existing, ...updates };
+      const lines = ['# ResolveLink Configuration', '# Saved by the setup wizard'];
+      for (const [key, value] of Object.entries(merged)) {
+        lines.push(`${key}=${value}`);
+      }
+      lines.push('');
+
+      fs.writeFileSync(ENV_PATH, lines.join('\n'), 'utf8');
+      res.json({
+        success: true,
+        envPath: ENV_PATH,
+        restartRequired: true,
+        message: 'Configuration saved. Restart ResolveLink to apply the changes.',
+      });
     } catch (err) {
       res.status(500).json({ error: `Failed to write .env: ${err.message}` });
     }

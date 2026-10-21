@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   api,
-  createWebSocket,
+  subscribeWebSocket,
+  subscribeWebSocketStatus,
   Link,
   ServerFile,
   ResolveStatus,
@@ -41,16 +42,13 @@ export function useResolveBridge() {
     }).catch(() => {});
   }, []);
 
-  // WebSocket connection — guard against duplicate instances
-  const wsRef = useRef<WebSocket | null>(null);
+  // WebSocket connection — one shared socket for the whole app.
   useEffect(() => {
-    // Close any existing connection before creating a new one
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
+    const unsubscribeStatus = subscribeWebSocketStatus((connected) => {
+      setState((s) => (s.connected === connected ? s : { ...s, connected }));
+    });
 
-    const ws = createWebSocket((type, payload) => {
+    const unsubscribe = subscribeWebSocket((type, payload) => {
       switch (type) {
         case 'init':
           setState((s) => ({ ...s, connected: true, links: payload.links }));
@@ -101,10 +99,9 @@ export function useResolveBridge() {
       }
     });
 
-    wsRef.current = ws;
     return () => {
-      ws.close();
-      wsRef.current = null;
+      unsubscribe();
+      unsubscribeStatus();
     };
   }, []);
 
@@ -177,24 +174,36 @@ export function useResolveBridge() {
       sourceIn: clip.sourceIn,
       sourceOut: clip.sourceOut,
       trackIndex: clip.trackIndex,
+      mediaType: clip.mediaType === 'audio' ? 'audio' : 'video',
+      sourceFps: clip.sourceFps || clip.fps,
     }));
 
     // Use selection-level resolution if available, then clip-level, then defaults
     const firstClip = clips[0];
     const selectionData = state.selection;
     const fps = settings?.fps || firstClip?.fps || selectionData?.fps || 24;
+
+    // Duration = span from the earliest start to the latest end. Summing
+    // durations over-counts whenever clips overlap on different tracks.
+    const firstStart = clips.reduce((min, c) => Math.min(min, c.start || 0), Infinity);
+    const lastEnd = clips.reduce((max, c) => Math.max(max, (c.start || 0) + (c.duration || 0)), 0);
+    const span = Number.isFinite(firstStart) ? Math.max(0, lastEnd - firstStart) : 0;
+
     const resolvedSettings = {
       width: settings?.width || selectionData?.width || firstClip?.resolution?.width || 1920,
       height: settings?.height || selectionData?.height || firstClip?.resolution?.height || 1080,
       fps,
-      duration: settings?.duration || Math.ceil(
-        clips.reduce((sum, c) => sum + c.duration, 0) / (fps > 0 ? fps : 24)
-      ),
+      duration: settings?.duration || (fps > 0 ? span / fps : 10),
       ...settings,
     };
 
+    // Timeline markers are a nice-to-have: never block sending if unavailable.
+    const markers = await api.getMarkers()
+      .then((data) => data.markers || [])
+      .catch(() => []);
+
     try {
-      const result = await api.linkClip(clipPayload, resolvedSettings, presetName);
+      const result = await api.linkClip(clipPayload, resolvedSettings, presetName, markers);
 
       // Trigger the auto-workflow: opens AE, renders, imports to Resolve
       try {
@@ -216,8 +225,14 @@ export function useResolveBridge() {
   }, []);
 
   const triggerRender = useCallback(async (id: string) => {
+    const link = state.links.find((item) => item.id === id);
+    // REAPER links use a different auto-workflow endpoint than AE links.
+    if (link?.target === 'reaper') {
+      await api.reaperAuto(id);
+      return;
+    }
     await api.triggerRender(id);
-  }, []);
+  }, [state.links]);
 
   return {
     ...state,

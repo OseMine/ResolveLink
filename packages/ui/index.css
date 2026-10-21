@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,7 +16,7 @@ html, body, #root {
   overflow: hidden;
   background: #141414;
   color: #e0e0e0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Roboto', 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 13px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -30,7 +32,7 @@ input, textarea, select, label {
 }
 
 *:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #4CAF50;
   outline-offset: 2px;
 }
 
@@ -60,13 +62,16 @@ input, textarea, select, label {
     @apply relative overflow-hidden font-semibold text-[13px] tracking-wide
            text-white rounded-lg transition-all duration-200 ease-out
            active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed;
-    background: linear-gradient(135deg, #2563a0 0%, #1d4f82 100%);
+    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
     box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
     padding: 10px 16px;
   }
   .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #2d75b8 0%, #2563a0 100%);
-    box-shadow: 0 2px 8px rgba(37,99,160,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+    background: linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%);
+    box-shadow: 0 2px 8px rgba(76,175,80,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .btn-primary:active:not(:disabled) {
+    background: linear-gradient(135deg, #43A047 0%, #388E3C 100%);
   }
   .btn-primary::after {
     content: '';
@@ -101,27 +106,27 @@ input, textarea, select, label {
   }
   .badge-linked {
     @apply badge;
-    background: rgba(61,140,64,0.12);
-    color: #5cb85c;
-    border: 1px solid rgba(61,140,64,0.2);
+    background: rgba(76,175,80,0.12);
+    color: #81C784;
+    border: 1px solid rgba(76,175,80,0.2);
   }
   .badge-rendering {
     @apply badge;
-    background: rgba(198,125,26,0.12);
-    color: #d4952a;
-    border: 1px solid rgba(198,125,26,0.2);
+    background: rgba(255,179,0,0.12);
+    color: #FFB300;
+    border: 1px solid rgba(255,179,0,0.2);
   }
   .badge-rendered {
     @apply badge;
-    background: rgba(61,140,64,0.12);
-    color: #5cb85c;
-    border: 1px solid rgba(61,140,64,0.2);
+    background: rgba(76,175,80,0.12);
+    color: #81C784;
+    border: 1px solid rgba(76,175,80,0.2);
   }
   .badge-error {
     @apply badge;
-    background: rgba(192,57,43,0.12);
-    color: #e05545;
-    border: 1px solid rgba(192,57,43,0.2);
+    background: rgba(239,83,80,0.12);
+    color: #EF5350;
+    border: 1px solid rgba(239,83,80,0.2);
   }
   .badge-pending {
     @apply badge;
@@ -131,9 +136,9 @@ input, textarea, select, label {
   }
   .badge-created {
     @apply badge;
-    background: rgba(37,99,160,0.12);
-    color: #4a9ede;
-    border: 1px solid rgba(37,99,160,0.2);
+    background: rgba(76,175,80,0.12);
+    color: #81C784;
+    border: 1px solid rgba(76,175,80,0.2);
   }
 
   .divider {
@@ -144,4 +149,15 @@ input, textarea, select, label {
   .section-label {
     @apply text-[10px] font-semibold uppercase tracking-widest text-r-400;
   }
+}
+
+/* Material 3 elevation shadows */
+.shadow-elevation-1 {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 1px rgba(0,0,0,0.2);
+}
+.shadow-elevation-2 {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+}
+.shadow-elevation-3 {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
 }

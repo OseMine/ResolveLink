@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Clock, Check, X, Send, Download, Upload, Music } from 'lucide-react';
-import { api, createWebSocket, type JobHistoryEntry } from '../lib/api';
+import { api, subscribeWebSocket, type JobHistoryEntry } from '../lib/api';
 
 export function JobHistory() {
   const [history, setHistory] = useState<JobHistoryEntry[]>([]);
@@ -10,12 +10,11 @@ export function JobHistory() {
     api.getHistory().then(setHistory).catch(() => {});
   }, []);
 
-  // Also listen for real-time updates via WebSocket
+  // Also listen for real-time updates via the shared WebSocket
   useEffect(() => {
-    const ws = createWebSocket((type, payload) => {
+    return subscribeWebSocket((type, payload) => {
       if (type === 'job:history') setHistory(payload);
     });
-    return () => ws.close();
   }, []);
 
   if (history.length === 0) return null;
@@ -54,7 +53,7 @@ function HistoryRow({ entry }: { entry: JobHistoryEntry }) {
   const statusColors: Record<string, string> = {
     created: 'text-r-400',
     success: 'text-success',
-    error: 'text-error',
+    error: 'text-danger',
   };
   const statusIcons: Record<string, React.ReactNode> = {
     created: <Clock size={9} />,
@@ -71,10 +70,16 @@ function HistoryRow({ entry }: { entry: JobHistoryEntry }) {
   const time = new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-r-850 border border-r-700/30">
+    <div
+      className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-r-850 border border-r-700/30"
+      title={entry.error || undefined}
+    >
       <span className={`${statusColors[entry.status]}`}>{statusIcons[entry.status]}</span>
       <span className="text-r-500">{icons[entry.type]}</span>
-      <span className="text-[11px] text-r-200 flex-1 truncate">{typeLabels[entry.type]}</span>
+      <span className="text-[11px] text-r-200 flex-1 truncate">
+        {typeLabels[entry.type] || entry.type}
+        {entry.error ? ` — ${entry.error}` : ''}
+      </span>
       {entry.clipCount !== undefined && (
         <span className="text-[10px] text-r-500 font-mono">{entry.clipCount} clips</span>
       )}

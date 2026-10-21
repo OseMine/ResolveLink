@@ -113,12 +113,31 @@ def get_timeline_data(resolve):
                 "mpi": mpi,
             })
 
+    # ── timeline markers (copied into the AE comp) ──
+    markers = []
+    try:
+        for frame_key, marker in (timeline.GetMarkers() or {}).items():
+            try:
+                frame = int(float(frame_key))
+            except (TypeError, ValueError):
+                continue
+            markers.append({
+                "frame": frame,
+                "name": marker.get("name", "") or "",
+                "note": marker.get("note", "") or "",
+                "color": marker.get("color", "") or "",
+                "duration": marker.get("duration", 0) or 0,
+            })
+    except Exception:
+        markers = []
+
     meta = {
         "fps": fps,
         "width": width,
         "height": height,
         "timelineName": timeline.GetName(),
         "projectName": project.GetName(),
+        "markers": markers,
     }
 
     return clips, meta, None
@@ -607,6 +626,18 @@ def main():
             "duration": comp_dur,
         },
     }
+
+    # Markers that fall inside the selected span, rebased to the comp start.
+    selected_markers = []
+    for marker in meta.get("markers", []):
+        if first_start <= marker["frame"] < max_end:
+            selected_markers.append({
+                **marker,
+                "frame": marker["frame"] - first_start,
+            })
+    if selected_markers:
+        payload["markers"] = selected_markers
+
     if tl_name and not tl_err:
         payload["aeTimelineName"] = tl_name
 

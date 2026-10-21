@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Settings, Plus, Trash2, Check } from 'lucide-react';
 import { api, type RenderPreset } from '../lib/api';
+import { ConfirmDialog } from './ConfirmDialog';
+import { toast } from './Toast';
 
 export function RenderPresets({ currentPreset, onSelect }: { currentPreset?: string; onSelect?: (name: string) => void }) {
   const [presets, setPresets] = useState<RenderPreset[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newTemplate, setNewTemplate] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   useEffect(() => {
     api.getPresets().then((data) => setPresets(data.presets || [])).catch(() => {});
@@ -21,14 +24,23 @@ export function RenderPresets({ currentPreset, onSelect }: { currentPreset?: str
       setNewName('');
       setNewTemplate('');
       setShowForm(false);
-    } catch {}
+      toast('success', 'Preset saved', `"${newName.trim()}" is ready to use.`);
+    } catch (err: any) {
+      toast('error', 'Could not save preset', err?.message || 'Please try again.');
+    }
   };
 
   const deletePreset = async (name: string) => {
     try {
       await api.deletePreset(name);
       setPresets((prev) => prev.filter((p) => p.name !== name));
-    } catch {}
+      if (currentPreset === name) onSelect?.('');
+      toast('info', 'Preset removed', `"${name}" was deleted.`);
+    } catch (err: any) {
+      toast('error', 'Could not delete preset', err?.message || 'Please try again.');
+    } finally {
+      setPendingDelete(null);
+    }
   };
 
   return (
@@ -87,11 +99,25 @@ export function RenderPresets({ currentPreset, onSelect }: { currentPreset?: str
               <span className="text-[9px] font-mono text-r-500 truncate">{preset.template}</span>
             )}
           </button>
-          <button onClick={() => deletePreset(preset.name)} className="p-1 text-r-500 hover:text-danger transition-colors">
+          <button
+            onClick={() => setPendingDelete(preset.name)}
+            className="p-1 text-r-500 hover:text-danger transition-colors"
+            title={`Delete ${preset.name}`}
+            aria-label={`Delete ${preset.name}`}
+          >
             <Trash2 size={10} />
           </button>
         </div>
       ))}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this preset?"
+        message={`"${pendingDelete || ''}" will be removed. Existing links keep their current settings.`}
+        confirmLabel="Delete"
+        onConfirm={() => pendingDelete && deletePreset(pendingDelete)}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

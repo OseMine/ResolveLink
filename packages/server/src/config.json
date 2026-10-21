@@ -41,8 +41,8 @@
     "oscQueryPort": 9000,
     "oscResponsePort": 9001,
     "installPath": {
-      "win32": "C:\\Program Files\\Ableton",
-      "darwin": "/Applications/Ableton"
+      "win32": "",
+      "darwin": ""
     },
     "renderFormat": "wav",
     "renderQuality": "high"

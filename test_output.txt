@@ -1,0 +1,11 @@
+npm notice run resolve-link@1.1.0 npx
+npm notice run vitest run test/api.test.js
+
+ RUN  v4.1.10 X:/coding/AE-Link
+
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  19:22:57
+   Duration  13.08s (transform 119ms, setup 0ms, import 3.65s, tests 8.84s, environment 0ms)
+

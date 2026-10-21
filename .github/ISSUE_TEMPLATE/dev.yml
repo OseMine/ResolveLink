@@ -1,0 +1,56 @@
+name: Development Task
+description: Propose or track a development task.
+title: "[DEV] "
+labels:
+  - development
+body:
+  - type: dropdown
+    id: task_type
+    attributes:
+      label: Task type
+      options:
+        - Feature
+        - Refactor
+        - Bug fix
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the task and its purpose.
+      placeholder: What needs to be done?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Add relevant background, constraints, or references.
+    validations:
+      required: false
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Proposed implementation
+      description: Outline a possible approach, if known.
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: List the outcomes required to consider this task complete.
+      placeholder: |-
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: additional_notes
+    attributes:
+      label: Additional notes
+      description: Include any other useful information.
+    validations:
+      required: false

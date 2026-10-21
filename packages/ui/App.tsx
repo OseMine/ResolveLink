@@ -9,9 +9,12 @@ import { UpdateNotification } from './components/UpdateNotification';
 import { TimelineMarkers } from './components/TimelineMarkers';
 import { BatchExport } from './components/BatchExport';
 import { RenderPresets } from './components/RenderPresets';
-import { useKeyboardShortcuts, ShortcutHint as KeyboardShortcutsHint } from './components/KeyboardShortcuts';
+import { useKeyboardShortcuts, CheatSheet, ShortcutHint as KeyboardShortcutsHint } from './components/KeyboardShortcuts';
+import { SystemCheck } from './components/SystemCheck';
+import { ToastViewport, toast } from './components/Toast';
+import { ThemeToggle, RandomTip } from './components/ThemeToggle';
 import { useResolveBridge } from './lib/useResolveBridge';
-import { api, createWebSocket } from './lib/api';
+import { api, subscribeWebSocket } from './lib/api';
 import type { ResolveProject } from './lib/api';
 
 export default function App() {
@@ -32,6 +35,11 @@ export default function App() {
   const [showSetup, setShowSetup] = useState(false);
   const [showPanels, setShowPanels] = useState(false);
   const [currentPreset, setCurrentPreset] = useState<string | undefined>();
+  const [version, setVersion] = useState('');
+
+  useEffect(() => {
+    api.health().then((data) => setVersion(data.version)).catch(() => {});
+  }, []);
 
   // Keyboard shortcuts
   const handleSendShortcut = useCallback(async () => {
@@ -39,7 +47,7 @@ export default function App() {
     try { await sendToAE(undefined, undefined, currentPreset); } catch {}
   }, [connected, selection, sendToAE, currentPreset]);
 
-  useKeyboardShortcuts({
+  const { cheatSheetOpen, setCheatSheetOpen } = useKeyboardShortcuts({
     onRefresh: fetchSelection,
     onSend: handleSendShortcut,
     onToggleTools: () => setShowPanels((p) => !p),
@@ -66,38 +74,44 @@ export default function App() {
     }).catch(() => {});
   }, []);
 
-  // Desktop notifications on render completion
+  // Notifications on render completion / failure
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+      Notification.requestPermission().catch(() => {});
     }
 
-    const ws = createWebSocket((type, payload) => {
-      if (type === 'link:updated' && payload.status === 'imported') {
+    const unsubscribe = subscribeWebSocket((type, payload) => {
+      if (type !== 'link:updated') return;
+
+      if (payload.status === 'imported') {
+        toast('success', 'Render imported', 'The result is now on your Resolve timeline.');
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('ResolveLink', {
-            body: `Render imported to Resolve successfully`,
-          });
+          new Notification('ResolveLink', { body: 'Render imported to Resolve successfully' });
         }
       }
-      if (type === 'link:updated' && payload.status === 'error') {
+
+      if (payload.status === 'error') {
+        toast('error', 'Something went wrong', 'Open History below for details, then try again.');
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('ResolveLink', {
-            body: `Import failed — check job history for details`,
-          });
+          new Notification('ResolveLink', { body: 'Import failed — check job history for details' });
         }
       }
-    }, true);
-    return () => ws.close();
+    });
+
+    return unsubscribe;
   }, []);
 
   return (
     <div className="flex flex-col h-full bg-r-900">
-      <Titlebar onSetup={() => setShowSetup(true)} />
+      <div className="flex items-center justify-between">
+        <Titlebar onSetup={() => setShowSetup(true)} />
+        <ThemeToggle />
+      </div>
 
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
         {/* Update notification */}
         <UpdateNotification />
+        <RandomTip />
 
         {/* Header */}
         <Dashboard
@@ -139,6 +153,8 @@ export default function App() {
             onDelete={deleteLink}
             onRender={triggerRender}
             editingLinks={editingLinks}
+            resolveConnected={resolve.connected}
+            onOpenSetup={() => setShowSetup(true)}
           />
         </div>
 
@@ -160,6 +176,8 @@ export default function App() {
 
         {showPanels && (
           <div className="space-y-4 animate-slide-up">
+            <SystemCheck connected={connected} resolveConnected={resolve.connected} />
+            <div className="divider" />
             <TimelineMarkers resolveConnected={resolve.connected} />
             <div className="divider" />
             <BatchExport resolveConnected={resolve.connected} />
@@ -174,13 +192,15 @@ export default function App() {
         <div className="pt-3 divider">
           <div className="flex items-center justify-center">
             <span className="text-[10px] text-r-500 font-mono tracking-wider">
-              ResolveLink v1.1.0
+              ResolveLink {version ? `v${version}` : ''}
             </span>
           </div>
         </div>
       </div>
 
       <SetupWizard open={showSetup} onClose={() => setShowSetup(false)} />
+      <CheatSheet isOpen={cheatSheetOpen} onClose={() => setCheatSheetOpen(false)} />
+      <ToastViewport />
     </div>
   );
 }

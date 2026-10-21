@@ -45,16 +45,24 @@ const wss = new WebSocketServer({ server });
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin) {
-    try {
-      const url = new URL(origin);
-      const h = url.hostname;
-      if (h === '127.0.0.1' || h === 'localhost' || h === '::1') {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-        if (req.method === 'OPTIONS') return res.sendStatus(204);
-      }
-    } catch {}
+    // "null" is the origin browsers send for file:// pages (packaged Electron).
+    if (origin === 'null') {
+      res.setHeader('Access-Control-Allow-Origin', 'null');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      if (req.method === 'OPTIONS') return res.sendStatus(204);
+    } else {
+      try {
+        const url = new URL(origin);
+        const h = url.hostname;
+        if (h === '127.0.0.1' || h === 'localhost' || h === '::1') {
+          res.setHeader('Access-Control-Allow-Origin', origin);
+          res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+          if (req.method === 'OPTIONS') return res.sendStatus(204);
+        }
+      } catch {}
+    }
   }
   next();
 });
@@ -73,7 +81,8 @@ if (authState.enabled) {
 app.use(requireAuth(authState));
 
 // Serve built React frontend
-const DIST_DIR = path.join(__dirname, '..', '..', '..', 'ui', 'dist');
+// packages/server/src -> packages/ui/dist
+const DIST_DIR = path.join(__dirname, '..', '..', 'ui', 'dist');
 if (fs.existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR));
 }
@@ -92,7 +101,11 @@ registry.discoverFromDirectory(integrationsDir);
 
 // System routes (health, history, config, etc.)
 const systemRoutes = require('./routes/system');
-systemRoutes.initSystemRoutes(TEMP_DIR, EXPORT_DIR);
+systemRoutes.initSystemRoutes(TEMP_DIR, EXPORT_DIR, {
+  port: PORT,
+  host: HOST,
+  authEnabled: authState.enabled,
+});
 app.use('/api', systemRoutes);
 
 // Job queue routes
@@ -228,11 +241,55 @@ app.use((err, _req, res, _next) => {
 
 // --- WebSocket ---
 
-wss.on('connection', (ws) => {
-  log.info('Client connected');
-  sendInitState(ws);
-  ws.on('close', () => log.info('Client disconnected'));
+// Track REAPER WebSocket connections
+const reaperWsClients = new Set();
+
+wss.on('connection', (ws, req) => {
+  const url = req.url || '/';
+  
+  if (url.startsWith('/api/ws/reaper')) {
+    // REAPER WebSocket connection for real-time job delivery
+    log.info('REAPER WebSocket connected');
+    reaperWsClients.add(ws);
+    
+    ws.on('close', () => {
+      reaperWsClients.delete(ws);
+      log.info('REAPER WebSocket disconnected');
+    });
+    
+    ws.on('error', (err) => {
+      log.error('REAPER WebSocket error:', err.message);
+    });
+    
+    // Send initial config
+    ws.send(JSON.stringify({
+      type: 'config',
+      payload: {
+        serverUrl: `http://${HOST}:${PORT}`,
+        jobsDir: REAPER_JOBS_DIR.replace(/\\/g, '/'),
+        resultsDir: REAPER_RESULTS_DIR.replace(/\\/g, '/'),
+      }
+    }));
+  } else {
+    // Standard UI WebSocket
+    log.info('Client connected');
+    sendInitState(ws);
+    ws.on('close', () => log.info('Client disconnected'));
+  }
 });
+
+// Broadcast job to all connected REAPER WebSocket clients
+function broadcastReaperJob(job) {
+  const msg = JSON.stringify(job);
+  for (const ws of reaperWsClients) {
+    if (ws.readyState === 1) { // WebSocket.OPEN
+      ws.send(msg);
+    }
+  }
+}
+
+// Export for use in routes
+global.broadcastReaperJob = broadcastReaperJob;
 
 // --- File Watchers ---
 

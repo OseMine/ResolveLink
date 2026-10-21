@@ -1,11 +1,14 @@
-import { Trash2, ExternalLink, Play, Clock, Pencil, Music } from 'lucide-react';
+import { useState } from 'react';
+import { Trash2, ExternalLink, Play, Clock, Pencil, Music, AlertTriangle } from 'lucide-react';
 import { StatusBadge } from './StatusIndicator';
+import { ConfirmDialog } from './ConfirmDialog';
+import { toast } from './Toast';
 import type { Link } from '../lib/api';
 
 interface LinkCardProps {
   link: Link;
-  onDelete: (id: string) => void;
-  onRender: (id: string) => void;
+  onDelete: (id: string) => void | Promise<void>;
+  onRender: (id: string) => void | Promise<void>;
   isEditing?: boolean;
 }
 
@@ -36,11 +39,45 @@ export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps)
   const totalFrames = link.clips.reduce((sum, c) => sum + (c.duration || 0), 0);
   const isReaper = link.target === 'reaper';
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const isBusy = link.status === 'sending' || link.status === 'queued' || link.status === 'rendering';
+  const canOpen = !isBusy;
+  const openLabel = link.status === 'created'
+    ? (isReaper ? 'Open in REAPER' : 'Open in After Effects')
+    : (isReaper ? 'Send to REAPER again' : 'Render again');
+
+  const handleDelete = async () => {
+    setBusy(true);
+    try {
+      await onDelete(link.id);
+      toast('info', 'Link removed', 'The link was removed from this list.');
+      setConfirmDelete(false);
+    } catch (err: any) {
+      toast('error', 'Could not remove link', err?.message || 'Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleOpen = async () => {
+    setBusy(true);
+    try {
+      await onRender(link.id);
+      toast('success', isReaper ? 'Sent to REAPER' : 'Sent to After Effects', 'Watch the status badge for progress.');
+    } catch (err: any) {
+      toast('error', 'Could not start the job', err?.message || 'Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="card animate-fade-in group !p-0 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-r-700/30 bg-r-750/20">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <StatusBadge status={link.status} />
           {isReaper ? (
             <span className="inline-flex items-center gap-1 px-1.5 py-[1px] rounded text-[9px] font-semibold bg-purple-500/15 text-purple-400 border border-purple-500/20">
@@ -62,13 +99,14 @@ export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps)
             {link.id.slice(0, 8)}
           </span>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          {link.status === 'created' && (
+        <div className="flex items-center gap-1 shrink-0 opacity-70 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">
+          {canOpen && (
             <button
-              onClick={() => onRender(link.id)}
-              className="p-1.5 rounded-md text-r-400 hover:text-success hover:bg-success/10 transition-all duration-150"
-              title={isReaper ? "Open in REAPER" : "Open in After Effects"}
-              aria-label={isReaper ? "Open in REAPER" : "Send to After Effects"}
+              onClick={handleOpen}
+              disabled={busy}
+              className="p-1.5 rounded-md text-r-300 hover:text-success hover:bg-success/10 transition-all duration-150 disabled:opacity-40"
+              title={openLabel}
+              aria-label={openLabel}
             >
               <Play size={11} fill="currentColor" />
             </button>
@@ -80,21 +118,22 @@ export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps)
                 if (electron?.showItemInFolder) {
                   electron.showItemInFolder(link.exportPath);
                 } else {
-                  alert(`Export file: ${link.exportPath}`);
+                  toast('info', 'Export file', link.exportPath || '');
                 }
               }}
-              className="p-1.5 rounded-md text-r-400 hover:text-accent hover:bg-accent/10 transition-all duration-150"
-              title="Show in Explorer"
-              aria-label="Show export file in Explorer"
+              className="p-1.5 rounded-md text-r-300 hover:text-accent hover:bg-accent/10 transition-all duration-150"
+              title="Show render in Explorer"
+              aria-label="Show render file in Explorer"
             >
               <ExternalLink size={11} />
             </button>
           )}
           <button
-            onClick={() => onDelete(link.id)}
-            className="p-1.5 rounded-md text-r-400 hover:text-danger hover:bg-danger/10 transition-all duration-150"
+            onClick={() => setConfirmDelete(true)}
+            disabled={busy}
+            className="p-1.5 rounded-md text-r-300 hover:text-danger hover:bg-danger/10 transition-all duration-150 disabled:opacity-40"
             title="Remove link"
-            aria-label="Delete link"
+            aria-label="Remove link"
           >
             <Trash2 size={11} />
           </button>
@@ -123,6 +162,16 @@ export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps)
         ))}
       </div>
 
+      {/* Friendly error hint */}
+      {link.status === 'error' && (
+        <div className="flex items-start gap-2 px-3 py-2 border-t border-danger/20 bg-danger/5">
+          <AlertTriangle size={11} className="text-danger shrink-0 mt-[1px]" />
+          <p className="text-[10px] text-danger/90 leading-snug">
+            This link needs attention. Open <strong>History</strong> below for the exact error, then try again.
+          </p>
+        </div>
+      )}
+
       {/* Footer */}
       <div className="flex items-center justify-between px-3 py-2 border-t border-r-700/30 bg-r-750/20">
         <div className="flex items-center gap-3">
@@ -148,6 +197,15 @@ export function LinkCard({ link, onDelete, onRender, isEditing }: LinkCardProps)
           <span>{formatTime(link.createdAt)}</span>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Remove this link?"
+        message="This only removes the link from ResolveLink. Files and compositions already created are not deleted."
+        confirmLabel="Remove link"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

@@ -127,6 +127,9 @@ function launchWithScript(scriptPath, opts = {}) {
     return false;
   }
 
+  // Normalize script path to forward slashes for REAPER compatibility
+  const normalizedScriptPath = scriptPath.replace(/\\/g, '/');
+
   const args = [];
   if (opts.newProject) args.push('-new');
   if (opts.nosplash) args.push('-nosplash');
@@ -138,7 +141,7 @@ function launchWithScript(scriptPath, opts = {}) {
   }
 
   // Script path is a positional argument (not a flag)
-  args.push(scriptPath);
+  args.push(normalizedScriptPath);
 
   log.info(`Launching REAPER with script: "${fullPath}" ${args.join(' ')}`);
 
@@ -165,10 +168,13 @@ function runScriptInExisting(scriptPath, opts = {}) {
     return false;
   }
 
+  // Normalize script path to forward slashes for REAPER compatibility
+  const normalizedScriptPath = scriptPath.replace(/\\/g, '/');
+
   const args = ['-nonewinst'];
   if (opts.noactivate) args.push('-noactivate');
   // Script path is a positional argument (not a flag)
-  args.push(scriptPath);
+  args.push(normalizedScriptPath);
 
   log.info(`Running script in existing REAPER: "${fullPath}" ${args.join(' ')}`);
 
@@ -200,7 +206,10 @@ function renderProject(rppPath, opts = {}) {
     return false;
   }
 
-  const args = ['-nosplash', '-renderproject', `"${rppPath}"`];
+  // Normalize project path to forward slashes for REAPER compatibility
+  const normalizedRppPath = rppPath.replace(/\\/g, '/');
+
+  const args = ['-nosplash', '-renderproject', `"${normalizedRppPath}"`];
   const cmd = `"${fullPath}" ${args.join(' ')}`;
   log.info(`Rendering REAPER project: ${cmd}`);
 
@@ -218,12 +227,50 @@ function getStatus() {
   const installPath = detectReaperPath();
   const running = isReaperRunning();
   const version = getReaperVersion();
+  const nativeExtension = detectNativeExtension();
 
   return {
-    installed: !!installPath,
+    available: !!installPath,
     installPath: installPath || null,
     running,
     version: version || null,
+    nativeExtension: nativeExtension || null,
+  };
+}
+
+// Detect if the native REAPER extension (resolvelink.dll/.dylib/.so) is installed
+function detectNativeExtension() {
+  const platform = process.platform;
+  const reaperPath = detectReaperPath();
+  if (!reaperPath) return null;
+
+  const userPluginsDir = getScriptsDir();
+  if (!userPluginsDir) return null;
+
+  const ext = platform === 'win32' ? '.dll' : (platform === 'darwin' ? '.dylib' : '.so');
+  const nativePath = path.join(userPluginsDir, 'ResolveLink', `resolvelink${ext}`);
+
+  if (fs.existsSync(nativePath)) {
+    return {
+      installed: true,
+      path: nativePath,
+      version: '1.0.0', // Could be enhanced to read version from plugin
+    };
+  }
+
+  // Also check REAPER's UserPlugins directory directly
+  const reaperUserPlugins = path.join(reaperPath, 'UserPlugins', 'ResolveLink', `resolvelink${ext}`);
+  if (fs.existsSync(reaperUserPlugins)) {
+    return {
+      installed: true,
+      path: reaperUserPlugins,
+      version: '1.0.0',
+    };
+  }
+
+  return {
+    installed: false,
+    path: nativePath,
   };
 }
 
@@ -251,4 +298,5 @@ module.exports = {
   renderProject,
   getStatus,
   getScriptsDir,
+  getUserPluginsDir: getScriptsDir, // Alias for native extension detection
 };

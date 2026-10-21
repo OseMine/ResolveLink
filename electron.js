@@ -26,15 +26,37 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    mainWindow.loadFile(path.join(__dirname, 'packages', 'ui', 'dist', 'index.html'));
+    // Load the UI from the bridge server. This keeps the app same-origin with
+    // the API and avoids file:// restrictions. Retry while the server boots.
+    loadAppWithRetry();
   }
+}
+
+function loadAppWithRetry(attempt = 0) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+
+  mainWindow.loadURL(`http://127.0.0.1:${SERVER_PORT}`).catch(() => {
+    if (attempt >= 40) {
+      // Final fallback: open the bundled files directly.
+      mainWindow
+        .loadFile(path.join(__dirname, 'packages', 'ui', 'dist', 'index.html'))
+        .catch(() => {});
+      return;
+    }
+    setTimeout(() => loadAppWithRetry(attempt + 1), 500);
+  });
 }
 
 function startBackendServer() {
   const serverPath = path.join(__dirname, 'packages', 'server', 'src', 'index.js');
   const server = spawn(process.execPath, [serverPath], {
     stdio: 'inherit',
-    env: { ...process.env, PORT: SERVER_PORT },
+    env: {
+      ...process.env,
+      PORT: SERVER_PORT,
+      // process.execPath is electron.exe: run it as plain Node for the server.
+      ELECTRON_RUN_AS_NODE: '1',
+    },
   });
 
   server.on('error', (err) => {
@@ -72,7 +94,7 @@ app.on('before-quit', () => {
 ipcMain.on('window:minimize', () => mainWindow?.minimize());
 ipcMain.on('window:close', () => mainWindow?.close());
 
-app.on('webContents-created', (_event, contents) => {
+app.on('web-contents-created', (_event, contents) => {
   contents.on('will-navigate', (event, url) => {
     const u = new URL(url);
     if (u.protocol !== 'file:' && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') {

@@ -1,5 +1,6 @@
-import { Send, Loader2, RefreshCw, AlertCircle, ChevronRight, CheckSquare, Square } from 'lucide-react';
+import { Send, Loader2, RefreshCw, AlertCircle, ChevronRight, CheckSquare, Square, MousePointerClick } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { toast } from './Toast';
 import type { ResolveClipData, ResolveSelection } from '../lib/api';
 
 interface SendButtonProps {
@@ -69,12 +70,19 @@ export function SendButton({
     try {
       const selectedClips = selection.clips.filter((_, i) => selectedIndices.has(i));
       if (selectedClips.length === 0) {
-        setError('No clips selected');
+        setError('Pick at least one clip first.');
         return;
       }
       await onSend(selectedClips, undefined, currentPreset);
+      toast(
+        'success',
+        `Sent ${selectedClips.length} clip${selectedClips.length === 1 ? '' : 's'} to After Effects`,
+        'The composition is being created. Watch the Links list below.'
+      );
     } catch (err: any) {
-      setError(err.message || 'Send failed');
+      const message = err?.message || 'Could not send to After Effects.';
+      setError(message);
+      toast('error', 'Send failed', message);
     } finally {
       setLoading(false);
     }
@@ -202,11 +210,29 @@ export function SendButton({
         )}
       </button>
 
+      {/* Contextual guidance */}
+      {!resolveConnected && (
+        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-warn/10 border border-warn/20">
+          <AlertCircle size={12} className="text-warn shrink-0 mt-[1px]" />
+          <p className="text-[10px] text-r-300 leading-snug">
+            Open DaVinci Resolve to get started. If it is already open, enable
+            <strong> Preferences → System → General → External scripting using → Local</strong>.
+          </p>
+        </div>
+      )}
+
+      {resolveConnected && !hasSelection && (
+        <div className="flex items-center justify-center gap-1.5 text-[10px] text-r-400">
+          <MousePointerClick size={10} />
+          <span>Select clips in your timeline, then refresh above.</span>
+        </div>
+      )}
+
       {/* Bridge status */}
       <div className="flex items-center justify-center">
         <div className="flex items-center gap-1.5 text-[10px] text-r-400">
           <span className={`w-[5px] h-[5px] rounded-full ${connected ? 'bg-success' : 'bg-danger'}`} />
-          {connected ? 'Bridge connected' : 'Bridge disconnected'}
+          {connected ? 'Bridge connected' : 'Bridge reconnecting…'}
         </div>
       </div>
     </div>

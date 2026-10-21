@@ -46,7 +46,25 @@ function generateJSXPayload(link) {
       sourceFps: clip.sourceFps || fps,
       transform: clip.transform || null,
     })),
+    // Markers are relative to the first selected clip so they line up with the comp.
+    markers: (link.markers || []).map((marker) => ({
+      frame: Math.max(0, (marker.frame || 0) - firstClipStart),
+      name: marker.name || '',
+      note: marker.note || '',
+      color: marker.color || '',
+      duration: marker.duration || 0,
+    })),
   };
+}
+
+/**
+ * JSON.stringify is almost a valid JS literal, but U+2028/U+2029 are valid in
+ * JSON and invalid in older JS parsers. Escape them before embedding.
+ */
+function toScriptLiteral(value) {
+  return JSON.stringify(value)
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
 }
 
 /**
@@ -57,7 +75,8 @@ function generateJSXPayload(link) {
  */
 function generateExtendScript(link, exportDir) {
   const payload = generateJSXPayload(link);
-  const clipsJSON = JSON.stringify(payload.clips);
+  const clipsJSON = toScriptLiteral(payload.clips);
+  const markersJSON = toScriptLiteral(payload.markers || []);
 
   return `// ResolveLink Auto-Generated ExtendScript
 // Link ID: ${link.id}
@@ -70,7 +89,8 @@ function generateExtendScript(link, exportDir) {
         height: ${payload.height},
         fps: ${payload.fps},
         duration: ${payload.duration},
-        clips: ${clipsJSON}
+        clips: ${clipsJSON},
+        markers: ${markersJSON}
     };
 
     var fps = linkData.fps;
@@ -164,6 +184,20 @@ function generateExtendScript(link, exportDir) {
 
         } catch (e) {
             alert("ResolveLink: Failed to import " + clip.filePath + "\\n" + e.toString());
+        }
+    }
+
+    // --- Copy Resolve timeline markers into the comp ---
+    var markers = linkData.markers || [];
+    for (var mi = 0; mi < markers.length; mi++) {
+        try {
+            var marker = markers[mi];
+            var markerValue = new MarkerValue(marker.name || "");
+            if (marker.note) markerValue.comment = marker.note;
+            if (marker.duration) markerValue.duration = marker.duration / fps;
+            comp.markerProperty.setValueAtTime(marker.frame / fps, markerValue);
+        } catch (markerError) {
+            // Markers are a convenience; never fail comp creation because of one.
         }
     }
 

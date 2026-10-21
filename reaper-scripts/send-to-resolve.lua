@@ -1,6 +1,6 @@
 -- @reapack ResolveLink Send to Resolve
--- @version 1.4.0
--- @author Oskar
+-- @version 1.5.0
+-- @author OseMine
 -- @repository https://github.com/OseMine/ResolveLink
 --
 -- ResolveLink - Send Rendered Audio to DaVinci Resolve
@@ -8,6 +8,7 @@
 -- Reads config from the latest render script in temp/,
 -- auto-renders using those settings, then sends the
 -- rendered WAV to DaVinci Resolve via the server.
+-- Supports auto-import-back after render, content-hash change detection.
 --
 -- Usage: Actions > Show action list > Load > select this file
 -- Then assign to a toolbar button for easy access.
@@ -15,6 +16,7 @@
 local SERVER_URL = "http://127.0.0.1:3030"
 local TEMP_DIR = ""
 local AUTO_RENDER = true
+local AUTO_IMPORT_BACK = true
 
 local scriptDir = debug.getinfo(1, "S").source:match("@?(.*/)")
 if not scriptDir then
@@ -56,6 +58,53 @@ local function fileExists(path)
     local f = io.open(path, "r")
     if f then f:close(); return true end
     return false
+end
+
+-- ── File Locking ────────────────────────────────────────────
+local file_lock = dofile(scriptDir .. "lock.lua")
+
+local function readFile(path)
+    local content, err = file_lock.read_file_locked(path, 5000)
+    if not content then
+        log("WARN: Could not read file (lock): " .. (err or path))
+        return nil
+    end
+    return content
+end
+
+local function writeFile(path, content)
+    local ok, err = file_lock.write_file_locked(path, content, 5000)
+    if not ok then
+        log("WARN: Could not write file (lock): " .. (err or path))
+        return false
+    end
+    return true
+end
+
+-- ── SHA256 hash for content-based change detection ───────────
+local function sha256_file(path)
+    -- Try to use LuaCrypto if available
+    local crypto_ok, crypto = pcall(require, "crypto")
+    if crypto_ok then
+        local f = io.open(path, "rb")
+        if f then
+            local content = f:read("*a")
+            f:close()
+            return crypto.digest("sha256", content)
+        end
+    end
+    -- Fallback: use file size + mod time as pseudo-hash
+    local f = io.open(path, "r")
+    if f then
+        local size = f:seek("end") or 0
+        f:close()
+        local modTime = 0
+        if reaper.GetFileModTime then
+            modTime = reaper.GetFileModTime(path) or 0
+        end
+        return string.format("%x_%x", modTime, size)
+    end
+    return nil
 end
 
 -- ── Read config from latest render script in temp/ ──────────
@@ -107,11 +156,12 @@ local function readConfigFromRenderScript()
     return nil
 end
 
--- ── Find latest audio file in directory ────────────────────
+-- ── Find latest audio file in directory (with content hash) ───
 local function findLatestAudio(dir)
     local latestFile = nil
     local latestTime = 0
     local latestSize = 0
+    local latestHash = nil
     local idx = 0
 
     while true do
@@ -129,9 +179,12 @@ local function findLatestAudio(dir)
                 if reaper.GetFileModTime then
                     modTime = reaper.GetFileModTime(fullPath) or 0
                 end
+                -- Content-hash-based change detection
+                local hash = sha256_file(fullPath)
                 if modTime > latestTime or (modTime == latestTime and size >= latestSize) then
                     latestTime = modTime
                     latestSize = size
+                    latestHash = hash
                     latestFile = fullPath
                 end
             end
@@ -139,7 +192,31 @@ local function findLatestAudio(dir)
         idx = idx + 1
     end
 
-    return latestFile, latestTime, latestSize
+    return latestFile, latestTime, latestSize, latestHash
+end
+
+-- ── Auto-import-back after render ────────────────────────────
+local function autoImportBack(linkId, exportDir)
+    if not AUTO_IMPORT_BACK then return end
+    
+    log("Auto-import-back triggered for link: " .. linkId)
+    
+    -- Find the latest rendered audio file
+    local latestFile, latestTime, latestSize, latestHash = findLatestAudio(exportDir)
+    
+    if latestFile then
+        log("Found render: " .. latestFile .. " (size: " .. latestSize .. ", hash: " .. (latestHash or "unknown") .. ")")
+        
+        -- Send to Resolve via server
+        local result = renderLib.sendFileToResolve(SERVER_URL, latestFile, TEMP_DIR)
+        if result then
+            log("Auto-import-back complete: " .. result)
+        else
+            log("Auto-import-back failed")
+        end
+    else
+        log("No rendered audio found for auto-import-back")
+    end
 end
 
 -- ── HTTP via curl ──────────────────────────────────────────
@@ -160,9 +237,9 @@ local function main()
     if not config then
         log("No render script found in " .. TEMP_DIR)
         reaper.ShowMessageBox(
-            "No render configuration found.\n\n"
-            .. "First send audio from DaVinci to REAPER\n"
-            .. "(ResolveLink panel > Send Audio to REAPER).",
+            "No render configuration found.\n\n" ..
+            "First send audio from DaVinci to REAPER\n" ..
+            "(ResolveLink panel > Send Audio to REAPER).",
             "ResolveLink", 0)
         return
     end
@@ -174,7 +251,7 @@ local function main()
 
     local wavPath = config.exportDir .. "/" .. (config.exportPath:match("([^/\\]+)$") or "output") .. ".wav"
 
-    local preRenderPath, preRenderTime, preRenderSize = findLatestAudio(config.exportDir)
+    local preRenderPath, preRenderTime, preRenderSize, preRenderHash = findLatestAudio(config.exportDir)
 
     if AUTO_RENDER then
         local fileName = config.exportPath:match("([^/\\]+)$") or config.exportPath
@@ -192,7 +269,7 @@ local function main()
         reaper.defer(function() end)
     end
 
-    local renderPath, renderTime, renderSize = findLatestAudio(config.exportDir)
+    local renderPath, renderTime, renderSize, renderHash = findLatestAudio(config.exportDir)
 
     if not renderPath then
         log("No rendered audio found in " .. config.exportDir)
@@ -203,11 +280,12 @@ local function main()
         return
     end
 
-    if AUTO_RENDER and preRenderPath and renderPath == preRenderPath and renderTime <= preRenderTime and renderSize == preRenderSize then
-        log("WARNING: File unchanged after render (same path, time, and size). Sending latest anyway.")
+    -- Content-hash-based change detection
+    if AUTO_RENDER and preRenderPath and renderPath == preRenderPath and renderTime <= preRenderTime and renderSize == preRenderSize and renderHash == preRenderHash then
+        log("WARNING: File unchanged after render (same path, time, size, and hash). Sending latest anyway.")
     end
 
-    log("Found render: " .. renderPath)
+    log("Found render: " .. renderPath .. " (hash: " .. (renderHash or "unknown") .. ")")
 
     local result = sendToResolve(renderPath)
 
@@ -216,6 +294,11 @@ local function main()
         if result:find('"success":true') then
             log("Import complete!")
             reaper.ShowMessageBox("Audio imported into DaVinci Resolve!", "ResolveLink", 0)
+            
+            -- Trigger auto-import-back after successful import
+            if AUTO_IMPORT_BACK and config.linkId then
+                autoImportBack(config.linkId, config.exportDir)
+            end
         else
             log("Import may have failed. Check server logs.")
             reaper.ShowMessageBox("Import may have failed. Check REAPER console.", "ResolveLink", 0)

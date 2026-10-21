@@ -68,10 +68,15 @@ function generateReaperImportScript(link, tempDir) {
   const payloadJSON = JSON.stringify(payload);
   const payloadPath = path.join(tempDir, `${link.id}_reaper.json`).replace(/\\/g, '/');
 
+  const isStemExport = link.settings.stemExport === true;
+  const stemModeComment = isStemExport 
+    ? '-- STEM EXPORT MODE: Each track rendered as separate stem file\n'
+    : '';
+
   return `-- ResolveLink REAPER Import Script
 -- Link ID: ${link.id}
 -- Generated: ${new Date().toISOString()}
---
+--${stemModeComment}
 -- Usage: Run this script inside REAPER (Actions > Show action list > Load)
 -- It reads the payload from: ${payloadPath}
 
@@ -252,6 +257,66 @@ function generateReaperRenderScript(link, exportDir) {
   const compName = `ResolveLink_Audio_${link.id.slice(0, 8)}`;
   const exportDirNorm = exportDir.replace(/\\/g, '/');
   const exportPath = path.join(exportDirNorm, compName + '.wav').replace(/\\/g, '/');
+  
+  const isStemExport = link.settings?.stemExport === true;
+
+  if (isStemExport) {
+    return `-- ResolveLink REAPER Stem Render Script
+-- Link ID: ${link.id}
+-- Generated: ${new Date().toISOString()}
+-- STEM EXPORT MODE: Each track rendered as separate stem file
+
+local function log(msg)
+    reaper.ShowConsoleMsg("[ResolveLink] " .. os.date("%H:%M:%S") .. "  " .. msg .. "\\n")
+end
+
+local export_dir = "${exportDirNorm}"
+local comp_name = "${compName}"
+local link_id = "${link.id}"
+
+-- Ensure export directory exists
+reaper.RecursiveCreateDirectory(export_dir, 0)
+
+-- Get all tracks and render each as a stem
+local trackCount = reaper.CountTracks(0)
+local masterTrack = reaper.GetMasterTrack(0)
+
+for i = 0, trackCount - 1 do
+    local track = reaper.GetTrack(0, i)
+    local _, trackName = reaper.GetTrackName(track, "")
+    
+    -- Skip empty tracks
+    local itemCount = reaper.CountTrackMediaItems(track)
+    if itemCount > 0 then
+        -- Sanitize track name for filename
+        local safeName = trackName:gsub('[<>:"/\\\\|?*]', '_')
+        if safeName == "" then safeName = "Track_" .. (i + 1) end
+        
+        local stemPath = export_dir .. "/" .. comp_name .. "_" .. safeName .. ".wav"
+        
+        -- Solo this track for stem render
+        reaper.SetMediaTrackInfo_Value(track, "I_SOLO", 1)
+        
+        -- Set render settings for this stem
+        reaper.GetSetProjectInfo_String(0, "RENDER_FILE", export_dir, true)
+        reaper.GetSetProjectInfo_String(0, "RENDER_PATTERN", comp_name .. "_" .. safeName, true)
+        reaper.GetSetProjectInfo_String(0, "RENDER_SRATE", "48000", true)
+        reaper.GetSetProjectInfo_String(0, "RENDER_BOUNDSFLAG", "0", true) -- Entire project
+        
+        log("Rendering stem: " .. stemPath)
+        reaper.Main_OnCommand(40015, 0) -- File: Render to file
+        
+        -- Unsolo track
+        reaper.SetMediaTrackInfo_Value(track, "I_SOLO", 0)
+    end
+end
+
+-- Unsolo master
+reaper.SetMediaTrackInfo_Value(masterTrack, "I_SOLO", 0)
+
+reaper.ShowMessageBox("ResolveLink: Stem render complete.\\nOutput: " .. export_dir, "ResolveLink", 0)
+`;
+  }
 
   return `-- ResolveLink REAPER Render Script
 -- Link ID: ${link.id}

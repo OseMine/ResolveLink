@@ -6,7 +6,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { validate } = require('../middleware/validation');
-const { PresetRequestSchema } = require('@resolvelink/shared');
+const { PresetRequestSchema, PresetNameParamSchema } = require('@resolvelink/shared');
 
 const router = express.Router();
 
@@ -50,7 +50,7 @@ router.post('/', validate(PresetRequestSchema), (req, res) => {
 });
 
 // DELETE /api/presets/:name — Delete a preset
-router.delete('/:name', (req, res) => {
+router.delete('/:name', validate(PresetNameParamSchema, 'params'), (req, res) => {
   const data = loadPresets();
   data.presets = data.presets.filter(p => p.name !== req.params.name);
   savePresets(data);

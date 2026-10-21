@@ -15,6 +15,9 @@ const { validate } = require('../../middleware/validation');
 const {
   AbletonLinkClipRequestSchema,
   AbletonImportRequestSchema,
+  AbletonRenderRequestSchema,
+  AbletonAutoRequestSchema,
+  LinkIdParamSchema,
 } = require('@resolvelink/shared');
 const {
   generateOSCPayload,
@@ -141,12 +144,7 @@ const abletonIntegration = {
     });
 
     // POST /api/ableton/:id/render — Send to Ableton via OSC / MIDI
-    router.post('/:id/render', (req, res, next) => {
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) {
-        return res.status(400).json({ error: 'Invalid link ID format' });
-      }
-      next();
-    }, async (req, res) => {
+    router.post('/:id/render', validate(LinkIdParamSchema, 'params'), validate(AbletonRenderRequestSchema), async (req, res) => {
       const { id } = req.params;
       const link = store.activeLinks.get(id);
 
@@ -253,12 +251,7 @@ const abletonIntegration = {
     });
 
     // POST /api/ableton/:id/auto — Auto-workflow: OSC or MIDI fallback
-    router.post('/:id/auto', (req, res, next) => {
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) {
-        return res.status(400).json({ error: 'Invalid link ID format' });
-      }
-      next();
-    }, async (req, res) => {
+    router.post('/:id/auto', validate(LinkIdParamSchema, 'params'), validate(AbletonAutoRequestSchema), async (req, res) => {
       const { id } = req.params;
       const link = store.activeLinks.get(id);
 

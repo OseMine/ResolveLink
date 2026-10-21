@@ -1,6 +1,6 @@
 -- @reapack ResolveLink Panel (Pure GFX Version)
 -- @version 2.2.0
--- @author Oskar
+-- @author OseMine
 -- @repository https://github.com/OseMine/ResolveLink
 
 local SERVER_URL = "http://127.0.0.1:3030"
@@ -32,6 +32,54 @@ local function fetchConfig()
     end
 end
 fetchConfig()
+
+-- ── Native Extension Named Pipe ───────────────────────────────
+local native_pipe = nil
+
+local function connectNativePipe()
+    -- Try to connect to the native extension's named pipe
+    local pipe_name = package.config:sub(1,1) == '\\' 
+        and [[\\.\pipe\ResolveLink]] 
+        or [[/tmp/ResolveLink]]
+    
+    local pipe = io.open(pipe_name, "r")
+    if pipe then
+        pipe:close()
+        log("Native extension named pipe detected: " .. pipe_name)
+        return pipe_name
+    end
+    
+    log("Native extension named pipe not found, falling back to file polling")
+    return nil
+end
+
+local function listenNativePipe(pipe_name)
+    local function poll()
+        if not callbackActive then return end
+        
+        local pipe = io.open(pipe_name, "r")
+        if pipe then
+            local data = pipe:read("*l")
+            pipe:close()
+            if data and data ~= "" then
+                local json_decode = dofile(scriptDir .. "json.lua").decode
+                local job = json_decode(data)
+                if job and job.type == "execute-reaper" and job.payloadPath then
+                    log("Native pipe job received: " .. tostring(job.jobId))
+                    handleJob(job, job.jobId)
+                end
+            end
+        end
+        
+        if callbackActive then
+            reaper.defer(poll)
+        else
+            native_pipe = nil
+        end
+    end
+    
+    poll()
+end
 
 -- ── State ──────────────────────────────────────────────────
 local callbackActive = false
@@ -285,6 +333,13 @@ end
 
 local function callbackPoll()
     if not callbackActive then return end
+    
+    -- Check native pipe first (if connected)
+    if native_pipe then
+        -- Native pipe is handled by its own poll loop
+        return
+    end
+    
     local now = reaper.time_precise()
     if now - lastPollTime >= POLL_INTERVAL then
         lastPollTime = now
@@ -586,9 +641,20 @@ local function mainLoop()
             ensureDir(EXPORTS_JOBS_DIR)
             ensureDir(EXPORTS_RESULTS_DIR)
             lastPollTime = 0
-            log("Callback started")
-            setStatus("Callback active", C_GREEN)
+            
+            -- Try to connect to native extension named pipe first
+            native_pipe = connectNativePipe()
+            if native_pipe then
+                listenNativePipe(native_pipe)
+                log("Callback started with native extension named pipe")
+                setStatus("Callback active (native pipe)", C_GREEN)
+            else
+                lastPollTime = 0
+                log("Callback started (file polling)")
+                setStatus("Callback active (file polling)", C_AMBER)
+            end
         else
+            native_pipe = nil
             log("Callback stopped")
             setStatus("Idle", C_TEXT_MUTED)
         end

@@ -7,6 +7,8 @@ const path = require('path');
 const fs = require('fs');
 const { store } = require('../state');
 const { createLogger } = require('../logger');
+const { validate } = require('../middleware/validation');
+const { LinkStatusUpdateSchema, LinkIdParamSchema, LinkEditingRequestSchema } = require('@resolvelink/shared');
 
 const log = createLogger('Links');
 const router = express.Router();
@@ -26,14 +28,14 @@ router.get('/', (_req, res) => {
 });
 
 // GET /api/links/:id — Get a single link by ID
-router.get('/:id', (req, res) => {
+router.get('/:id', validate(LinkIdParamSchema, 'params'), (req, res) => {
   const link = store.activeLinks.get(req.params.id);
   if (!link) return res.status(404).json({ error: 'Link not found' });
   res.json(link);
 });
 
 // PUT /api/links/:id/status — Update link status
-router.put('/:id/status', (req, res) => {
+router.put('/:id/status', validate(LinkStatusUpdateSchema), (req, res) => {
   const { id } = req.params;
   const { status, exportPath } = req.body;
 
@@ -49,7 +51,7 @@ router.put('/:id/status', (req, res) => {
 });
 
 // DELETE /api/links/:id — Delete a link
-router.delete('/:id', (req, res) => {
+router.delete('/:id', validate(LinkIdParamSchema, 'params'), (req, res) => {
   const { id } = req.params;
   if (!store.activeLinks.has(id)) {
     return res.status(404).json({ error: 'Link not found' });
@@ -61,7 +63,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // POST /api/links/:id/editing — Editing heartbeat
-router.post('/:id/editing', (req, res) => {
+router.post('/:id/editing', validate(LinkIdParamSchema, 'params'), validate(LinkEditingRequestSchema), (req, res) => {
   const { id } = req.params;
   const { compName, status } = req.body;
 
@@ -82,7 +84,7 @@ router.post('/:id/editing', (req, res) => {
 });
 
 // GET /api/links/:id/editing — Get editing status for a link
-router.get('/:id/editing', (req, res) => {
+router.get('/:id/editing', validate(LinkIdParamSchema, 'params'), (req, res) => {
   const { id } = req.params;
   const session = store.editingSessions.get(id);
   if (!session) return res.json({ editing: false });

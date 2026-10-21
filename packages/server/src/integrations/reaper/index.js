@@ -47,7 +47,7 @@ const reaperIntegration = {
   },
 
   async isAvailable() {
-    return reaperService.getStatus().installed;
+    return reaperService.getStatus().available;
   },
 };
 

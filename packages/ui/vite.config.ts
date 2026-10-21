@@ -5,6 +5,9 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   root: '.',
+  // Relative asset paths so the build also works when loaded from file://
+  // (Electron fallback) instead of only over http://.
+  base: './',
   build: {
     outDir: 'dist',
     emptyOutDir: true,

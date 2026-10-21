@@ -1,6 +1,6 @@
 -- @reapack ResolveLink Update Project
 -- @version 1.0.0
--- @author Oskar
+-- @author OseMine
 -- @repository https://github.com/OseMine/ResolveLink
 --
 -- ResolveLink - Update REAPER Project from DaVinci Timeline
@@ -70,8 +70,7 @@ local function httpGet(url)
 end
 
 -- ── Normalize file path for matching ──────────────────────
--- "C:/Users/Oskar/Downloads/clip.mp4" -> "clip.mp4"
--- "C:\\Users\\Oskar\\Downloads\\clip.mp4" -> "clip.mp4"
+
 local function normalizePath(p)
     if not p then return nil end
     p = p:gsub("\\", "/")

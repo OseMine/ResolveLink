@@ -14,6 +14,10 @@ const { validate } = require('../../middleware/validation');
 const {
   LinkClipRequestSchema,
   ImportBackRequestSchema,
+  AeRenderRequestSchema,
+  AeAutoRequestSchema,
+  RenderActiveCompSchema,
+  LinkIdParamSchema,
 } = require('@resolvelink/shared');
 const {
   generateJSXPayload,
@@ -56,7 +60,7 @@ const aeIntegration = {
 
     // POST /api/link-clip — Create a new AE link
     router.post('/link-clip', validate(LinkClipRequestSchema), (req, res) => {
-      const { clipData, settings, aeTimelineName } = req.body;
+      const { clipData, settings, aeTimelineName, markers } = req.body;
 
       const linkId = uuidv4();
       const link = {
@@ -66,6 +70,8 @@ const aeIntegration = {
           linkId,
           status: 'pending',
         })),
+        // Timeline markers are copied into the AE comp so editors keep their notes.
+        markers: Array.isArray(markers) ? markers : [],
         settings: {
           width: settings?.width || 1920,
           height: settings?.height || 1080,
@@ -99,12 +105,7 @@ const aeIntegration = {
     });
 
     // POST /api/links/:id/render — Trigger aerender (non-blocking)
-    router.post('/links/:id/render', (req, res, next) => {
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) {
-        return res.status(400).json({ error: 'Invalid link ID format' });
-      }
-      next();
-    }, (req, res) => {
+    router.post('/links/:id/render', validate(LinkIdParamSchema, 'params'), validate(AeRenderRequestSchema), (req, res) => {
       const { id } = req.params;
       const link = store.activeLinks.get(id);
 
@@ -198,12 +199,7 @@ const aeIntegration = {
     });
 
     // POST /api/links/:id/auto — Auto-workflow: queue or launch AE
-    router.post('/links/:id/auto', (req, res, next) => {
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) {
-        return res.status(400).json({ error: 'Invalid link ID format' });
-      }
-      next();
-    }, async (req, res) => {
+    router.post('/links/:id/auto', validate(LinkIdParamSchema, 'params'), validate(AeAutoRequestSchema), async (req, res) => {
       const { id } = req.params;
       const link = store.activeLinks.get(id);
 
@@ -300,7 +296,7 @@ const aeIntegration = {
     });
 
     // POST /api/render-active-comp — Render the active comp
-    router.post('/render-active-comp', (req, res) => {
+    router.post('/render-active-comp', validate(RenderActiveCompSchema), (req, res) => {
       const template = (req.body && req.body.template) || 'Best Settings';
       const renderScript = generateActiveCompRenderScript(exportDir, template);
       const scriptPath = path.join(tempDir, `render_active_${Date.now()}.jsx`);
