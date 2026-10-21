@@ -10,7 +10,7 @@ const features = [
   },
   {
     title: 'Auto Round-Trip',
-    desc: 'Render in AE or REAPER and the result syncs back to the Resolve timeline automatically.',
+    desc: 'Render in AE, REAPER, or Ableton Live and the result syncs back to the Resolve timeline automatically.',
     icon: <RefreshCw size={18} />,
   },
   {
@@ -20,8 +20,23 @@ const features = [
   },
   {
     title: 'REAPER Integration',
-    desc: 'Send audio to REAPER for mixing with a unified control panel. Auto-import and export back.',
+    desc: 'Native C++ extension with named pipe IPC (sub-ms latency). Auto-import, stem export, clip-level export.',
     icon: <Music size={18} />,
+  },
+  {
+    title: 'Ableton Live',
+    desc: 'Native C++ extension with Ableton Extension SDK. Full Live Set control, stem export, MIDI remote scripts.',
+    icon: <Music size={18} />,
+  },
+  {
+    title: 'Project File System',
+    desc: 'Project files (.rl) in Documents/ResolveLink with exports/, temp/, renders/, scripts/, assets/, backups/.',
+    icon: <Gauge size={18} />,
+  },
+  {
+    title: 'File Locking & Atomic Writes',
+    desc: 'Cross-platform file locking (lock.lua) prevents race conditions in REAPER IPC. Atomic temp+rename writes.',
+    icon: <Gauge size={18} />,
   },
   {
     title: 'Cross-Platform',

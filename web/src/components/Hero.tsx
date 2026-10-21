@@ -74,7 +74,7 @@ export function Hero() {
         </h1>
 
         <p id="hero-desc" className="text-[1rem] md:text-[1.1rem] text-[#888888] max-w-[520px] mx-auto mb-8 md:mb-10 opacity-0 translate-y-7 animate-fade-up [animation-delay:0.6s] [animation-fill-mode:forwards]">
-          Bridge Resolve with any Creative App. One click to sync back.
+          Bridge Resolve with After Effects, REAPER & Ableton Live. One click to sync back.
         </p>
 
         <div className="flex items-center justify-center gap-3 flex-wrap opacity-0 translate-y-7 animate-fade-up [animation-delay:0.8s] [animation-fill-mode:forwards]">

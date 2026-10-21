@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import TextAnimator from '@/lib/text-animator';
 import { cn } from '@/lib/utils';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
-import { Copy, CheckCheck } from 'lucide-react';
+import { Copy, CheckCheck, Music, Zap } from 'lucide-react';
 
 type OS = 'windows' | 'macos' | 'linux';
 
@@ -18,6 +18,12 @@ const installCmds: Record<OS, string> = {
   macos: 'curl -fsSL https://raw.githubusercontent.com/OseMine/ResolveLink/main/install.sh | bash',
   linux: 'curl -fsSL https://raw.githubusercontent.com/OseMine/ResolveLink/main/install.sh | bash',
 };
+
+const integrations = [
+  { name: 'After Effects', icon: <Zap size={16} />, desc: 'VFX, motion graphics, comps' },
+  { name: 'REAPER', icon: <Music size={16} />, desc: 'Audio mixing, stem export, stem import' },
+  { name: 'Ableton Live', icon: <Music size={16} />, desc: 'Music production, stem export, device control' },
+] as const;
 
 const osLabels: Record<OS, string> = { windows: 'Windows', macos: 'macOS', linux: 'Linux' };
 
@@ -104,6 +110,20 @@ export function Install() {
             {installCmds[os]}
           </pre>
         </div>
+
+        <div className="mt-6">
+          <h3 className="text-[0.85rem] font-semibold text-[#e0e0e0] mb-3">Integrations Included</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {integrations.map((item, i) => (
+              <div key={item.name} className="site-card p-3 md:p-4 text-center transition-all hover:border-accent/30">
+                <div className="w-10 h-10 flex items-center justify-center mx-auto rounded-lg bg-accent/[0.08] text-accent mb-2">
+                  {item.icon}
+                </div>
+                <h4 className="text-[0.85rem] font-semibold text-[#e0e0e0]">{item.name}</h4>
+                <p className="text-[0.7rem] text-[#888888] mt-1">{item.desc}</p>
+              </div>
+            ))}
+          </div>
 
         <p className="mt-4 text-[0.78rem] text-[#666666]">
           Installs dependencies, builds the project, and starts the server.

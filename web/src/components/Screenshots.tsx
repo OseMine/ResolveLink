@@ -6,6 +6,7 @@ const screenshots = [
   { label: 'DaVinci Resolve', src: '/assets/Screenshot-Resolve.png', colour: 'accent' },
   { label: 'After Effects', src: '/assets/Screenshot-AE.png', colour: 'default' },
   { label: 'REAPER', src: '/assets/Screenshot-REAPER.png', colour: 'default' },
+  { label: 'Ableton Live', src: '/assets/Screenshot-Ableton.png', colour: 'accent' },
 ] as const;
 
 export function Screenshots() {
