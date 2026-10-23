@@ -20,18 +20,6 @@ on:
   schedule:
     # Weekly build on Monday 06:00 UTC to catch breakages early
     - cron: '0 6 * * 1'
-  push:
-    branches: [main, master]
-    # Only run on config/package changes to avoid noise
-    paths:
-      - 'package.json'
-      - 'package-lock.json'
-      - 'packages/**/package.json'
-      - 'packages/**/package-lock.json'
-      - '.github/workflows/build.yml'
-      - 'scripts/build-*.js'
-      - 'electron.js'
-      - 'preload.js'
 
 permissions:
   contents: read
@@ -40,27 +28,53 @@ env:
   NODE_VERSION: '22'
 
 jobs:
+  # Determine which platforms to build
+  determine-platforms:
+    name: Determine Platforms
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set platform matrix
+        id: set-matrix
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PLATFORMS="${{ github.event.inputs.platforms }}"
+          else
+            PLATFORMS="win,mac,linux"
+          fi
+          
+          # Build matrix JSON
+          MATRIX='{"include":['
+          FIRST=true
+          for p in $(echo "$PLATFORMS" | tr ',' ' '); do
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              MATRIX="$MATRIX,"
+            fi
+            case "$p" in
+              win)
+                MATRIX="$MATRIX{\"platform\":\"win\",\"os\":\"windows-latest\",\"artifact\":\"*.exe\"}"
+                ;;
+              mac)
+                MATRIX="$MATRIX{\"platform\":\"mac\",\"os\":\"macos-latest\",\"artifact\":\"*.dmg\"}"
+                ;;
+              linux)
+                MATRIX="$MATRIX{\"platform\":\"linux\",\"os\":\"ubuntu-latest\",\"artifact\":\"*.AppImage\"}"
+                ;;
+            esac
+          done
+          MATRIX="$MATRIX]}"
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
   build:
     name: Build (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
+    needs: determine-platforms
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: win
-            os: windows-latest
-            artifact: '*.exe'
-          - platform: mac
-            os: macos-latest
-            artifact: '*.dmg'
-          - platform: linux
-            os: ubuntu-latest
-            artifact: '*.AppImage'
-
-    # Skip platforms not requested in workflow_dispatch
-    if: |
-      github.event_name != 'workflow_dispatch' ||
-      contains(github.event.inputs.platforms, matrix.platform)
+      matrix: ${{ fromJson(needs.determine-platforms.outputs.matrix) }}
 
     steps:
       - name: Checkout

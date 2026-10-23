@@ -18,11 +18,12 @@
     "build": "cd packages/ui && npm run build",
     "build:icons": "node scripts/build-icons.js",
     "build:server": "node scripts/build-server.js",
-    "build:electron": "npm run build && npm run build:icons && npm run build:server && electron-builder",
-    "build:electron:win": "npm run build && npm run build:icons && npm run build:server && electron-builder --win",
-    "build:electron:mac": "npm run build && npm run build:icons && npm run build:server && electron-builder --mac",
-    "build:electron:linux": "npm run build && npm run build:icons && npm run build:server && electron-builder --linux",
-    "electron:dir": "npm run build && npm run build:icons && npm run build:server && electron-builder --dir",
+    "build:native": "node scripts/build-native.js",
+    "build:electron": "npm run build && npm run build:icons && npm run build:server && npm run build:native && electron-builder",
+    "build:electron:win": "npm run build && npm run build:icons && npm run build:server && npm run build:native && electron-builder --win",
+    "build:electron:mac": "npm run build && npm run build:icons && npm run build:server && npm run build:native && electron-builder --mac",
+    "build:electron:linux": "npm run build && npm run build:icons && npm run build:server && npm run build:native && electron-builder --linux",
+    "electron:dir": "npm run build && npm run build:icons && npm run build:server && npm run build:native && electron-builder --dir",
     "start": "electron .",
     "install:all": "npm install && cd packages/ui && npm install",
     "test": "vitest run",
@@ -34,18 +35,18 @@
     "cors": "^2.8.5",
     "dotenv": "^18.0.8",
     "express": "^4.18.2",
-    "uuid": "^11.1.1",
+    "uuid": "^14.0.3",
     "ws": "^8.16.0",
-    "zod": "^3.22.4"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@electron/notarize": "^3.1.2",
     "concurrently": "^8.2.2",
     "electron": "^28.1.0",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "sharp": "^0.35.5",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.5"
   },
   "build": {
     "appId": "com.resolvelink.app",
@@ -92,6 +93,65 @@
         "to": "reaper-scripts",
         "filter": [
           "*.lua"
+        ]
+      },
+      {
+        "from": "extension/client",
+        "to": "extensions/cep/client",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "extension/host",
+        "to": "extensions/cep/host",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "extension/CSXS",
+        "to": "extensions/cep/CSXS",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "extension/reaper",
+        "to": "extensions/reaper-web-panel",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "adobe",
+        "to": "extensions/adobe",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "dist-native/win",
+        "to": "extensions/native",
+        "filter": [
+          "ableton/*.dll",
+          "reaper/*.dll"
+        ]
+      },
+      {
+        "from": "dist-native/mac",
+        "to": "extensions/native",
+        "filter": [
+          "ableton/*.dylib",
+          "reaper/*.dylib"
+        ]
+      },
+      {
+        "from": "dist-native/linux",
+        "to": "extensions/native",
+        "filter": [
+          "ableton/*.so",
+          "reaper/*.so"
         ]
       }
     ],
