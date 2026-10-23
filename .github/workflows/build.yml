@@ -20,18 +20,6 @@ on:
   schedule:
     # Weekly build on Monday 06:00 UTC to catch breakages early
     - cron: '0 6 * * 1'
-  push:
-    branches: [main, master]
-    # Only run on config/package changes to avoid noise
-    paths:
-      - 'package.json'
-      - 'package-lock.json'
-      - 'packages/**/package.json'
-      - 'packages/**/package-lock.json'
-      - '.github/workflows/build.yml'
-      - 'scripts/build-*.js'
-      - 'electron.js'
-      - 'preload.js'
 
 permissions:
   contents: read
