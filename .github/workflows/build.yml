@@ -72,6 +72,9 @@ jobs:
     name: Build (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
     needs: determine-platforms
+    env:
+      ABLETON_SDK_URL: ${{ secrets.ABLETON_SDK_PATH }}
+      REAPER_SDK_URL: ${{ secrets.REAPER_SDK_PATH }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.determine-platforms.outputs.matrix) }}
@@ -104,46 +107,44 @@ jobs:
           refreshenv
 
       - name: Download and extract REAPER SDK
-        if: env.REAPER_SDK_PATH != '' && startsWith(env.REAPER_SDK_PATH, 'http')
-        env:
-          REAPER_SDK_URL: ${{ secrets.REAPER_SDK_PATH }}
+        if: startsWith(env.REAPER_SDK_URL, 'http')
         shell: bash
         run: |
           set -euo pipefail
           SDK_DIR="${RUNNER_TEMP}/reaper-sdk"
           mkdir -p "$SDK_DIR"
           echo "Downloading REAPER SDK from $REAPER_SDK_URL..."
-          curl -L -o "${SDK_DIR}/reaper-sdk.zip" "$REAPER_SDK_URL"
+          curl --fail --location --silent --show-error -o "${SDK_DIR}/reaper-sdk.zip" "$REAPER_SDK_URL"
           echo "Extracting REAPER SDK..."
           unzip -q "${SDK_DIR}/reaper-sdk.zip" -d "$SDK_DIR"
-          EXTRACTED_DIR=$(find "$SDK_DIR" -maxdepth 1 -type d -name "reaper-sdk-*" | head -1)
-          if [ -n "$EXTRACTED_DIR" ] && [ "$EXTRACTED_DIR" != "$SDK_DIR" ]; then
-            mv "$EXTRACTED_DIR"/* "$SDK_DIR"/
-            rmdir "$EXTRACTED_DIR"
+          SDK_HEADER=$(find "$SDK_DIR" -type f -name "reaper_plugin.h" -print -quit)
+          SDK_INCLUDE_DIR="${SDK_HEADER%/*}"
+          if [ -z "$SDK_INCLUDE_DIR" ]; then
+            echo "REAPER SDK archive does not contain reaper_plugin.h" >&2
+            exit 1
           fi
-          echo "REAPER_SDK_PATH=$SDK_DIR" >> "$GITHUB_ENV"
-          echo "REAPER SDK downloaded to $SDK_DIR"
+          echo "REAPER_SDK_PATH=$SDK_INCLUDE_DIR" >> "$GITHUB_ENV"
+          echo "REAPER SDK headers found in $SDK_INCLUDE_DIR"
 
       - name: Download and extract Ableton SDK
-        if: env.ABLETON_SDK_PATH != '' && startsWith(env.ABLETON_SDK_PATH, 'http')
-        env:
-          ABLETON_SDK_URL: ${{ secrets.ABLETON_SDK_PATH }}
+        if: startsWith(env.ABLETON_SDK_URL, 'http')
         shell: bash
         run: |
           set -euo pipefail
           SDK_DIR="${RUNNER_TEMP}/ableton-sdk"
           mkdir -p "$SDK_DIR"
           echo "Downloading Ableton Extension SDK..."
-          curl -L -o "${SDK_DIR}/ableton-sdk.zip" "$ABLETON_SDK_URL"
+          curl --fail --location --silent --show-error -o "${SDK_DIR}/ableton-sdk.zip" "$ABLETON_SDK_URL"
           echo "Extracting Ableton SDK..."
           unzip -q "${SDK_DIR}/ableton-sdk.zip" -d "$SDK_DIR"
-          EXTRACTED_DIR=$(find "$SDK_DIR" -maxdepth 1 -type d ! -path "$SDK_DIR" | head -1)
-          if [ -n "$EXTRACTED_DIR" ] && [ "$EXTRACTED_DIR" != "$SDK_DIR" ]; then
-            mv "$EXTRACTED_DIR"/* "$SDK_DIR"/
-            rmdir "$EXTRACTED_DIR"
+          SDK_HEADER=$(find "$SDK_DIR" -type f -name "Ableton.h" -print -quit)
+          SDK_INCLUDE_DIR="${SDK_HEADER%/*}"
+          if [ -z "$SDK_INCLUDE_DIR" ]; then
+            echo "Ableton SDK archive does not contain Ableton.h" >&2
+            exit 1
           fi
-          echo "ABLETON_SDK_PATH=$SDK_DIR" >> "$GITHUB_ENV"
-          echo "Ableton SDK downloaded to $SDK_DIR"
+          echo "ABLETON_SDK_PATH=$SDK_INCLUDE_DIR" >> "$GITHUB_ENV"
+          echo "Ableton SDK headers found in $SDK_INCLUDE_DIR"
 
       - name: Install dependencies
         run: npm ci
@@ -158,9 +159,6 @@ jobs:
         run: npm run build:server
 
       - name: Build native extensions (Ableton/REAPER)
-        env:
-          ABLETON_SDK_PATH: ${{ secrets.ABLETON_SDK_PATH }}
-          REAPER_SDK_PATH: ${{ secrets.REAPER_SDK_PATH }}
         run: npm run build:native
 
       - name: Set version from tag (if pushed tag)
