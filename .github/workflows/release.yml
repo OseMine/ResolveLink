@@ -126,7 +126,7 @@ jobs:
           cat RELEASE_BODY.md >> RELEASE_BODY.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: "ResolveLink ${{ steps.tag.outputs.version }}"
           body_path: RELEASE_BODY.md
