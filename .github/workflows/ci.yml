@@ -97,13 +97,15 @@ jobs:
 
       - name: Download and extract REAPER SDK
         if: env.REAPER_SDK_PATH != '' && startsWith(env.REAPER_SDK_PATH, 'http')
+        env:
+          REAPER_SDK_URL: ${{ secrets.REAPER_SDK_PATH }}
         shell: bash
         run: |
           set -euo pipefail
           SDK_DIR="${RUNNER_TEMP}/reaper-sdk"
           mkdir -p "$SDK_DIR"
           echo "Downloading REAPER SDK..."
-          curl -L -o "${SDK_DIR}/reaper-sdk.zip" "${{ secrets.REAPER_SDK_PATH }}"
+          curl -L -o "${SDK_DIR}/reaper-sdk.zip" "$REAPER_SDK_URL"
           echo "Extracting REAPER SDK..."
           unzip -q "${SDK_DIR}/reaper-sdk.zip" -d "$SDK_DIR"
           EXTRACTED_DIR=$(find "$SDK_DIR" -maxdepth 1 -type d -name "reaper-sdk-*" | head -1)
@@ -116,13 +118,15 @@ jobs:
 
       - name: Download and extract Ableton SDK
         if: env.ABLETON_SDK_PATH != '' && startsWith(env.ABLETON_SDK_PATH, 'http')
+        env:
+          ABLETON_SDK_URL: ${{ secrets.ABLETON_SDK_PATH }}
         shell: bash
         run: |
           set -euo pipefail
           SDK_DIR="${RUNNER_TEMP}/ableton-sdk"
           mkdir -p "$SDK_DIR"
           echo "Downloading Ableton Extension SDK..."
-          curl -L -o "${SDK_DIR}/ableton-sdk.zip" "${{ secrets.ABLETON_SDK_PATH }}"
+          curl -L -o "${SDK_DIR}/ableton-sdk.zip" "$ABLETON_SDK_URL"
           echo "Extracting Ableton SDK..."
           unzip -q "${SDK_DIR}/ableton-sdk.zip" -d "$SDK_DIR"
           EXTRACTED_DIR=$(find "$SDK_DIR" -maxdepth 1 -type d ! -path "$SDK_DIR" | head -1)
