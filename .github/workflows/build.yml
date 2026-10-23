@@ -114,9 +114,15 @@ jobs:
           SDK_DIR="${RUNNER_TEMP}/reaper-sdk"
           mkdir -p "$SDK_DIR"
           echo "Downloading REAPER SDK from $REAPER_SDK_URL..."
-          curl --fail --location --silent --show-error -o "${SDK_DIR}/reaper-sdk.zip" "$REAPER_SDK_URL"
-          echo "Extracting REAPER SDK..."
-          unzip -q "${SDK_DIR}/reaper-sdk.zip" -d "$SDK_DIR"
+          REAPER_SDK_REPO="${REAPER_SDK_URL%.git}"
+          if [[ "$REAPER_SDK_REPO" =~ ^https://github\.com/[^/]+/[^/]+/?$ ]]; then
+            git clone --depth 1 "$REAPER_SDK_URL" "${SDK_DIR}/source"
+          else
+            curl --fail --location --silent --show-error -o "${SDK_DIR}/reaper-sdk.zip" "$REAPER_SDK_URL"
+            unzip -tq "${SDK_DIR}/reaper-sdk.zip"
+            echo "Extracting REAPER SDK..."
+            unzip -q "${SDK_DIR}/reaper-sdk.zip" -d "$SDK_DIR"
+          fi
           SDK_HEADER=$(find "$SDK_DIR" -type f -name "reaper_plugin.h" -print -quit)
           SDK_INCLUDE_DIR="${SDK_HEADER%/*}"
           if [ -z "$SDK_INCLUDE_DIR" ]; then
