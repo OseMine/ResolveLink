@@ -72,14 +72,35 @@ function getReaperVersion() {
 
   const platform = process.platform;
   const exe = platform === 'win32' ? 'reaper.exe' : 'reaper';
+  const fullPath = path.join(installPath, exe);
 
   try {
-    const out = execSync(`"${path.join(installPath, exe)}" -v 2>&1`, { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
-    const match = out.match(/v?(\d+\.\d+)/);
-    return match ? match[1] : null;
+    if (platform === 'win32') {
+      // Read version from executable metadata (avoids launching REAPER)
+      const psCmd = `(Get-Item '${fullPath.replace(/'/g, "''")}').VersionInfo.ProductVersion`;
+      const out = execSync(
+        `powershell -NoProfile -Command "${psCmd}"`,
+        { timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
+      ).toString().trim();
+      const match = out.match(/(\d+\.\d+)/);
+      return match ? match[1] : null;
+    } else if (platform === 'darwin') {
+      // Read from Info.plist
+      const plistPath = path.join(installPath, '..', 'Info.plist');
+      if (fs.existsSync(plistPath)) {
+        const plist = fs.readFileSync(plistPath, 'utf8');
+        const match = plist.match(/<key>CFBundleShortVersionString<\/key>\s*<string>([\d.]+)<\/string>/);
+        return match ? match[1] : null;
+      }
+    } else {
+      // Linux: try to read version from executable or skip
+      // REAPER on Linux doesn't expose version without launching
+      return null;
+    }
   } catch {
     return null;
   }
+  return null;
 }
 
 function getExePath(reaperPath) {
