@@ -1228,6 +1228,71 @@ When a job completes successfully, the associated link status is updated to `ren
 
 ---
 
+## Project File System
+
+Projects live in `~/Documents/ResolveLink/<ProjectName>/` (override with
+`RESOLVELINK_PROJECTS_DIR`). Each project contains a `<ProjectName>.rlp` JSON
+file plus `exports/`, `temp/`, `renders/`, `scripts/`, `assets/`, `backups/`
+and `versions/` folders.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/projects` | List projects |
+| POST | `/api/projects` | Create project (`name`, optional `template`) |
+| GET | `/api/projects/templates` | List built-in templates |
+| GET | `/api/projects/:name` | Load project |
+| PUT | `/api/projects/:name` | Update description/settings/metadata |
+| DELETE | `/api/projects/:name` | Delete (`?force=true` removes assets too) |
+| POST | `/api/projects/:name/backup` | Create backup (last 10 kept) |
+| GET | `/api/projects/:name/backups` | List backups |
+| POST | `/api/projects/:name/restore/:backupName` | Restore backup |
+| GET | `/api/projects/:name/versions` | List version snapshots |
+| POST | `/api/projects/:name/versions` | Create snapshot (`label`, `description`) |
+| POST | `/api/projects/:name/versions/:versionId/restore` | Restore version |
+| DELETE | `/api/projects/:name/versions/:versionId` | Delete version |
+| POST | `/api/projects/:name/export` | Export ZIP (`outputPath`, `forSharing`) |
+| POST | `/api/projects/import` | Import `.rlzip`/`.zip` (`archivePath`, `overwrite`) |
+| POST | `/api/projects/:name/share` | Create `.rlzip` (`outputPath`, `download`) |
+| GET | `/api/projects/:name/share` | Download a `.rlzip` |
+| POST/GET | `/api/projects/:name/links` | Add/list links |
+| PUT/DELETE | `/api/projects/:name/links/:linkId` | Update/remove link |
+| POST/GET | `/api/projects/:name/timelines` | Add/list timelines |
+| POST/GET | `/api/projects/:name/renders` | Add/list renders |
+| PUT | `/api/projects/:name/renders/:renderId` | Update render status |
+| GET/PUT | `/api/projects/:name/settings` | Read/merge settings |
+
+Built-in templates: `blank`, `vfx-shot`, `audio-post`, `color-grade`.
+
+```json
+POST /api/projects
+{ "name": "Shot 010", "template": "vfx-shot", "description": "Explosion" }
+```
+
+Share archives exclude `temp/`, `backups/` and `versions/` and include a
+`resolvelink-share.json` manifest.
+
+---
+
+## Discord Rich Presence
+
+Optional integration. Set `DISCORD_CLIENT_ID` (and optionally
+`DISCORD_RPC_ENABLED=true`) to show the active project in Discord.
+Without a client ID or the optional `discord-rpc` package all endpoints
+return a disabled status instead of failing.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/discord/status` | Connection + current presence |
+| POST | `/api/discord/activity` | Set presence (`projectName`, `details`, `state`) |
+| DELETE | `/api/discord/activity` | Clear presence |
+| POST | `/api/discord/toggle` | Enable/disable (`{ "enabled": true }`) |
+| POST | `/api/discord/reconnect` | Force reconnect |
+
+Loading, creating or importing a project automatically updates the presence
+to `Working on <Project Name>`.
+
+---
+
 ## WebSocket Protocol
 
 ### Connection

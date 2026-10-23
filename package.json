@@ -29,6 +29,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "adm-zip": "^0.5.18",
     "chokidar": "^3.5.3",
     "cors": "^2.8.5",
     "dotenv": "^18.0.8",
@@ -172,5 +173,8 @@
       "synopsis": "Dynamic Link for DaVinci Resolve"
     },
     "afterSign": "scripts/notarize.js"
+  },
+  "optionalDependencies": {
+    "discord-rpc": "^4.0.1"
   }
 }

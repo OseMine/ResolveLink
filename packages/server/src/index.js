@@ -159,6 +159,12 @@ app.use('/api/setup', setupRoutes);
 // Preset routes
 app.use('/api/presets', require('./routes/presets'));
 
+// Project file system routes
+app.use('/api/projects', require('./routes/projects'));
+
+// Discord Rich Presence routes
+app.use('/api/discord', require('./routes/discord'));
+
 // Performance routes
 app.get('/api/perf', getPerfStats);
 app.get('/api/perf/slow', getSlowEndpoints);
@@ -335,6 +341,9 @@ function watchParentProcess() {
 
 function gracefulShutdown(exitCode = 0) {
   log.info('Shutting down gracefully...');
+  try {
+    require('./services/discord-rpc').shutdown();
+  } catch {}
   if (fileWatcherHandle) fileWatcherHandle.close();
   if (reaperWatcherHandle) reaperWatcherHandle.close();
   wss.clients.forEach((ws) => ws.close());
@@ -358,6 +367,10 @@ if (require.main === module) {
 
     // Initialize integrations
     await registry.initAll(store);
+
+    // Optional Discord Rich Presence (no-op when not configured)
+    const discord = require('./services/discord-rpc');
+    await discord.initDiscordRpc(config);
 
     // Start polling DaVinci Resolve connection status
     const resolveBridge = require('./services/resolve-service');

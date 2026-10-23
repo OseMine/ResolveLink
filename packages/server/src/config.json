@@ -46,5 +46,11 @@
     },
     "renderFormat": "wav",
     "renderQuality": "high"
+  },
+  "discord": {
+    "enabled": false,
+    "clientId": "",
+    "largeImageKey": "",
+    "largeImageText": "ResolveLink"
   }
 }
