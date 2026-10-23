@@ -150,9 +150,7 @@ ResolveLink automates the entire round-trip. Select clips in Resolve, click one 
 - **Light/Dark Mode** — Theme toggle with system preference detection
 - **Random Workflow Tips** — Helpful tips on each app load
 - **Token Auth** — Optional token-based auth for write operations
-- **Setup Wizard** — Auto-detect Python and AE paths, first-run configuration
-- **Dark UI** — Matches DaVinci Resolve's professional dark theme exactly
-- **Cross-Platform** — Windows, macOS, and Linux support
+- **Discord Rich Presence** — Shows "Working on [Project]" in Discord status (optional)
 - **GitHub Releases** — Tagged releases with auto-generated installers
 
 ---
