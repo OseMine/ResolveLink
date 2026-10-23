@@ -98,22 +98,51 @@ export interface Diagnostics {
 const API_BASE = (typeof window !== 'undefined' && (window as any).electronAPI?.getServerOrigin)
   ? (window as any).electronAPI.getServerOrigin() + '/api'
   : '/api';
+const ENV_WS_PORT = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SERVER_PORT)
+  ? String((import.meta as any).env.VITE_SERVER_PORT)
+  : null;
+
 const WS_BASE = (() => {
-  if (typeof window === 'undefined') return 'ws://127.0.0.1:3030';
+  if (typeof window === 'undefined') return `ws://127.0.0.1:${ENV_WS_PORT || 3030}`;
 
   if ((window as any).electronAPI?.getServerOrigin) {
     return (window as any).electronAPI.getServerOrigin().replace(/^http/, 'ws');
   }
 
   // Packaged fallback: the page may be opened from file://.
-  if (window.location.protocol === 'file:') return 'ws://127.0.0.1:3030';
+  if (window.location.protocol === 'file:') return `ws://127.0.0.1:${ENV_WS_PORT || 3030}`;
 
   const port = window.location.port;
   // The Vite dev server (5173) proxies /api but not the WebSocket upgrade,
   // so connect to the bridge server directly in development.
-  const wsPort = !port || port === '5173' ? '3030' : port;
+  const wsPort = ENV_WS_PORT || (!port || port === '5173' ? '3030' : port);
   return `ws://${window.location.hostname}:${wsPort}`;
 })();
+
+// The actual bridge port can differ from the UI port (dev server, custom
+// PORT/env). Ask the server once and prefer its configured port.
+let discoveredWsPort: string | null = ENV_WS_PORT;
+let wsDiscovery: Promise<void> | null = null;
+
+function discoverWsPort(): Promise<void> {
+  if (typeof window === 'undefined' || discoveredWsPort || wsDiscovery) {
+    return wsDiscovery || Promise.resolve();
+  }
+
+  wsDiscovery = fetch(`${API_BASE}/config`)
+    .then((res) => res.json())
+    .then((config) => {
+      if (config?.serverPort) discoveredWsPort = String(config.serverPort);
+    })
+    .catch(() => {
+      // Keep the location-based fallback.
+    })
+    .finally(() => {
+      wsDiscovery = null;
+    });
+
+  return wsDiscovery;
+}
 
 // Auth token — fetched from server on startup when auth is enabled
 let authToken: string | null = null;
@@ -296,6 +325,13 @@ function getWebSocketUrl(): string {
   if (typeof window !== 'undefined' && (window as any).electronAPI?.getServerOrigin) {
     return (window as any).electronAPI.getServerOrigin().replace(/^http/, 'ws');
   }
+
+  if (discoveredWsPort && typeof window !== 'undefined' && window.location.protocol !== 'file:') {
+    const host = window.location.hostname || '127.0.0.1';
+    const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    return `${scheme}://${host}:${discoveredWsPort}`;
+  }
+
   return WS_BASE;
 }
 
@@ -328,6 +364,9 @@ function ensureSocket() {
   if (sharedSocket && (sharedSocket.readyState === WebSocket.OPEN || sharedSocket.readyState === WebSocket.CONNECTING)) {
     return;
   }
+
+  // Resolve the real bridge port before falling back to the static guess.
+  if (!discoveredWsPort) discoverWsPort();
 
   const socket = new WebSocket(getWebSocketUrl());
   sharedSocket = socket;
@@ -383,7 +422,7 @@ function closeSocketIfUnused() {
 /** Subscribe to real-time server events. Returns an unsubscribe function. */
 export function subscribeWebSocket(handler: WSHandler): () => void {
   sharedHandlers.add(handler);
-  ensureSocket();
+  discoverWsPort().then(ensureSocket).catch(() => ensureSocket());
 
   return () => {
     sharedHandlers.delete(handler);
@@ -394,7 +433,7 @@ export function subscribeWebSocket(handler: WSHandler): () => void {
 /** Subscribe to bridge connection changes. Fires immediately with current state. */
 export function subscribeWebSocketStatus(handler: WSStatusHandler): () => void {
   sharedStatusHandlers.add(handler);
-  ensureSocket();
+  discoverWsPort().then(ensureSocket).catch(() => ensureSocket());
   handler(sharedConnected);
 
   return () => {

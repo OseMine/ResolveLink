@@ -58,7 +58,8 @@ router.get('/config', (_req, res) => {
   res.json({
     exportDir: EXPORT_DIR,
     tempDir: TEMP_DIR,
-    serverPort: process.env.PORT || 3030,
+    serverPort: Number(APP_OPTIONS.port) || Number(process.env.PORT) || 3030,
+    serverHost: APP_OPTIONS.host || process.env.HOST || '127.0.0.1',
   });
 });
 

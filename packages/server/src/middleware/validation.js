@@ -31,8 +31,12 @@ function validate(schema, source = 'body') {
       });
     }
 
-    // Replace with parsed/validated data (includes defaults)
-    req[source] = result.data;
+    // Replace with parsed/validated data (includes defaults). For route
+    // params, keep keys not covered by the schema (e.g. :linkId) so nested
+    // routes do not lose their identifiers.
+    req[source] = source === 'params'
+      ? { ...data, ...result.data }
+      : result.data;
     next();
   };
 }

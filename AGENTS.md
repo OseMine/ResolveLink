@@ -234,6 +234,36 @@ interface Store {
 | POST | `/api/presets` | Create/update preset |
 | DELETE | `/api/presets/:name` | Delete preset |
 
+### Project Routes (`/api/projects`)
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/projects` | List projects |
+| POST | `/api/projects` | Create project (optional `template`) |
+| GET | `/api/projects/templates` | List built-in templates (`blank`, `vfx-shot`, `audio-post`, `color-grade`) |
+| GET/PUT/DELETE | `/api/projects/:name` | Load/update/delete project |
+| POST | `/api/projects/:name/share` | Create shareable `.rlzip` |
+| GET | `/api/projects/:name/share` | Download `.rlzip` |
+| POST | `/api/projects/:name/export` | Export ZIP |
+| POST | `/api/projects/import` | Import `.rlzip`/`.zip` |
+| POST/GET | `/api/projects/:name/backup(s)` | Create/list backups (last 10) |
+| POST | `/api/projects/:name/restore/:backupName` | Restore backup |
+| GET/POST | `/api/projects/:name/versions` | List/create version snapshots |
+| POST/DELETE | `/api/projects/:name/versions/:versionId` | Restore/delete version |
+| POST/GET | `/api/projects/:name/links` | Add/list links |
+| PUT/DELETE | `/api/projects/:name/links/:linkId` | Update/remove link |
+| POST/GET | `/api/projects/:name/timelines` | Add/list timelines |
+| POST/GET | `/api/projects/:name/renders` | Add/list renders |
+| PUT | `/api/projects/:name/renders/:renderId` | Update render status |
+| GET/PUT | `/api/projects/:name/settings` | Read/update settings |
+
+### Discord RPC Routes (`/api/discord`)
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/discord/status` | Connection + current presence |
+| POST/DELETE | `/api/discord/activity` | Set/clear presence |
+| POST | `/api/discord/toggle` | Enable/disable Rich Presence |
+| POST | `/api/discord/reconnect` | Force reconnect |
+
 ### Jobs Routes (`/api/jobs`)
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -309,7 +339,7 @@ EXPORT_EXTENSIONS = ['.mov', '.mp4', '.exr', '.png', '.tif', '.jpg', '.wav', '.f
 ```
 
 ### Environment Variables (`.env`)
-`PORT`, `HOST`, `EXPORT_DIR`, `TEMP_DIR`, `AE_PATH_WIN`, `AE_PATH_MAC`, `PYTHON_PATH`, `RESOLVE_SCRIPTING_PATH`, `REAPER_PATH_WIN`, `REAPER_PATH_MAC`, `WATCHER_ENABLED`, `WATCH_FOLDERS`, `LOG_LEVEL` (`debug|info|warn|error`)
+`PORT`, `HOST`, `EXPORT_DIR`, `TEMP_DIR`, `AE_PATH_WIN`, `AE_PATH_MAC`, `PYTHON_PATH`, `RESOLVE_SCRIPTING_PATH`, `REAPER_PATH_WIN`, `REAPER_PATH_MAC`, `WATCHER_ENABLED`, `WATCH_FOLDERS`, `LOG_LEVEL` (`debug|info|warn|error`), `DISCORD_CLIENT_ID`, `DISCORD_RPC_ENABLED`, `DISCORD_LARGE_IMAGE`
 
 ## Middleware
 
@@ -322,6 +352,8 @@ EXPORT_EXTENSIONS = ['.mov', '.mp4', '.exr', '.png', '.tif', '.jpg', '.wav', '.f
 - **`resolve-service.js`** - Python bridge wrapper. `executeBridge(command, args, timeout)` spawns `resolve-bridge.py` with `PYTHONPATH` set to Resolve scripting modules. Cached connection check (3s TTL).
 - **`reaper-service.js`** - REAPER path/process detection. Multi-strategy: .env override, config paths, standard dirs, Windows registry, macOS/Linux standard paths. Platform-specific process detection (`tasklist`/`pgrep`).
 - **`export-watcher.js`** - Chokidar file watcher. Matches new files by `Resolve_Link_{8-char-prefix}` against link IDs. Auto-imports matched files to Resolve. Broadcasts `file:new` for unmatched files.
+- **`project-manager.js`** - `.rlp` project files in `~/Documents/ResolveLink/`. Templates (`blank`, `vfx-shot`, `audio-post`, `color-grade`), version snapshots (last 50), backups (last 10), ZIP/`.rlzip` export-import and sharing. Override root with `RESOLVELINK_PROJECTS_DIR`.
+- **`discord-rpc.js`** - Optional Discord Rich Presence. No-op unless `discord-rpc` is installed and `DISCORD_CLIENT_ID` is configured.
 
 ## React Frontend
 
