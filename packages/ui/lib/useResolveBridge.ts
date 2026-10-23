@@ -36,14 +36,24 @@ export function useResolveBridge() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch initial links
+  const linksFetchedRef = useRef(false);
   useEffect(() => {
+    if (linksFetchedRef.current) return;
+    linksFetchedRef.current = true;
+
     api.getLinks().then((links) => {
       setState((s) => ({ ...s, links }));
     }).catch(() => {});
   }, []);
 
   // WebSocket connection — one shared socket for the whole app.
+  // Guard against React StrictMode double-mount: track subscription state with a ref.
+  const wsSubscribedRef = useRef(false);
+
   useEffect(() => {
+    if (wsSubscribedRef.current) return;
+    wsSubscribedRef.current = true;
+
     const unsubscribeStatus = subscribeWebSocketStatus((connected) => {
       setState((s) => (s.connected === connected ? s : { ...s, connected }));
     });
@@ -102,6 +112,7 @@ export function useResolveBridge() {
     return () => {
       unsubscribe();
       unsubscribeStatus();
+      wsSubscribedRef.current = false;
     };
   }, []);
 
