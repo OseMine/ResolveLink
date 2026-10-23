@@ -18,11 +18,12 @@
     "build": "cd packages/ui && npm run build",
     "build:icons": "node scripts/build-icons.js",
     "build:server": "node scripts/build-server.js",
-    "build:electron": "npm run build && npm run build:icons && npm run build:server && electron-builder",
-    "build:electron:win": "npm run build && npm run build:icons && npm run build:server && electron-builder --win",
-    "build:electron:mac": "npm run build && npm run build:icons && npm run build:server && electron-builder --mac",
-    "build:electron:linux": "npm run build && npm run build:icons && npm run build:server && electron-builder --linux",
-    "electron:dir": "npm run build && npm run build:icons && npm run build:server && electron-builder --dir",
+    "build:native": "node scripts/build-native.js",
+    "build:electron": "npm run build && npm run build:icons && npm run build:server && npm run build:native && electron-builder",
+    "build:electron:win": "npm run build && npm run build:icons && npm run build:server && npm run build:native && electron-builder --win",
+    "build:electron:mac": "npm run build && npm run build:icons && npm run build:server && npm run build:native && electron-builder --mac",
+    "build:electron:linux": "npm run build && npm run build:icons && npm run build:server && npm run build:native && electron-builder --linux",
+    "electron:dir": "npm run build && npm run build:icons && npm run build:server && npm run build:native && electron-builder --dir",
     "start": "electron .",
     "install:all": "npm install && cd packages/ui && npm install",
     "test": "vitest run",
@@ -126,6 +127,30 @@
         "to": "extensions/adobe",
         "filter": [
           "**/*"
+        ]
+      },
+      {
+        "from": "dist-native/win",
+        "to": "extensions/native",
+        "filter": [
+          "ableton/*.dll",
+          "reaper/*.dll"
+        ]
+      },
+      {
+        "from": "dist-native/mac",
+        "to": "extensions/native",
+        "filter": [
+          "ableton/*.dylib",
+          "reaper/*.dylib"
+        ]
+      },
+      {
+        "from": "dist-native/linux",
+        "to": "extensions/native",
+        "filter": [
+          "ableton/*.so",
+          "reaper/*.so"
         ]
       }
     ],
