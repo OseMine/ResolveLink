@@ -71,7 +71,9 @@ app.use(express.json({ limit: '2mb' }));
 app.use(perfMiddleware);
 
 // --- Auth ---
-const configPath = path.join(__dirname, 'config.json');
+// Desktop builds run from a read-only install directory, so the writable
+// config location can be supplied by the Electron shell.
+const configPath = process.env.CONFIG_PATH || path.join(__dirname, 'config.json');
 const authState = initAuth(configPath);
 if (authState.enabled) {
   log.info('API authentication enabled');
@@ -82,7 +84,8 @@ app.use(requireAuth(authState));
 
 // Serve built React frontend
 // packages/server/src -> packages/ui/dist
-const DIST_DIR = path.join(__dirname, '..', '..', 'ui', 'dist');
+// The desktop build points UI_DIST_DIR at its bundled copy.
+const DIST_DIR = process.env.UI_DIST_DIR || path.join(__dirname, '..', '..', 'ui', 'dist');
 if (fs.existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR));
 }
@@ -312,6 +315,24 @@ process.on('uncaughtException', (err) => {
 let fileWatcherHandle = null;
 let reaperWatcherHandle = null;
 
+/**
+ * Desktop builds are children of the Electron shell. If the shell crashes or is
+ * force-killed, exit instead of leaving an orphaned server holding the port.
+ */
+function watchParentProcess() {
+  const parentPid = Number(process.env.RESOLVELINK_PARENT_PID || 0);
+  if (!parentPid) return;
+
+  setInterval(() => {
+    try {
+      process.kill(parentPid, 0);
+    } catch {
+      log.warn('Electron parent exited, shutting down');
+      gracefulShutdown(0);
+    }
+  }, 5000).unref();
+}
+
 function gracefulShutdown(exitCode = 0) {
   log.info('Shutting down gracefully...');
   if (fileWatcherHandle) fileWatcherHandle.close();
@@ -332,6 +353,8 @@ if (require.main === module) {
     // Start file watchers
     fileWatcherHandle = startWatcher(EXPORT_DIR, config);
     reaperWatcherHandle = startReaperResultsWatcher(REAPER_RESULTS_DIR, EXPORT_DIR);
+
+    watchParentProcess();
 
     // Initialize integrations
     await registry.initAll(store);

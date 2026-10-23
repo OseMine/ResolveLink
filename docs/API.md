@@ -676,8 +676,8 @@ Checks GitHub for newer versions.
 **Response:**
 ```json
 {
-  "currentVersion": "1.0.0",
-  "latestVersion": "1.1.0",
+  "currentVersion": "1.2.0",
+  "latestVersion": "1.2.0",
   "updateAvailable": true,
   "downloadUrl": "https://github.com/..."
 }

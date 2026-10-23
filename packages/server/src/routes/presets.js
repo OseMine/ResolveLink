@@ -10,7 +10,7 @@ const { PresetRequestSchema, PresetNameParamSchema } = require('@resolvelink/sha
 
 const router = express.Router();
 
-const PRESETS_PATH = path.join(__dirname, '..', '..', '..', 'render-presets.json');
+const PRESETS_PATH = process.env.PRESETS_PATH || path.join(__dirname, '..', '..', '..', 'render-presets.json');
 
 function loadPresets() {
   try { return JSON.parse(fs.readFileSync(PRESETS_PATH, 'utf8')); }

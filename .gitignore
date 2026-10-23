@@ -13,3 +13,7 @@ Thumbs.db
 TOFIX.md
 TODO.md
 ROADMAP.md
+
+dist-electron
+packages/server/dist
+assets/icon.iconset

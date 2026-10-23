@@ -80,8 +80,22 @@ function getAllStatus() {
 /**
  * Auto-discover integrations from the integrations/ directory.
  * Each subdirectory with an index.js is treated as an integration.
+ *
+ * Bundled desktop builds cannot read the integrations directory (the server is
+ * compiled into a single file), so they register the built-ins statically.
  */
 function discoverFromDirectory(integrationsDir) {
+  if (process.env.RESOLVELINK_BUNDLED_INTEGRATIONS === '1') {
+    for (const [name, load] of Object.entries(BUNDLED_INTEGRATIONS)) {
+      try {
+        register(load());
+      } catch (err) {
+        log.error(`Failed to load bundled integration '${name}': ${err.message}`);
+      }
+    }
+    return;
+  }
+
   if (!fs.existsSync(integrationsDir)) return;
 
   const entries = fs.readdirSync(integrationsDir, { withFileTypes: true });
@@ -102,6 +116,13 @@ function discoverFromDirectory(integrationsDir) {
     }
   }
 }
+
+/** Integrations that ship with the desktop build. */
+const BUNDLED_INTEGRATIONS = {
+  ae: () => require('./ae'),
+  reaper: () => require('./reaper'),
+  ableton: () => require('./ableton'),
+};
 
 module.exports = {
   register,

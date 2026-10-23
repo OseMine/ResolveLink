@@ -5,6 +5,7 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -56,3 +57,71 @@ jobs:
       - name: Type-check frontend
         run: npx tsc --noEmit
         working-directory: packages/ui
+
+  desktop:
+    name: Desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build icons
+        run: npm run build:icons
+
+      - name: Bundle server
+        run: npm run build:server
+
+      - name: Smoke-test bundled server
+        shell: bash
+        run: |
+          node packages/server/dist/server.cjs &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3030/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:3030/api/health
+          curl -sf http://127.0.0.1:3030/api/diagnostics > /dev/null
+          kill $SERVER_PID 2>/dev/null || true
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: npx electron-builder --win --publish never
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --mac --publish never
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: npx electron-builder --linux --publish never
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          if-no-files-found: ignore
+          path: |
+            dist-electron/*.exe
+            dist-electron/*.dmg
+            dist-electron/*.AppImage
+            dist-electron/*.blockmap

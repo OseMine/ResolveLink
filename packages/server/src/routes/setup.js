@@ -68,7 +68,7 @@ function detectAEPath(config) {
 
 // The .env file lives at the repository root, four levels above this file
 // (packages/server/src/routes -> packages/server/src -> packages/server -> packages -> root).
-const ENV_PATH = path.join(__dirname, '..', '..', '..', '..', '.env');
+const ENV_PATH = process.env.ENV_PATH || path.join(__dirname, '..', '..', '..', '..', '.env');
 
 function initSetupRoutes(config, port, host, exportDir, tempDir) {
   // GET /api/setup — Detect paths and return current config

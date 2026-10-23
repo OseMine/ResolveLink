@@ -12,9 +12,10 @@ const registry = require('../integrations/registry');
 const { version } = require('../version');
 
 // Repo root is four levels above packages/server/src/services.
-const ROOT_DIR = path.join(__dirname, '..', '..', '..', '..');
-const ENV_PATH = path.join(ROOT_DIR, '.env');
-const RESOLVE_BRIDGE = path.join(ROOT_DIR, 'server', 'resolve-bridge.py');
+const ROOT_DIR = process.env.RESOLVELINK_ROOT || path.join(__dirname, '..', '..', '..', '..');
+const ENV_PATH = process.env.ENV_PATH || path.join(ROOT_DIR, '.env');
+const RESOLVE_BRIDGE = process.env.RESOLVE_BRIDGE_SCRIPT
+  || path.join(ROOT_DIR, 'server', 'resolve-bridge.py');
 
 let pythonCache = { at: 0, value: null };
 const PYTHON_CACHE_MS = 30_000;

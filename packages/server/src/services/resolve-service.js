@@ -11,7 +11,8 @@ const fs = require('fs');
 const config = require('../config.json');
 
 const PYTHON_PATH = process.env.PYTHON_PATH || config.resolve.pythonPath || 'python';
-const BRIDGE_SCRIPT = path.join(__dirname, '..', '..', '..', '..', 'server', 'resolve-bridge.py');
+const BRIDGE_SCRIPT = process.env.RESOLVE_BRIDGE_SCRIPT
+  || path.join(__dirname, '..', '..', '..', '..', 'server', 'resolve-bridge.py');
 const SCRIPT_EXISTS = fs.existsSync(BRIDGE_SCRIPT);
 
 // Cache for connection status (avoids hammering Python on every poll)

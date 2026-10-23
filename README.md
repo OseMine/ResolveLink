@@ -184,6 +184,41 @@ That's it. The script will:
 - Run the full setup (deps, build, extensions, .env)
 - Deploy Resolve scripts and start the server
 
+### Desktop App (Installer)
+
+ResolveLink also ships as a self-contained desktop application. The installer
+bundles the bridge server, so no separate `npm run server` is needed.
+
+1. Download the installer for your platform from the
+   [latest release](https://github.com/OseMine/ResolveLink/releases):
+   - **Windows** — `ResolveLink-<version>-x64.exe` (NSIS installer)
+   - **macOS** — `ResolveLink-<version>-<arch>.dmg`
+   - **Linux** — `ResolveLink-<version>-x64.AppImage`
+2. Install and launch **ResolveLink**. The app starts the server on
+   `http://127.0.0.1:3030` and opens the UI.
+
+User data is stored per user:
+
+| Platform | Location |
+|----------|----------|
+| Windows | `%APPDATA%\ResolveLink` |
+| macOS | `~/Library/Application Support/ResolveLink` |
+| Linux | `~/.config/ResolveLink` |
+
+The folder contains `config.json`, `exports/`, `temp/`, and `server.log`
+(useful when reporting startup problems).
+
+Build installers locally:
+
+```bash
+npm run build:electron:win     # Windows NSIS installer
+npm run build:electron:mac     # macOS DMG (x64 + arm64)
+npm run build:electron:linux   # Linux AppImage
+```
+
+Artifacts are written to `dist-electron/`. macOS signing/notarization runs only
+when `APPLE_ID`, `APPLE_ID_PASSWORD`, and `APPLE_TEAM_ID` are set.
+
 ### Install REAPER Scripts
 
 #### Via ReaPack (Recommended)
@@ -403,7 +438,10 @@ resolvelink/
 | `npm run server` | Start only the backend server |
 | `npm run ui` | Start only the Vite dev server |
 | `npm run build` | Build the frontend for production |
-| `npm start` | Start the Electron app |
+| `npm run build:server` | Bundle the server for the desktop app |
+| `npm run build:icons` | Regenerate app icons from `web/public/icon.svg` |
+| `npm run build:electron` | Build the desktop app for the current platform |
+| `npm start` | Start the Electron app (uses the local dev server) |
 | `npm test` | Run all tests (vitest) |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run install:all` | Install all workspace dependencies |

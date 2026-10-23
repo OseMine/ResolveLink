@@ -1,7 +1,8 @@
 {
   "name": "resolve-link",
-  "version": "1.1.0",
-  "description": "Dynamic Link equivalent for DaVinci Resolve to After Effects",
+  "version": "1.2.0",
+  "productName": "ResolveLink",
+  "description": "Dynamic Link equivalent for DaVinci Resolve to After Effects, REAPER, and Ableton Live",
   "author": "ResolveLink",
   "license": "MIT",
   "main": "electron.js",
@@ -15,6 +16,13 @@
     "ui": "cd packages/ui && npm run dev",
     "server": "node packages/server/src/index.js",
     "build": "cd packages/ui && npm run build",
+    "build:icons": "node scripts/build-icons.js",
+    "build:server": "node scripts/build-server.js",
+    "build:electron": "npm run build && npm run build:icons && npm run build:server && electron-builder",
+    "build:electron:win": "npm run build && npm run build:icons && npm run build:server && electron-builder --win",
+    "build:electron:mac": "npm run build && npm run build:icons && npm run build:server && electron-builder --mac",
+    "build:electron:linux": "npm run build && npm run build:icons && npm run build:server && electron-builder --linux",
+    "electron:dir": "npm run build && npm run build:icons && npm run build:server && electron-builder --dir",
     "start": "electron .",
     "install:all": "npm install && cd packages/ui && npm install",
     "test": "vitest run",
@@ -30,8 +38,139 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@electron/notarize": "^3.1.2",
     "concurrently": "^8.2.2",
     "electron": "^28.1.0",
+    "electron-builder": "^24.13.3",
+    "esbuild": "^0.25.10",
+    "sharp": "^0.35.5",
     "vitest": "^4.1.10"
+  },
+  "build": {
+    "appId": "com.resolvelink.app",
+    "productName": "ResolveLink",
+    "copyright": "Copyright © 2024 ResolveLink",
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "assets"
+    },
+    "files": [
+      "electron.js",
+      "preload.js",
+      "!node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "packages/server/dist",
+        "to": "server",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "packages/ui/dist",
+        "to": "ui/dist",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "assets/icon.png",
+        "to": "icon.png"
+      },
+      {
+        "from": "resolve-scripts",
+        "to": "resolve-scripts",
+        "filter": [
+          "*.py",
+          "*.lua"
+        ]
+      },
+      {
+        "from": "reaper-scripts",
+        "to": "reaper-scripts",
+        "filter": [
+          "*.lua"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ResolveLink",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.icns",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "category": "public.app-category.video",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist"
+    },
+    "dmg": {
+      "title": "ResolveLink ${version}",
+      "icon": "assets/icon.icns",
+      "background": "assets/dmg-background.png",
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "contents": [
+        {
+          "x": 130,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "file"
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "category": "AudioVideo",
+      "maintainer": "ResolveLink <https://github.com/OseMine/ResolveLink>",
+      "synopsis": "Dynamic Link for DaVinci Resolve"
+    },
+    "afterSign": "scripts/notarize.js"
   }
 }

@@ -6,7 +6,7 @@ ResolveLink is a Dynamic Link equivalent for DaVinci Resolve, bridging it with A
 
 - **License**: MIT
 - **Repository**: `https://github.com/OseMine/ResolveLink`
-- **Version**: 1.1.0
+- **Version**: 1.2.0
 - **Platforms**: Windows, macOS, Linux
 
 ## Tech Stack
@@ -68,6 +68,14 @@ node packages/server/src/index.js  # Server standalone
 # Build
 npm run build                  # Build packages/ui (tsc + vite build)
 cd web && npm run build        # Build marketing website
+
+# Desktop app / installers (electron-builder -> dist-electron/)
+npm run build:icons            # Regenerate assets/icon.{png,ico,icns} from web/public/icon.svg
+npm run build:server           # Bundle server -> packages/server/dist/server.cjs
+npm run build:electron:win     # Windows NSIS installer
+npm run build:electron:mac     # macOS DMG (x64 + arm64)
+npm run build:electron:linux   # Linux AppImage
+npm run electron:dir           # Unpacked app for smoke testing
 
 # Test
 npm test                       # Run all Vitest tests (vitest run)
@@ -336,10 +344,20 @@ Vitest config: 15s timeout, includes `test/**/*.test.{js,ts}`. Three test files:
 - `test/jsx-generator.test.js` - JSX payload generation unit tests
 - `test/resolve-bridge.test.js` - Python bridge CLI tests
 
+## Desktop Packaging (Electron)
+
+- `electron.js` spawns `resources/server/server.cjs` with `ELECTRON_RUN_AS_NODE=1`, then loads the UI from `http://127.0.0.1:3030` (same-origin with the API).
+- `scripts/build-server.js` bundles the server + all deps + `@resolvelink/shared` into one file with esbuild. `RESOLVELINK_BUNDLED_INTEGRATIONS=1` makes `registry.js` register `ae`, `reaper`, and `ableton` statically instead of scanning the filesystem. New integrations must be added to `BUNDLED_INTEGRATIONS`.
+- `scripts/build-icons.js` renders `assets/icon.png` (512), `icon.ico` (BMP entries, NSIS-safe), `icon.icns`, and `dmg-background.png` from `web/public/icon.svg`.
+- electron-builder `extraResources`: `packages/server/dist` -> `server`, `packages/ui/dist` -> `ui/dist`, `assets/icon.png` -> root, plus `resolve-scripts`/`reaper-scripts`.
+- Writable state is redirected from the read-only install dir to `app.getPath('userData')` via env vars: `CONFIG_PATH`, `ENV_PATH`, `PRESETS_PATH`, `EXPORT_DIR`, `TEMP_DIR`, `UI_DIST_DIR`, `RESOLVE_BRIDGE_SCRIPT`.
+- Server log: `<userData>/server.log`.
+
 ## CI Pipeline (`.github/workflows/ci.yml`)
 
 - **build-and-test**: Ubuntu, Node 20+22 matrix, `npm ci` -> build -> `npm test` -> health check
 - **lint**: Ubuntu, Node 22, `npx tsc --noEmit` (type-check only)
+- **desktop**: Windows/macOS/Linux matrix; bundles the server, verifies it starts, and packages the app (installer on Windows, `--dir` elsewhere)
 - Triggers: push/PR to `main` or `master`
 
 ## Key Files

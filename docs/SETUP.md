@@ -28,6 +28,49 @@ The installer will:
 
 ---
 
+## Desktop App Installer
+
+Prebuilt installers are attached to every release:
+
+| Platform | Artifact |
+|----------|----------|
+| Windows | `ResolveLink-<version>-x64.exe` |
+| macOS | `ResolveLink-<version>-x64.dmg` / `-arm64.dmg` |
+| Linux | `ResolveLink-<version>-x64.AppImage` |
+
+The desktop app bundles the bridge server and starts it automatically on
+`http://127.0.0.1:3030`; you do not need to run `npm run server`.
+
+Per-user data lives in:
+
+| Platform | Path |
+|----------|------|
+| Windows | `%APPDATA%\ResolveLink` |
+| macOS | `~/Library/Application Support/ResolveLink` |
+| Linux | `~/.config/ResolveLink` |
+
+That folder holds `config.json`, `exports/`, `temp/`, and `server.log`.
+If the window stays empty, check `server.log` first.
+
+### Building installers locally
+
+```bash
+npm run build:electron:win     # NSIS installer -> dist-electron/
+npm run build:electron:mac     # DMG (build on macOS)
+npm run build:electron:linux   # AppImage (build on Linux)
+npm run electron:dir           # Unpacked app, useful for quick checks
+```
+
+The build pipeline runs three steps: Vite builds the UI, `scripts/build-icons.js`
+generates `icon.ico`/`icon.icns` from `web/public/icon.svg`, and
+`scripts/build-server.js` bundles the server (including dependencies) into
+`packages/server/dist/server.cjs`.
+
+macOS signing and notarization are skipped unless `APPLE_ID`,
+`APPLE_ID_PASSWORD`, and `APPLE_TEAM_ID` are present in the environment.
+
+---
+
 ## Install REAPER Scripts
 
 ### Via ReaPack (Recommended)
