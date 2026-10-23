@@ -116,6 +116,9 @@ jobs:
         run: npm run build:server
 
       - name: Build native extensions (Ableton/REAPER)
+        env:
+          ABLETON_SDK_PATH: ${{ secrets.ABLETON_SDK_PATH }}
+          REAPER_SDK_PATH: ${{ secrets.REAPER_SDK_PATH }}
         run: npm run build:native
 
       - name: Set version from tag (if pushed tag)
