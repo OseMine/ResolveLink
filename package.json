@@ -30,17 +30,19 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "adm-zip": "^0.5.18",
     "chokidar": "^3.5.3",
+    "clsx": "^2.1.0",
     "cors": "^2.8.5",
     "dotenv": "^18.0.8",
     "express": "^4.18.2",
+    "tailwind-merge": "^3.7.0",
     "uuid": "^14.0.3",
     "ws": "^8.16.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@electron/notarize": "^3.1.2",
+    "adm-zip": "^0.6.1",
     "concurrently": "^8.2.2",
     "electron": "^28.1.0",
     "electron-builder": "^26.15.3",
