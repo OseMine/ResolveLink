@@ -13,7 +13,8 @@ import { useKeyboardShortcuts, ShortcutHint as KeyboardShortcutsHint } from './c
 import { useResolveBridge } from './lib/useResolveBridge';
 import { api, createWebSocket } from './lib/api';
 import type { ResolveProject } from './lib/api';
-import { APP_VERSION } from 'config';
+// @ts-expect-error config.js has no declaration file
+import { APP_VERSION } from './config';
 
 export default function App() {
   const {
