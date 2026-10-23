@@ -61,14 +61,14 @@ jobs:
           refreshenv
 
       - name: Download and extract REAPER SDK
-        if: env.REAPER_SDK_PATH == ''
+        if: env.REAPER_SDK_PATH != '' && startsWith(env.REAPER_SDK_PATH, 'http')
         shell: bash
         run: |
           set -euo pipefail
           SDK_DIR="${RUNNER_TEMP}/reaper-sdk"
           mkdir -p "$SDK_DIR"
           echo "Downloading REAPER SDK..."
-          curl -L -o "${SDK_DIR}/reaper-sdk.zip" "https://github.com/justinfrankel/reaper-sdk/archive/refs/heads/master.zip"
+          curl -L -o "${SDK_DIR}/reaper-sdk.zip" "${{ secrets.REAPER_SDK_PATH }}"
           echo "Extracting REAPER SDK..."
           unzip -q "${SDK_DIR}/reaper-sdk.zip" -d "$SDK_DIR"
           EXTRACTED_DIR=$(find "$SDK_DIR" -maxdepth 1 -type d -name "reaper-sdk-*" | head -1)
@@ -80,14 +80,14 @@ jobs:
           echo "REAPER SDK downloaded to $SDK_DIR"
 
       - name: Download and extract Ableton SDK
-        if: env.ABLETON_SDK_PATH == ''
+        if: env.ABLETON_SDK_PATH != '' && startsWith(env.ABLETON_SDK_PATH, 'http')
         shell: bash
         run: |
           set -euo pipefail
           SDK_DIR="${RUNNER_TEMP}/ableton-sdk"
           mkdir -p "$SDK_DIR"
           echo "Downloading Ableton Extension SDK..."
-          curl -L -o "${SDK_DIR}/ableton-sdk.zip" "https://ableton.centercode.com/download/cd883bfb5d4f4d42a8576f7a55ffb83f/attachment/extensions-sdk-1.0.0-beta.1.zip"
+          curl -L -o "${SDK_DIR}/ableton-sdk.zip" "${{ secrets.ABLETON_SDK_PATH }}"
           echo "Extracting Ableton SDK..."
           unzip -q "${SDK_DIR}/ableton-sdk.zip" -d "$SDK_DIR"
           EXTRACTED_DIR=$(find "$SDK_DIR" -maxdepth 1 -type d ! -path "$SDK_DIR" | head -1)
