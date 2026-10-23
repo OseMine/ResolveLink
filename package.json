@@ -44,7 +44,7 @@
     "electron-builder": "^24.13.3",
     "esbuild": "^0.28.2",
     "sharp": "^0.35.5",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.5"
   },
   "build": {
     "appId": "com.resolvelink.app",
