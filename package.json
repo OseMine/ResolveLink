@@ -92,6 +92,41 @@
         "filter": [
           "*.lua"
         ]
+      },
+      {
+        "from": "extension/client",
+        "to": "extensions/cep/client",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "extension/host",
+        "to": "extensions/cep/host",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "extension/CSXS",
+        "to": "extensions/cep/CSXS",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "extension/reaper",
+        "to": "extensions/reaper-web-panel",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "adobe",
+        "to": "extensions/adobe",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
