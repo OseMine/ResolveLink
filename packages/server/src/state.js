@@ -158,7 +158,10 @@ function initStore(wssInstance) {
 function sendInitState(ws) {
   ws.send(JSON.stringify({
     type: 'init',
-    payload: { links: Array.from(store.activeLinks.values()) },
+    payload: {
+      links: Array.from(store.activeLinks.values()),
+      jobHistory: store.jobHistory.slice(0, 20),
+    },
   }));
 }
 
