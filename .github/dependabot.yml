@@ -1,17 +1,103 @@
 version: 2
 updates:
-  - package-ecosystem: github-actions
-		directories:
-			- "/"
-		schedule:
-			interval: weekly
-	- package-ecosystem: npm
-		directories:
-			- "/"
-		schedule:
-			interval: weekly
-	- package-ecosystem: pip
-		directories:
-			- "/"
-		schedule:
-			interval: weekly
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+  # npm (root + workspaces)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 15
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    ignore:
+      # Electron major version bumps are handled intentionally
+      - dependency-name: "electron"
+        versions: [">=30.0.0"]
+
+  # npm workspaces - each package gets its own updates
+  - package-ecosystem: "npm"
+    directory: "packages/server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "npm"
+      - "server"
+    commit-message:
+      prefix: "deps(server)"
+      include: "scope"
+
+  - package-ecosystem: "npm"
+    directory: "packages/ui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "npm"
+      - "ui"
+    commit-message:
+      prefix: "deps(ui)"
+      include: "scope"
+
+  - package-ecosystem: "npm"
+    directory: "packages/shared"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "shared"
+    commit-message:
+      prefix: "deps(shared)"
+      include: "scope"
+
+  # Marketing website
+  - package-ecosystem: "npm"
+    directory: "web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+      - "web"
+    commit-message:
+      prefix: "deps(web)"
+      include: "scope"

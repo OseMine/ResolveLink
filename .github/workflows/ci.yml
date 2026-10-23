@@ -7,6 +7,9 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -65,6 +68,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
+
+    # Only run desktop packaging on main/master pushes, tags, or manual dispatch
+    # to avoid heavy macOS/Linux builds on every PR
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout

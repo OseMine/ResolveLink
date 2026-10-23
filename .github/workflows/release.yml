@@ -123,7 +123,7 @@ jobs:
         run: |
           cat CHANGELOG.md > RELEASE_BODY.md
           echo "" >> RELEASE_BODY.md
-          cat RELEASE-BODY.md >> RELEASE_BODY.md
+          cat RELEASE_BODY.md >> RELEASE_BODY.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
