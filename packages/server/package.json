@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@resolvelink/shared": "1.1.0",
-    "chokidar": "^3.5.3",
+    "chokidar": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^18.0.8",
     "express": "^4.18.2",
